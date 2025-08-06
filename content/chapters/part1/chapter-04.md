@@ -633,9 +633,9 @@ Used to combine or invert conditions:
 
 | Operator | Name        | Description                               | Example                  | Result                      |
 | -------- | ----------- | ----------------------------------------- | ------------------------ | --------------------------- |
-| `&&`     | Logical AND | True if **both** conditions are true     | `(a > 0) && (b < 5)`     | `1` if both are true        |
-| `||`     | Logical OR  | True if **either** condition is true     | `(a == 0) || (b > 10)`   | `1` if at least one is true |
-| `!`      | Logical NOT | Reverses the truth value of the condition | `!done`                  | `1` if `done` is false      |
+| &&     | Logical AND | True if **both** conditions are true     | (a > 0) && (b < 5)     | `1` if both are true        |
+| \|\|     | Logical OR  | True if **either** condition is true     | (a == 0) \|\| (b > 10)   | `1` if at least one is true |
+| !      | Logical NOT | Reverses the truth value of the condition | !done                  | `1` if `done` is false      |
 
 These are especially useful in complex conditionals, like:
 
@@ -665,12 +665,12 @@ In kernel development, bitwise operators are standard. Here’s a light preview:
 
 | Operator | Meaning     | Example  |
 | -------- | ----------- | -------- |
-| `&`      | Bitwise AND | `a & b`  |
-| `|`      | Bitwise OR  | `a | b`  |
-| `^`      | Bitwise XOR | `a ^ b`  |
-| `~`      | Bitwise NOT | `~a`     |
-| `<<`     | Left shift  | `a << 2` |
-| `>>`     | Right shift | `a >> 1` |
+| &      | Bitwise AND | a & b  |
+| \|     | Bitwise OR  | a \| b  |
+| ^      | Bitwise XOR | a ^ b  |
+| ~      | Bitwise NOT | ~a     |
+| <<     | Left shift  | a << 2 |
+| >>     | Right shift | a >> 1 |
 
 We’ll cover these in detail later when we work with flags, registers, and hardware I/O.
 
