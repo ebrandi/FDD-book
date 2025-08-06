@@ -404,4 +404,378 @@ In this short example, you’ve already seen:
 
 These are the **building blocks of C** and you’ll see them repeated everywhere, including deep inside FreeBSD’s kernel source code.
 
+### Summary
+
+In this section, you’ve learned:
+
+* The structure of a C program
+* How #include and main() work
+* What printf() and return do
+* How similar structures appear in FreeBSD’s kernel code
+
+The more C code you read, both your own and from FreeBSD, the more these patterns will become second nature.
+
+## Variables and Data Types
+
+In any programming language, variables are how you store and manipulate data. In C, variables are a little more "manual" than in higher-level languages, but they give you the control you need to write fast, efficient programs, and that’s precisely what operating systems like FreeBSD require.
+
+In this section, we’ll explore:
+
+* How to declare and initialise variables
+* The most common data types in C
+* How FreeBSD uses them in kernel code
+* Some tips to avoid common beginner mistakes
+
+Let’s start with the basics.
+
+### What Is a Variable?
+
+A variable is like a labeled box in memory where you can store a value, such as a number, a character, or even a block of text.
+
+Here’s a simple example:
+
+	int counter = 0;
+	
+
+This tells the compiler:
+
+* Allocate enough memory to store an integer
+* Call that memory location counter
+* Put the number 0 in it to start
+
+### Declaring Variables
+
+In C, you must declare the type of every variable before using it. This is different from languages like Python, where the type is determined automatically.
+
+Here’s how to declare different types of variables:
+
+	int age = 30;             // Integer (whole number)
+	float temperature = 98.6; // Floating-point number
+	char grade = 'A';         // Single character
+
+You can also declare multiple variables at once:
+
+	int x = 10, y = 20, z = 30;
+
+Or leave them uninitialized (but be careful, as uninitialized variables contain garbage values!):
+
+	int count; // May contain anything!
+
+Always initialise your variables, not just because it’s good C practice, but because in kernel development, uninitialized values can lead to subtle and dangerous bugs, including kernel panics, unpredictable behaviour, and security vulnerabilities. In userland, mistakes might crash your program; in the kernel, they can compromise the stability of the entire system. 
+
+Unless you have a very specific and justified reason not to (such as performance-critical code paths where the value is immediately overwritten), make initialisation the rule, not the exception.
+
+### Common C Data Types
+
+Here are the core types you'll use most often:
+
+| Type       | Description                                | Example               |
+| ---------- | ------------------------------------------ | --------------------- |
+| `int`      | Integer (typically 32-bit)                 | `int count = 1;`      |
+| `unsigned` | Non-negative integer                       | `unsigned size = 10;` |
+| `char`     | A single 8-bit character                   | `char c = 'A';`       |
+| `float`    | Floating-point number (\~6 decimal digits) | `float pi = 3.14;`    |
+| `double`   | Double-precision float (\~15 digits)       | `double g = 9.81;`    |
+| `void`     | Represents "no value" (used for functions) | `void print()`        |
+
+### Type Qualifiers
+
+C provides **type qualifiers** to give more information about how a variable should behave:
+
+* `const`: This variable can’t be changed.
+* `volatile`: The value can change unexpectedly (used with hardware!).
+* `unsigned`: The variable cannot hold negative numbers.
+
+Example:
+
+	const int max_users = 100;
+	volatile int status_flag;
+
+The `volatile` qualifier can be important in FreeBSD kernel development, but only in very specific contexts, such as accessing hardware registers or dealing with interrupt-driven updates. It tells the compiler not to optimise accesses to a variable, which is critical when values can change outside of normal program flow. 
+
+However, `volatile` is not a substitute for proper synchronisation and should not be used for coordinating access between threads or CPUs. For that, the FreeBSD kernel provides dedicated primitives like mutexes and atomic operations, which offer both compiler and CPU-level guarantees.
+
+### Constant Values and #define
+
+In C programming and especially in kernel development, it's very common to define constant values using the #define directive:
+
+	#define MAX_DEVICES 64
+
+This line doesn't declare a variable. Instead, it's a **preprocessor macro**, which means the C preprocessor will **replace every occurrence of** `MAX_DEVICES` **with** `64` before the actual compilation begins. This replacement happens **textually**, and the compiler never even sees the name `MAX_DEVICES`.
+
+### Why Use #define for Constants?
+
+Using `#define` for constant values has several advantages in kernel code:
+
+* **Improves readability**: Instead of seeing magic numbers (like 64) scattered throughout the code, you see meaningful names like MAX_DEVICES.
+* **Makes code easier to maintain**: If the maximum number of devices ever needs to change, you update it in one place, and the change is reflected wherever it's used.
+* **Keeps kernel code lightweight**: Kernel code often avoids runtime overhead, and #define constants don’t allocate memory or exist in the symbol table; they simply get replaced during preprocessing.
+
+### Real Example From FreeBSD
+
+You will find many `#define` lines in `sys/sys/param.h`, for example:
+
+	#define MAXHOSTNAMELEN 256  /* max hostname size */
+	
+This defines the maximum number of characters allowed in a system hostname, and it's used throughout the kernel and system utilities to enforce a consistent limit. The value 256 is now standardised and can be reused wherever the hostname length is relevant.
+
+### Watch Out: There Is No Type Checking
+
+Because `#define` simply performs textual substitution, it does not respect types or scoping. 
+
+For example:
+
+	#define PI 3.14
+	
+This works, but it can lead to problems in certain contexts (e.g., integer promotion, unintended precision loss). For more complex or type-sensitive constants, you may prefer using `const` variables or `enums` in userland, but in the kernel, especially in headers, `#define` is often chosen for efficiency and compatibility.
+
+### Best Practices for #define Constants in Kernel Development
+
+* Use **ALL CAPS** for macro names to distinguish them from variables.
+* Add comments to explain what the constant represents.
+* Avoid defining constants that depend on runtime values.
+* Prefer `#define` over `const` in header files or when targeting C89 compatibility (which is still common in kernel code).
+
+### Best Practices for Variables
+
+Writing correct and robust kernel code starts with disciplined variable usage. The tips below will help you avoid subtle bugs, improve code readability, and align with FreeBSD kernel development conventions.
+
+**Always initialise your variables**: Never assume a variable starts at zero or any default value, especially in kernel code, where behaviour must be deterministic. An uninitialized variable could hold random garbage from the stack, leading to unpredictable behaviour, memory corruption, or kernel panics. Even when the variable will be overwritten soon, it’s often safer and more transparent to initialise it explicitly unless performance measurements prove otherwise.
+
+**Don't use variables before assigning a value**: This is one of the most common bugs in C, and compilers won’t always catch it. In the kernel, using an uninitialized variable can result in silent failures or catastrophic system crashes. Always trace your logic to ensure every variable is assigned a valid value before use, especially if it influences memory access or hardware operations.
+
+**Use `const` whenever the value shouldn’t change**:
+Using `const` is more than good style; it helps the compiler enforce read-only constraints and catch unintended modifications. This is particularly important when:
+
+* Passing read-only pointers into functions
+* Protecting configuration structures or table entries
+* Marking driver data that must not change after initialisation
+
+In kernel code, this can even lead to compiler optimisations and make the code easier to reason about for reviewers and maintainers.
+
+**Use `unsigned` for values that can’t be negative (like sizes or counters)**: Variables that represent quantities like buffer sizes, loop counters, or device counts should be declared as `unsigned` types (`unsigned int`, `size_t`, or `uint32_t`, etc.). This improves clarity and prevents logic bugs, especially when comparing with other `unsigned` types, which can cause unexpected behaviour if signed values are mixed in.
+
+**Prefer fixed-width types in kernel code (`uint32_t`, `int64_t`, etc.)**: Kernel code must behave predictably across architectures (e.g., 32-bit vs 64-bit systems). Types like `int`, `long`, or `short` can vary in size depending on the platform, which can lead to portability issues and alignment bugs. Instead, FreeBSD uses standard types from `<sys/types.h>` such as:
+
+* `uint8_t`, `uint16_t`, `uint32_t`, `uint64_t`
+* `int32_t`, `int64_t`, etc.
+
+These types ensure your code has a known, fixed layout and avoids surprises when compiling or running on different hardware.
+
+**Pro Tip**: When in doubt, look at existing FreeBSD kernel code, especially drivers and subsystems close to what you're working on. The variable types and initialisation patterns used there are often based on years of hard-earned lessons from real-world systems.
+
+### Summary
+
+In this section, you’ve learned:
+
+* How to declare and initialise variables
+* The most important data types in C
+* What type qualifiers like const and volatile do
+* How to spot and understand variable declarations in FreeBSD’s kernel code
+
+You now have the tools to store and work with data in C, and you've already seen how FreeBSD uses the same concepts in production-quality kernel code.
+
+## Operators and Expressions
+
+So far, we've learned how to declare and initialise variables. Now it's time to make them do something! In this section, we’ll dive into operators and expressions, the mechanisms in C that allow you to compute values, compare them, and control program logic.
+
+We’ll cover:
+
+* Arithmetic operators
+* Comparison operators
+* Logical operators
+* Bitwise operators (lightly)
+* Assignment operators
+* Real examples from FreeBSD kernel code
+
+### What Is an Expression?
+
+In C, an expression is anything that produces a value. For example:
+
+	int a = 3 + 4;
+
+Here, `3 + 4` is an expression that evaluates to `7`. The result is then assigned to `a`.
+
+Operators are what you use to **build expressions**.
+
+### Arithmetic Operators
+
+These are used for basic math:
+
+| Operator | Meaning        | Example | Result                     |
+| -------- | -------------- | ------- | -------------------------- |
+| `+`      | Addition       | `5 + 2` | `7`                        |
+| `-`      | Subtraction    | `5 - 2` | `3`                        |
+| `*`      | Multiplication | `5 * 2` | `10`                       |
+| `/`      | Division       | `5 / 2` | `2`    (integer division!) |
+| `%`      | Modulus        | `5 % 2` | `1`    (remainder)         |
+
+**Note**: In C, division of two integers **discards the decimal part**. To get floating-point results, at least one operand must be a `float` or `double`.
+
+### Comparison Operators
+
+These are used to compare two values and return either `true (1)` or `false (0)`:
+
+| Operator | Meaning               | Example  | Result           |
+| -------- | --------------------- | -------- | ---------------- |
+| `==`     | Equal to              | `a == b` | `1` if equal     |
+| `!=`     | Not equal to          | `a != b` | `1` if not equal |
+| `<`      | Less than             | `a < b`  | `1` if true      |
+| `>`      | Greater than          | `a > b`  | `1` if true      |
+| `<=`     | Less than or equal    | `a <= b` | `1` if true      |
+| `>=`     | Greater than or equal | `a >= b` | `1` if true      |
+
+These are heavily used in `if`, `while`, and `for` statements to control program flow.
+
+### Logical Operators
+ 
+Used to combine or invert conditions:
+
+| Operator | Name        | Description                               | Example                  | Result                      |
+| -------- | ----------- | ----------------------------------------- | ------------------------ | --------------------------- |
+| `&&`     | Logical AND | True if **both** conditions are true     | `(a > 0) && (b < 5)`     | `1` if both are true        |
+| `||`     | Logical OR  | True if **either** condition is true     | `(a == 0) || (b > 10)`   | `1` if at least one is true |
+| `!`      | Logical NOT | Reverses the truth value of the condition | `!done`                  | `1` if `done` is false      |
+
+These are especially useful in complex conditionals, like:
+
+	if ((a > 0) && (b < 100)) {
+    	// both conditions must be true
+	}
+	
+### Assignment and Compound Assignment
+
+The `=` operator assigns a value:
+
+	x = 5; // assign 5 to x
+	
+Compound assignment combines operation and assignment:
+
+| Operator | Meaning             | Example   | Equivalent to |
+| -------- | ------------------- | --------- | ------------- |
+| `+=`     | Add and assign      | `x += 3;` | `x = x + 3;`  |
+| `-=`     | Subtract and assign | `x -= 2;` | `x = x - 2;`  |
+| `*=`     | Multiply and assign | `x *= 4;` | `x = x * 4;`  |
+| `/=`     | Divide and assign   | `x /= 2;` | `x = x / 2;`  |
+| `%=`     | Modulus and assign  | `x %= 3;` | `x = x % 3;`  |
+
+### Bitwise Operators
+
+In kernel development, bitwise operators are standard. Here’s a light preview:
+
+| Operator | Meaning     | Example  |
+| -------- | ----------- | -------- |
+| `&`      | Bitwise AND | `a & b`  |
+| `|`      | Bitwise OR  | `a | b`  |
+| `^`      | Bitwise XOR | `a ^ b`  |
+| `~`      | Bitwise NOT | `~a`     |
+| `<<`     | Left shift  | `a << 2` |
+| `>>`     | Right shift | `a >> 1` |
+
+We’ll cover these in detail later when we work with flags, registers, and hardware I/O.
+
+### Real Example from FreeBSD: sys/kern/tty_info.c
+
+Let’s look at a real example from the FreeBSD source code. 
+
+Open the file `sys/kern/tty_info.c`and look for the function `thread_compare()` starting on line 109, you will see the code below:
+
+	static int
+	thread_compare(struct thread *td, struct thread *td2)
+	{
+        int runa, runb;
+        int slpa, slpb;
+        fixpt_t esta, estb;
+ 
+        if (td == NULL)
+                return (1);
+ 
+        /*
+         * Fetch running stats, pctcpu usage, and interruptable flag.
+         */
+        thread_lock(td);
+        runa = TD_IS_RUNNING(td) || TD_ON_RUNQ(td);
+        slpa = td->td_flags & TDF_SINTR;
+        esta = sched_pctcpu(td);
+        thread_unlock(td);
+        thread_lock(td2);
+        runb = TD_IS_RUNNING(td2) || TD_ON_RUNQ(td2);
+        estb = sched_pctcpu(td2);
+        slpb = td2->td_flags & TDF_SINTR;
+        thread_unlock(td2);
+        /*
+         * see if at least one of them is runnable
+         */
+        switch (TESTAB(runa, runb)) {
+        case ONLYA:
+                return (0);
+        case ONLYB:
+                return (1);
+        case BOTH:
+                break;
+        }
+        /*
+         *  favor one with highest recent cpu utilization
+         */
+        if (estb > esta)
+                return (1);
+        if (esta > estb)
+                return (0);
+        /*
+         * favor one sleeping in a non-interruptible sleep
+         */
+        switch (TESTAB(slpa, slpb)) {
+        case ONLYA:
+                return (0);
+        case ONLYB:
+                return (1);
+        case BOTH:
+                break;
+        }
+
+        return (td < td2);
+	}
+	
+We are interested in this fragment of code:
+
+	...
+	runa = TD_IS_RUNNING(td) || TD_ON_RUNQ(td);
+	...
+	return (td < td2);
+
+Explanation:
+
+* `TD_IS_RUNNING(td)` and `TD_ON_RUNQ(td)` are macros that return boolean values.
+* The logical OR `||` checks if either condition is true.
+* The result is assigned to `runa.
+
+Later, this line:
+
+	return (td < td2);
+
+Uses the less-than operator to compare two pointers (`td` and `td2`). This is valid in C; pointer comparisons are common when choosing between resources.
+
+Another real expression in that same file can be found at line 367:
+
+	pctcpu = (sched_pctcpu(td) * 10000 + FSCALE / 2) >> FSHIFT;
+	
+This expression:
+
+* Multiplies the CPU usage estimate by 10,000
+* Adds half the scale factor for rounding
+* Then performs a **bitwise right shift** to scale it down
+* It’s an optimised way to compute `(value * scale) / divisor` using bit shifts instead of division
+
+### Summary
+
+In this section, you’ve learned:
+
+* What expressions are in C
+* How to use arithmetic, comparison, and logical operators
+* How to assign values and use compound assignments
+* How bitwise operations show up in kernel code
+* How FreeBSD uses these expressions to control logic and calculations
+
+This section builds the foundation for conditional execution and looping, which we’ll explore next.
+
 Continue...
