@@ -1836,4 +1836,236 @@ This exact pattern is how `probe()`, `attach()`, and `detach()` routines are str
 	
 Understanding the relationship between declarations and definitions is a cornerstone of C programming, and it becomes even more important when you step into the world of FreeBSD device drivers. In kernel development, functions are rarely defined and used in the same file; they are spread across multiple source and header files, compiled separately, and linked together into a single module. A clear separation between **what a function does** (its declaration) and **how it does it** (its definition) keeps code organized, reusable, and easier to maintain. Master this concept now, and you’ll be well-prepared for the more complex modular structures you’ll encounter when we begin building real kernel drivers.
 
-Continue...
+### Calling Functions
+
+Once you’ve defined a function, the next step is to call it, that is, to tell the program, *“Hey, go run this block of code now and give me the result”.*
+
+Calling a function is as simple as writing its name followed by parentheses containing any required arguments.
+
+If the function returns a value, you can store that value in a variable, pass it to another function, or use it directly in an expression.
+
+**Example:**
+
+```c
+int result = add(3, 4);
+printf("Result is %d\n", result);
+```
+
+Here’s what happens step-by-step when this code runs:
+
+1. The program encounters `add(3, 4)` and pauses its current work.
+1. It jumps to the `add()` function’s definition, giving it two arguments: `3` and `4`.
+1. Inside `add()`, the parameters `a` and `b` receive the values `3` and `4`.
+1. The function calculates `sum = a + b` and then executes `return sum;`.
+1. The returned value `7` travels back to the calling point and gets stored in the variable `result`.
+1. The `printf()` function then displays:
+
+```c
+	Result is 7
+```
+
+**FreeBSD Driver Connection**
+
+When you call a function in a FreeBSD driver, you’re often asking the kernel or your own driver logic to perform a very specific task, for example:
+
+* Calling `bus_space_read_4()` to read a 32-bit hardware register.
+* Calling your own `mydevice_init()` to prepare a device for use.
+
+The principle is exactly the same as the `add()` example: 
+
+The function takes parameters, does its job, and returns control to where it was called. The difference in kernel space is that the “job” might involve talking directly to hardware or managing system resources, but the calling process is identical.
+
+**Tip for Beginners**
+Even if a function doesn’t return a value (its return type is `void`), calling it still triggers its entire body to run. In drivers, many important functions don’t return anything but perform critical work like initializing hardware or setting up interrupts.
+
+Function Call Flow
+When your program calls a function, control jumps from the current point in your code to the function’s definition, runs its statements, and then comes back.
+Example flow for add(3, 4) inside main():
+
+```c
+main() starts
+    |
+    v
+Calls add(3, 4)  -----------+
+    |                       |
+    v                       |
+Inside add():               |
+    a = 3                   |
+    b = 4                   |
+    sum = a + b  // sum=7   |
+    return sum;             |
+    |                       |
+    +----------- Back to main()
+                                |
+                                v
+result = 7
+printf("Result is 7")
+main() ends
+```
+
+**What to notice:**
+
+* The program’s “path” temporarily leaves `main()` when the function is called.
+* The parameters in the function get copies of the values passed in.
+* The return statement sends a value back to where the function was called.
+* After the call, execution continues right where it left off.
+
+**FreeBSD driver analogy:**
+
+When the kernel calls your driver’s `attach()` function, the exact same process happens. The kernel jumps into your code, you run your initialization logic, and then control returns to the kernel so it can continue loading devices. Whether in user space or kernel space, function calls follow the same flow.
+
+**Try It Yourself – Simulating a Driver Function Call**
+
+In this exercise, you’ll write a small program that mimics calling a driver function to read a “hardware register” value.
+
+We’ll simulate it in user space so you can compile and run it easily on your FreeBSD system.
+
+**Step 1 — Define the function**
+
+Create a file called `driver_sim.c` and start with this function:
+
+```c
+#include <stdio.h>
+
+// Function definition
+unsigned int read_register(unsigned int address)
+{
+    // Simulated register value based on address
+    unsigned int value = address * 2; 
+    printf("[driver] Reading register at address 0x%X...\n", address);
+    return value;
+}
+```
+
+**Step 2 — Call the function from `main()`**
+
+In the same file, add `main()` below your function:
+
+```c
+int main(void)
+{
+    unsigned int reg_addr = 0x10; // pretend this is a hardware register address
+    unsigned int data;
+
+    data = read_register(reg_addr); // Call the function
+    printf("[driver] Value read: 0x%X\n", data);
+
+    return 0;
+}
+```
+
+**Step 3 — Compile and run**
+
+```
+% cc -Wall -o driver_sim driver_sim.c
+./driver_sim
+```
+
+**Expected output:**
+
+```c
+[driver] Reading register at address 0x10...
+[driver] Value read: 0x20
+```
+
+**What You Learned**
+* You called a function by name, passing it a parameter.
+* The parameter got a copy of your value (`0x10`) inside the function.
+* The function calculated a result and sent it back with `return`.
+* Execution continued exactly where it left off.
+
+In a real driver, `read_register()` might use the `bus_space_read_4()` kernel API to access a physical hardware register instead of multiplying a number. The function call flow, however, is exactly the same.
+
+### Functions with No Return Value: `void`
+
+Not every function needs to send data back to the caller.
+
+Sometimes, you just want the function to do something, print a message, initialise hardware, log a status and then finish.
+
+In C, when a function **does not return anything**, you declare its return type as void.
+
+**Example:**
+
+```c
+void say_hello(void)
+{
+    printf("Hello, World!\n");
+}
+```
+
+Here’s what’s happening:
+
+* void before the name means: *“This function will not return a value”.*
+* The `(void)` in the parameter list means: *“This function takes no arguments”.*
+* Inside the braces `{}`, we place the statements we want to execute when the function is called.
+
+**Calling it:**
+
+```c
+say_hello();
+```
+
+This will print:
+
+```c
+Hello, World!
+```
+
+**Common beginner mistakes with void functions**
+
+1. **Forgetting `void`in the parameter list**
+
+	```c
+		void say_hello()     //  Works, but less explicit — avoid in new code
+		void say_hello(void) // Best practice
+	```
+In old C code, `()` without void means *“this function takes an unspecified number of arguments”*, which can cause confusion.
+
+1. **Trying to return a value from a void function**
+
+	```c
+		void test(void)
+		{
+    	return 42; //  Compiler error
+		}
+	```
+		
+1. Assigning the result of a void function
+
+	```c
+	int x = say_hello(); //  Compiler error
+	```
+
+Now that you’ve seen the most common pitfalls, let’s take a step back and understand why the void keyword is important in the first place.
+
+**Why `void` matters**
+
+Marking a function with `void` clearly tells both the compiler and human readers that this function’s purpose is to perform an action, not to produce a result.
+
+If you try to use the “return value” from a `void` function, the compiler will stop you, which helps catch mistakes early.
+	
+**FreeBSD driver perspective**
+
+In FreeBSD drivers, many important functions are void because they are all about doing work, not returning data.
+
+For example:
+
+* `mydevice_reset(void)` — might reset the hardware to a known state.
+* `mydevice_led_on(void)` — might turn on a status LED.
+* `mydevice_log_status(void)` — might print debugging information to the kernel log.
+
+The kernel doesn’t care about a return value in these cases, it just expects your function to perform its action.
+
+While `void` functions in drivers don’t return values, that doesn’t mean they can’t communicate important information. There are still several ways to signal events or issues back to the rest of the system.
+
+**Tip for Beginners**
+
+In driver code, even though `void` functions don’t return data, they can still report errors or events by:
+
+* Writing to a global or shared variable.
+* Logging messages with `device_printf()` or `printf()`.
+* Triggering other functions that handle error states.
+
+Understanding void functions is important because in real-world FreeBSD driver development, not every task produces data to return; many simply perform an action that prepares the system or the hardware for something else. Whether it’s initializing a device, cleaning up resources, or logging a status message, these functions still play a critical role in the overall behavior of your driver. By recognizing when a function should return a value and when it should simply do its job and return nothing, you’ll write cleaner, more purposeful code that matches the way the FreeBSD kernel itself is structured.
+
+*continue soon...*
