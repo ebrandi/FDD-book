@@ -104,12 +104,14 @@ Let’s write the classic “Hello, World!” program in C. This will verify tha
 
 Open a text editor like `ee`, `vi`, or `nano`, and create a file called `hello.c`:
 
+```c
 	#include <stdio.h>
 
 	int main(void) {
    	 	printf("Hello, World!\n");
    	 	return 0;
 	}
+```	
 	
 Let’s break this down:
 
@@ -141,10 +143,12 @@ Typing long compile commands can get annoying as your programs grow. That’s wh
 
 A Makefile is a plain text file named Makefile that defines how to build your program. Here's a very simple one for our Hello World example:
 
+```c
 	# Makefile for hello.c
 
 	hello: hello.c
 		cc -o hello hello.c
+```
 	
 Attention: Every command line that will be executed by the shell within a Makefile rule must begin with a tab character, not spaces. If you use spaces, the make execution will fail."
 
@@ -201,17 +205,22 @@ We’ll also introduce how this structure appears in the FreeBSD kernel code, so
 
 Every C program follows a similar structure:
 
+```c
 	#include <stdio.h>
 
 	int main(void) {
     	printf("Hello, World!\n");
     	return 0;
 	}
+```
+
 Let’s dissect this line by line.
 
 ### `#include` Directives: Adding Libraries
 
+```c
 	#include <stdio.h>
+```
 
 This line is handled by the **C preprocessor** before the program is compiled. It tells the compiler to include the contents of a system header file.
 
@@ -220,6 +229,7 @@ This line is handled by the **C preprocessor** before the program is compiled. I
 
 In FreeBSD source code, you'll often see many `#include` directives at the top of a file. Here’s an example from the FreeBSD kernel file `sys/kern/kern_shutdown.c`:
 
+```c
 	#include <sys/cdefs.h>
 	#include "opt_ddb.h"
 	#include "opt_ekcd.h"
@@ -284,12 +294,15 @@ In FreeBSD source code, you'll often see many `#include` directives at the top o
 	#include <vm/swap_pager.h>
 	
 	#include <sys/signalvar.h>
+```
 
 These headers define macros, constants, and function prototypes used in the kernel. For now, just remember: `#include` brings in definitions you want to use.
 
 ### The `main()` Function: Where Execution Begins
 
+```c
 	int main(void) {
+```
 
 * This is the **entry point of your program**. When your program runs, it starts here.
 * The `int` means the function returns an integer to the operating system.
@@ -299,16 +312,18 @@ In user programs, `main()` is where you write your logic. In the kernel, however
 
 For example, device drivers use functions like:
 
-	
+```c	
 	static int
 	mydriver_probe(device_t dev)
-	
+```	
 
 And they are registered with the kernel during initialisation; these behave like a `main()` for specific subsystems.
 
 ### Statements and Function Calls
 
+```c
     printf("Hello, World!\n");
+```
 
 This is a **statement**, a single instruction that performs some action.
 
@@ -319,9 +334,10 @@ This is a **statement**, a single instruction that performs some action.
 
 ### Return Values
 
+```c
 	    return 0;
 	}
-	
+```	
 
 This tells the operating system that the program completed successfully.
 Returning `0`usually means "**no error**".
@@ -332,6 +348,7 @@ You’ll see a similar pattern in kernel code where functions return 0 for succe
 
 Let's see a practical example from sys/kern/kern_exec.c:
 
+```c
 	exec_map_first_page(struct image_params *imgp)
 	{
         vm_object_t object;
@@ -362,7 +379,7 @@ Let's see a practical example from sys/kern/kern_exec.c:
 
         return (0);
 	}
-
+```
 
 Return Values in `exec_map_first_page()`:
 
@@ -387,13 +404,14 @@ For a complete list of standard error codes and their meanings, you can refer to
 
 Let’s revisit our Hello World program, now with full comments:
 
+```c
 	#include <stdio.h>              // Include standard I/O library
 	
 	int main(void) {                // Entry point of the program
 	    printf("Hello, World!\n");  // Print a message to the terminal
 	    return 0;                   // Exit with success
 	}
-	
+```	
 
 In this short example, you’ve already seen:
 
@@ -434,8 +452,9 @@ A variable is like a labeled box in memory where you can store a value, such as 
 
 Here’s a simple example:
 
+```c
 	int counter = 0;
-	
+```	
 
 This tells the compiler:
 
@@ -449,17 +468,23 @@ In C, you must declare the type of every variable before using it. This is diffe
 
 Here’s how to declare different types of variables:
 
+```c
 	int age = 30;             // Integer (whole number)
 	float temperature = 98.6; // Floating-point number
 	char grade = 'A';         // Single character
+```
 
 You can also declare multiple variables at once:
 
+```c
 	int x = 10, y = 20, z = 30;
+```
 
 Or leave them uninitialized (but be careful, as uninitialized variables contain garbage values!):
 
+```c
 	int count; // May contain anything!
+```
 
 Always initialise your variables, not just because it’s good C practice, but because in kernel development, uninitialized values can lead to subtle and dangerous bugs, including kernel panics, unpredictable behaviour, and security vulnerabilities. In userland, mistakes might crash your program; in the kernel, they can compromise the stability of the entire system. 
 
@@ -488,8 +513,10 @@ C provides **type qualifiers** to give more information about how a variable sho
 
 Example:
 
+```c
 	const int max_users = 100;
 	volatile int status_flag;
+```
 
 The `volatile` qualifier can be important in FreeBSD kernel development, but only in very specific contexts, such as accessing hardware registers or dealing with interrupt-driven updates. It tells the compiler not to optimise accesses to a variable, which is critical when values can change outside of normal program flow. 
 
@@ -499,7 +526,9 @@ However, `volatile` is not a substitute for proper synchronisation and should no
 
 In C programming and especially in kernel development, it's very common to define constant values using the #define directive:
 
+```c
 	#define MAX_DEVICES 64
+```
 
 This line doesn't declare a variable. Instead, it's a **preprocessor macro**, which means the C preprocessor will **replace every occurrence of** `MAX_DEVICES` **with** `64` before the actual compilation begins. This replacement happens **textually**, and the compiler never even sees the name `MAX_DEVICES`.
 
@@ -515,7 +544,9 @@ Using `#define` for constant values has several advantages in kernel code:
 
 You will find many `#define` lines in `sys/sys/param.h`, for example:
 
+```c
 	#define MAXHOSTNAMELEN 256  /* max hostname size */
+```	
 	
 This defines the maximum number of characters allowed in a system hostname, and it's used throughout the kernel and system utilities to enforce a consistent limit. The value 256 is now standardised and can be reused wherever the hostname length is relevant.
 
@@ -525,7 +556,9 @@ Because `#define` simply performs textual substitution, it does not respect type
 
 For example:
 
+```c
 	#define PI 3.14
+```	
 	
 This works, but it can lead to problems in certain contexts (e.g., integer promotion, unintended precision loss). For more complex or type-sensitive constants, you may prefer using `const` variables or `enums` in userland, but in the kernel, especially in headers, `#define` is often chosen for efficiency and compatibility.
 
@@ -592,7 +625,9 @@ We’ll cover:
 
 In C, an expression is anything that produces a value. For example:
 
+```c
 	int a = 3 + 4;
+```
 
 Here, `3 + 4` is an expression that evaluates to `7`. The result is then assigned to `a`.
 
@@ -640,9 +675,11 @@ Used to combine or invert conditions:
 
 These are especially useful in complex conditionals, like:
 
+```c
 	if ((a > 0) && (b < 100)) {
     	// both conditions must be true
 	}
+```	
 	
 Tip: In C, any non-zero value is considered “true,” and zero is considered “false”.
 	
@@ -650,7 +687,9 @@ Tip: In C, any non-zero value is considered “true,” and zero is considered �
 
 The `=` operator assigns a value:
 
+```c
 	x = 5; // assign 5 to x
+```
 	
 Compound assignment combines operation and assignment:
 
@@ -683,6 +722,7 @@ Let’s look at a real example from the FreeBSD source code.
 
 Open the file `sys/kern/tty_info.c`and look for the function `thread_compare()` starting on line 109, you will see the code below:
 
+```c
 	static int
 	thread_compare(struct thread *td, struct thread *td2)
 	{
@@ -738,13 +778,16 @@ Open the file `sys/kern/tty_info.c`and look for the function `thread_compare()` 
 
         return (td < td2);
 	}
+```
 	
 We are interested in this fragment of code:
 
+```c
 	...
 	runa = TD_IS_RUNNING(td) || TD_ON_RUNQ(td);
 	...
 	return (td < td2);
+```
 
 Explanation:
 
@@ -754,13 +797,17 @@ Explanation:
 
 Later, this line:
 
+```c
 	return (td < td2);
+```
 
 Uses the less-than operator to compare two pointers (`td` and `td2`). This is valid in C; pointer comparisons are common when choosing between resources.
 
 Another real expression in that same file can be found at line 367:
 
+```c
 	pctcpu = (sched_pctcpu(td) * 10000 + FSCALE / 2) >> FSHIFT;
+```
 	
 This expression:
 
@@ -797,6 +844,7 @@ These are the **decision-making tools of C**, and they’re essential for writin
 
 One of the most basic ways to control the flow of a C program is with the `if` statement. It lets your code make decisions based on whether a condition is true or false.
 
+```c
 	if (x > 0) {
 	    printf("x is positive\n");
 	} else if (x < 0) {
@@ -804,6 +852,7 @@ One of the most basic ways to control the flow of a C program is with the `if` s
 	} else {
 	    printf("x is zero\n");
 	}
+```
 
 Here’s how it works step by step:
 
@@ -820,6 +869,7 @@ Here’s how it works step by step:
 
 You can see a real example of `if` , `if else` and `else` usage flow control in the function `ifhwioctl()` that starts at line 2407 of `sys/net/if.c` file, the fragment that we are interested in starts at line 2537:
 
+```c
 	/* Copy only (length-1) bytes so if_description is always NUL-terminated. */
 	/* The length parameter counts the terminating NUL. */
 	if (ifr_buffer_get_length(ifr) > ifdescr_maxlen)
@@ -835,6 +885,7 @@ You can see a real example of `if` , `if else` and `else` usage flow control in 
 	        break;
 	    }
 	}
+```
 
 This fragment handles a request from user space to set a description for a network interface, for example, giving `em0` a human-readable label like "Main uplink port". The code checks the length of the description provided and decides what to do next.
 
@@ -864,6 +915,7 @@ A switch statement is a decision-making structure that’s useful when you need 
 
 Here’s a simple example:
 
+```c
 	switch (cmd) {
 	    case 0:
 	        printf("Zero\n");
@@ -875,6 +927,7 @@ Here’s a simple example:
 	        printf("Unknown\n");
 	        break;
 	}
+```
 
 * The switch checks the value of `cmd`.
 * Each case is a possible value that `cmd` might have.
@@ -883,6 +936,7 @@ Here’s a simple example:
 
 You can see a real use of switch in the FreeBSD kernel inside the function `thread_compare()` (starting at line 109 in `sys/kern/tty_info.c`). The fragment we’re interested in is from lines 134 to 141:
 
+```c
 	switch (TESTAB(runa, runb)) {
 	    case ONLYA:
 	        return (0);
@@ -891,6 +945,7 @@ You can see a real use of switch in the FreeBSD kernel inside the function `thre
 	    case BOTH:
 	        break;
 	}
+```
 
 **What This Code Does**
 
@@ -914,10 +969,11 @@ In short, `switch` statements provide a clean and efficient way to handle multip
 
 A `for` loop in C is perfect when you know **how many times** you want to repeat something. It sets things up in a compact, easy-to-read style:
 
+```c
 	for (int i = 0; i < 10; i++) {
 	    printf("%d\n", i);
 	}
-
+```
 
 * Start at `i = 0`
 * Repeat while `i < 10`
@@ -927,6 +983,7 @@ A widespread beginner error is related to off-by-one errors (`<=` vs `<`), and f
 
 You can see a real for loop inside `sys/net/iflib.c`, in the function `netmap_fl_refill()`, which begins at line 859. The fragment we care about is the inner batching loop at lines 922–949: 
 
+```c
 	for (i = 0; n > 0 && i < IFLIB_MAX_RX_REFRESH; n--, i++) {
 	    struct netmap_slot *slot = &ring->slot[nm_i];
 	    uint64_t paddr;
@@ -935,6 +992,7 @@ You can see a real for loop inside `sys/net/iflib.c`, in the function `netmap_fl
 	    nm_i = nm_next(nm_i, lim);
 	    nic_i = nm_next(nic_i, lim);
 	}
+```
 
 **What this loop does**
 
@@ -959,12 +1017,14 @@ Think of it like telling your program, "Keep doing this task while this rule is 
 
 Lets see a example:
 
+```c
 	int i = 0;
 	
 	while (i < 10) {
 	    printf("%d\n", i);
 	    i++;
 	}
+```
 
 **Variable Initialization**
 
@@ -983,10 +1043,12 @@ Lets see a example:
 
 **The Loop Body**
 
+```c
 	{
 	    printf("%d\n", i);
 	    i++;
 	}
+```
 	
 `printf("%d\n", i);` - Prints the value of `i` followed by a newline (`\n`).
 `i++;` - Increases `i` by 1 after each iteration. This step is crucial; without it, `i` would stay 0 forever, and the loop would never end, creating an infinite loop.
@@ -1008,7 +1070,7 @@ To make it easier to follow, I’ve added explanatory comments at key points so 
 
 For our discussion, pay special attention to the while loop that begins at line 915, as it’s the part we will explore in depth. Look for `while (n > 0) {` in the code below:
 
-
+```c
 	/*
  	* netmap_fl_refill
  	* ----------------
@@ -1150,15 +1212,17 @@ For our discussion, pay special attention to the while loop that begins at line 
 	
 	    return (0);
 	}
-
+```
 
 **Understanding the `while (n > 0)` Loop in `sys/net/iflib.c`**
 
 The loop we’re about to study looks like this:
 
+```c
 	while (n > 0) {
 	    ...
 	}
+```
 	
 It comes from **iflib** (the Interface Library) in FreeBSD’s network stack, in a section of code that connects **netmap** with network drivers.
 
@@ -1202,23 +1266,26 @@ Loops like this are the engine that quietly keeps the system running at full spe
 
 A `do...while` loop is a variation of the while loop where the **loop body runs at least once**, and then repeats only **if the condition remains true**:
 
+```c
 	int i = 0;
 	do {
  	   printf("%d\n", i);
 	    i++;
 	} while (i < 10);
-
+```
 
 * The loop always executes the code inside at least once, even if the condition is false to begin with.
 * Afterwards, it checks the condition (`i < 10`) to decide whether to repeat.
 
 In the FreeBSD kernel, you'll often see this pattern inside macros designed to behave like single statements. For example, in `sys/sys/timespec.h`, you'll find an example of his type of loop starting at line 44:
 
+```c
 	#define TIMESPEC_TO_TIMEVAL(tv, ts) \
 	    do { \
 	        (tv)->tv_sec = (ts)->tv_sec; \
 	        (tv)->tv_usec = (ts)->tv_nsec / 1000; \
 	    } while (0)
+```
 
 **What This Macro Does**
 
@@ -1244,6 +1311,7 @@ When working with loops in C, sometimes you need to change the normal flow:
 
 Here’s a simple example:
 
+```c
 	for (int i = 0; i < 10; i++) {
 	    if (i == 5)
 	        continue; // Skip the number 5, move to the next i
@@ -1251,6 +1319,7 @@ Here’s a simple example:
 	        break;    // Stop the loop entirely when i reaches 8
 	    printf("%d\n", i);	
 	}
+```
 
 **How This Works Step-by-Step**
 
@@ -1265,6 +1334,7 @@ Here’s a simple example:
 
 Output of the Code
 
+```c
 	0
 	1
 	2
@@ -1272,6 +1342,7 @@ Output of the Code
 	4
 	6
 	7
+```
 	
 `5` is skipped because of `continue`.
 
@@ -1279,6 +1350,7 @@ The loop ends at `8` because of `break`.
 
 You can see a real example of `break` and `continue` usage in the function `if_purgeaddrs(ifp)` that starts at line 994 of `sys/net/if.c` file.
 
+```c
 	/*
  	* Remove any unicast or broadcast network addresses from an interface.
  	*/
@@ -1334,6 +1406,7 @@ You can see a real example of `break` and `continue` usage in the function `if_p
 	                ifa_free(ifa);
 	        }
 	}
+```
 	
 **What this function does**
 
@@ -1351,15 +1424,19 @@ The outer `while (1)` repeats until there are no more removable addresses. Each 
 
 Break inside the list scan:
 
+```c
 	if (ifa->ifa_addr->sa_family != AF_LINK)
 	break;
+```
 	    
 The scan stops as soon as it reaches the first non-AF_LINK address. We only need one target per pass.
 
 Break after the scan:
 
+```c
 	if (ifa == NULL)
 	    break;
+```
 
 If the scan did not find any non-AF_LINK address, there is nothing left to purge. The outer `while` ends.
 
@@ -1367,16 +1444,20 @@ If the scan did not find any non-AF_LINK address, there is nothing left to purge
 
 IPv4 address handled by ioctl:
 
+```c
 	if (in_control(...) == 0)
 	    continue;
+```
 	    
 For IPv4, `in_control(SIOCDIFADDR)` removes the address and updates the list. Since that work is done, we skip the manual removal below and continue to the next outer-loop pass to look for the next address.
 
 IPv6 address removed by helper:
 
+```c
 	in6_purgeifaddr((struct in6_ifaddr *)ifa);
 	/* list already updated */
 	continue;
+```
 
 For IPv6, `in6_purgeifaddr()` also updates the list. There is nothing more to do in this pass, so we continue to the next one.
 
@@ -1384,10 +1465,12 @@ For IPv6, `in6_purgeifaddr()` also updates the list. There is nothing more to do
 
 If the address was neither handled by the IPv4 nor the IPv6 helpers, the code takes the generic path:
 
+```c
 	IF_ADDR_WLOCK(ifp);
 	CK_STAILQ_REMOVE(&ifp->if_addrhead, ifa, ifaddr, ifa_link);
 	IF_ADDR_WUNLOCK(ifp);
 	ifa_free(ifa);
+```
 	
 This explicitly removes the address from the list and frees it.
 
@@ -1399,17 +1482,21 @@ The key takeaway is that well-placed break and continue statements keep loops ef
 
 In C, if you omit braces after an if, only one statement is actually controlled by the if. This can easily lead to mistakes:
 
+```c
 	if (x > 0)
 		printf("Positive\n");   // Runs only if x > 0
 		printf("Always runs\n"); // Always runs! Not part of the if
+```
 	    
 This is a common source of bugs because the second printf appears to be inside the if, but it isn’t.
 
 To avoid confusion and accidental logic errors, always use braces, even for a single statement:
 
+```c
 	if (x > 0) {
 	    printf("Positive\n");
 	}
+```
 	
 This makes your intent explicit, keeps your code safe from subtle changes, and follows the style used in the FreeBSD source tree.
 
@@ -1417,10 +1504,12 @@ This makes your intent explicit, keeps your code safe from subtle changes, and f
 
 When you always use braces, it’s much safer to modify the code later:
 
+```c
 	if (x > 0) {
 	    printf("x is positive\n");
 	    log_positive(x);   // Adding this won't break logic!
 	}
+```
 
 ### Summary
 
@@ -1456,6 +1545,7 @@ In this section, you’ll learn how to create your own functions, giving you the
 
 When your program calls a function, something important happens behind the scenes:
 
+```
 	   +---------------------+
 	   | Return Address      | <- Where to resume execution after the function ends
 	   +---------------------+
@@ -1466,6 +1556,7 @@ When your program calls a function, something important happens behind the scene
 	   | Temporary Data      | <- Space the compiler needs for calculations
 	   +---------------------+
 	        ... Stack ...
+```
 
 **Step-by-step:**
 
@@ -1500,19 +1591,23 @@ Every function in C follows a simple recipe. To create one, you need to specify 
 
 **General form:**
 
+```c
 	return_type function_name(parameter_list)
 	{
 	    // statements
 	    return value; // if return_type is not void
 	}
+```
 
 **Example:** A function to add two numbers and return the result
 
+```c
 	int add(int a, int b)
 	{
 	    int sum = a + b;
 	    return sum;
 	}
+```
 	
 **Declaration vs. Definition**
 
@@ -1528,6 +1623,7 @@ Think of it like planning and building a workshop:
 
 **Example:**
 
+```c
 	// Function declaration (prototype)
 	int add(int a, int b);
 	
@@ -1537,6 +1633,7 @@ Think of it like planning and building a workshop:
 	    int sum = a + b;
 	    return sum;
 	}
+```
 	
 **Why declarations are useful**
 
@@ -1564,6 +1661,7 @@ Understanding this difference will save you a lot of compiler errors, especially
 In small programs, you might write the function’s definition before `main()` and be done.
 But in real projects, like a FreeBSD device driver, code is split into header files (`.h`) for declarations and source files (`.c`) for definitions.
 
+```
           +----------------------+
           |   mydevice.h         |   <-- Header file
           |----------------------|
@@ -1589,6 +1687,7 @@ But in real projects, like a FreeBSD device driver, code is split into header fi
           |     return 0;        |
           | }                    |
           +----------------------+
+```
 
 **How it works:**
 
@@ -1659,6 +1758,7 @@ For this exercise, we will create 3 files.
 
 `mydevice.h` - This header file declares the functions and makes them available to any .c file that includes it.
 
+```c
 	#ifndef MYDEVICE_H
 	#define MYDEVICE_H
 
@@ -1668,9 +1768,11 @@ For this exercise, we will create 3 files.
 	void mydevice_detach(void);
 
 	#endif // MYDEVICE_H
+```
 
 `mydevice.c` - This source file contains the actual definitions (the working code).
 
+```c
 	#include <stdio.h>
 	#include "mydevice.h"
 
@@ -1689,9 +1791,11 @@ For this exercise, we will create 3 files.
 	{
 	    printf("[mydevice] Detaching device and cleaning up.\n");
 	}
+```
 
 `main.c` - This is the “user” of the functions. It just includes the header and calls them.
 
+```c
 	#include "mydevice.h"
 
 	int main(void)
@@ -1701,19 +1805,24 @@ For this exercise, we will create 3 files.
 	    mydevice_detach();
 	    return 0;
 	}
+```
 
 **How to Compile and Run on FreeBSD**
 
 Open a terminal in the folder with the three files and run:
 
+```
 	cc -Wall -o myprogram main.c mydevice.c
 	./myprogram
+```
 	
 Expected output:
 
+```
 	[mydevice] Probing hardware... done.
 	[mydevice] Attaching device and initialising resources...
 	[mydevice] Detaching device and cleaning up.
+```
 	
 **Why this matters for FreeBSD driver development**
 
