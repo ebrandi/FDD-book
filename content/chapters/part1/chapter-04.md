@@ -637,11 +637,14 @@ Used to combine or invert conditions:
 | \|\|     | Logical OR  | True if **either** condition is true     | (a == 0) \|\| (b > 10)   | `1` if at least one is true |
 | !      | Logical NOT | Reverses the truth value of the condition | !done                  | `1` if `done` is false      |
 
+
 These are especially useful in complex conditionals, like:
 
 	if ((a > 0) && (b < 100)) {
     	// both conditions must be true
 	}
+	
+Tip: In C, any non-zero value is considered “true,” and zero is considered “false”.
 	
 ### Assignment and Compound Assignment
 
@@ -778,4 +781,652 @@ In this section, you’ve learned:
 
 This section builds the foundation for conditional execution and looping, which we’ll explore next.
 
-Continue...
+## Control Flow
+
+So far, we’ve learned how to declare variables and write expressions. But programs need to do more than compute values; they need to **make decisions** and **repeat actions**. This is where **control flow comes** in.
+
+Control flow statements allow you to:
+
+* Choose between different paths (`if`, `else`, `switch`)
+* Repeat operations using loops (`for`, `while`, `do...while`)
+* Exit loops early (`break`, `continue`)
+
+These are the **decision-making tools of C**, and they’re essential for writing meaningful programs, from small utilities to operating system kernels.
+
+### Understanding the `if`, `else`, and `else if`
+
+One of the most basic ways to control the flow of a C program is with the `if` statement. It lets your code make decisions based on whether a condition is true or false.
+
+	if (x > 0) {
+	    printf("x is positive\n");
+	} else if (x < 0) {
+	    printf("x is negative\n");
+	} else {
+	    printf("x is zero\n");
+	}
+
+Here’s how it works step by step:
+
+1. `if (x > 0)` – The program checks the first condition. If it’s true, the block inside runs and the rest of the chain is skipped.
+
+1. `else if (x < 0)` – If the first condition was false, this second one is checked. If it’s true, its block runs and the chain ends.
+
+1. `else` – If none of the previous conditions are true, the code inside `else` runs.
+
+**Important syntax rules:**
+
+* Each condition must be inside **parentheses** `( )`.
+* Each block of code is surrounded by **curly braces `{ }`**, even if it’s only one line (this prevents common mistakes).
+
+You can see a real example of `if` , `if else` and `else` usage flow control in the function `ifhwioctl()` that starts at line 2407 of `sys/net/if.c` file, the fragment that we are interested in starts at line 2537:
+
+	/* Copy only (length-1) bytes so if_description is always NUL-terminated. */
+	/* The length parameter counts the terminating NUL. */
+	if (ifr_buffer_get_length(ifr) > ifdescr_maxlen)
+	    return (ENAMETOOLONG);
+	else if (ifr_buffer_get_length(ifr) == 0)
+	    descrbuf = NULL;
+	else {
+	    descrbuf = if_allocdescr(ifr_buffer_get_length(ifr), M_WAITOK);
+	    error = copyin(ifr_buffer_get_buffer(ifr), descrbuf,
+	        ifr_buffer_get_length(ifr) - 1);
+	    if (error) {
+	        if_freedescr(descrbuf);
+	        break;
+	    }
+	}
+
+This fragment handles a request from user space to set a description for a network interface, for example, giving `em0` a human-readable label like "Main uplink port". The code checks the length of the description provided and decides what to do next.
+
+Let’s walk through the flow control step by step:
+
+1. First `if` – Checks whether the description is too long to fit.
+	* If **true**, the function immediately stops and returns an error code (`ENAMETOOLONG`).
+	* If **false**, execution moves on to the next condition.
+1. `else if` – Runs only if the first condition was **false**.
+	* If the length is exactly zero, it means the user didn’t provide a description, so the code sets `descrbuf` to `NULL`.
+	* If **false**, the program moves on to the final `else`.
+1. Final `else` – Executes when neither of the previous conditions are true.
+	* Allocates memory for the description and copies the provided text into it.
+	* If copying fails, it frees the memory and exits the loop or function.
+
+**How the flow works:**
+
+* Only one of these three paths runs each time.
+* The first matching condition “wins,” and the rest are skipped.
+* This is a classic example of using `if / else if / else` to handle mutually exclusive conditions,  reject invalid input, handle the empty case, or process a valid value.
+
+In C, `if / else if / else` chains provide a straightforward way to handle several possible outcomes in a single structure. The program checks each condition in order, and as soon as one is true, that block runs and the rest are skipped. This simple rule keeps your logic predictable and easy to follow. In the FreeBSD kernel, you’ll see this pattern everywhere, from network stack functions to device drivers, because it ensures that only the correct code path runs for each situation, making the system’s decision-making both efficient and reliable.
+
+### Understanding the `switch` and `case`
+
+A switch statement is a decision-making structure that’s useful when you need to compare one variable against multiple possible values. Instead of writing a long chain of if and else if statements, you can list each possible value as a case.
+
+Here’s a simple example:
+
+	switch (cmd) {
+	    case 0:
+	        printf("Zero\n");
+	        break;
+	    case 1:
+	        printf("One\n");
+	        break;
+	    default:
+	        printf("Unknown\n");
+	        break;
+	}
+
+* The switch checks the value of `cmd`.
+* Each case is a possible value that `cmd` might have.
+* The `break` statement tells the program to stop checking further cases once a match is found. Without `break`, execution will continue into the next case, a behaviour called **fall-through**.
+* The `default` case runs if none of the listed cases match.
+
+You can see a real use of switch in the FreeBSD kernel inside the function thread_compare() (starting at line 109 in `sys/kern/tty_info.c`). The fragment we’re interested in is from lines 134 to 141:
+
+	switch (TESTAB(runa, runb)) {
+	    case ONLYA:
+	        return (0);
+	    case ONLYB:
+	        return (1);
+	    case BOTH:
+	        break;
+	}
+
+**What This Code Does**
+
+This code decides which of two threads is “more interesting” for the scheduler based on whether each thread is runnable.
+
+* `runa` and `runb` are flags that indicate if the first thread (`a`) and the second thread (`b`) are runnable.
+* The macro `TESTAB(a, b)` combines those flags into a single value. This result can be one of three predefined constants:
+	* `ONLYA` - Only thread A is runnable.
+	* `ONLYB` - Only thread B is runnable.
+	* `BOTH` - Both threads are runnable.
+
+The switch works like this:
+
+1. Case `ONLYA` – If only thread A is runnable, return `0`.
+1. Case `ONLYB` – If only thread B is runnable, return `1`.
+1. Case `BOTH – If both threads are runnable, don’t return immediately; instead, `break` so the rest of the function can handle this situation.
+
+In short, `switch` statements provide a clean and efficient way to handle multiple possible outcomes from a single expression, avoiding the clutter of long `if / else if` chains. In the FreeBSD kernel, they are often used to react to different commands, flags, or states, as in our example, which decides between thread A, thread B, or both. Once you become comfortable reading switch structures, you’ll start to recognise them throughout kernel code as a go-to pattern for organising decision-making logic in a clear, maintainable way.
+
+### Understanding the `for` Loops
+
+A `for` loop in C is perfect when you know **how many times** you want to repeat something. It sets things up in a compact, easy-to-read style:
+
+	for (int i = 0; i < 10; i++) {
+	    printf("%d\n", i);
+	}
+
+
+* Start at `i = 0`
+* Repeat while `i < 10`
+* Increment `i` each time by 1 (`i++`)
+
+A widespread beginner error is related to off-by-one errors (`<=` vs `<`), and forgetting the increment (which can cause an infinite loop).
+
+You can see a real for loop inside sys/net/iflib.c, in the function netmap_fl_refill(), which begins at line 859. The fragment we care about is the inner batching loop at lines 922–949: 
+
+	for (i = 0; n > 0 && i < IFLIB_MAX_RX_REFRESH; n--, i++) {
+	    struct netmap_slot *slot = &ring->slot[nm_i];
+	    uint64_t paddr;
+	    void *addr = PNMB(na, slot, &paddr);
+	    /* ... work per buffer ... */
+	    nm_i = nm_next(nm_i, lim);
+	    nic_i = nm_next(nic_i, lim);
+	}
+
+**What this loop does**
+
+* The driver is refilling receive buffers so the NIC can keep receiving packets.
+* It processes buffers in batches: up to `IFLIB_MAX_RX_REFRESH` each time.
+* `i` counts how many buffers we’ve handled in this batch.
+* `n` is the total remaining buffers to refill; it decrements every iteration.
+* For each buffer, the code grabs its slot, figures out the physical address, readies it for DMA, then advances the ring indices (`nm_i`, `nic_i`).
+* The loop stops when either the batch is full (`i hits the max) or there’s nothing left to do (`n == 0`). The batch is then “published” to the NIC by the code right after the loop.
+
+In essence, a `for` loop is the go-to choice when you have a clear limit on how many times something should run. It packages initialisation, condition checking, and iteration updates into a single, compact header, making the flow easy to follow. 
+
+In FreeBSD’s kernel code, this structure is everywhere from scanning arrays to walking network ring buffers, because it keeps repetitive work both predictable and efficient. Our example from `netmap_fl_refill()` shows precisely how this works in practice: 
+
+the loop counts through a fixed-size batch of buffers, stopping either when the batch is full or when there’s no more work left, then hands that batch off to the NIC. Once you get comfortable reading for loops like this, you’ll spot them throughout the kernel and understand how they keep complex systems running smoothly.
+
+### Understanding the `while` Loop
+
+In C, a while loop is a control structure that allows your program to repeat a block of code as long as a certain condition remains true.
+
+Think of it like telling your program, "Keep doing this task while this rule is true. Stop as soon as the rule becomes false."
+
+Lets see a example:
+
+	int i = 0;
+	
+	while (i < 10) {
+	    printf("%d\n", i);
+	    i++;
+	}
+
+**Variable Initialization**
+
+`int i = 0;`
+
+* We create a variable `i` and set its value to `0`.
+* This will be our `counter`, keeping track of how many times the loop has run.
+
+**The `while` Condition**
+
+`while (i < 10)`
+
+* Before each repetition, C checks the condition `i < 10`.
+* If the condition is **true**, the block inside the loop is executed.
+* If the condition is **false**, the loop stops, and the program continues after the loop.
+
+**The Loop Body**
+
+	{
+	    printf("%d\n", i);
+	    i++;
+	}
+	
+`printf("%d\n", i);` - Prints the value of i followed by a newline (`\n`).
+`i++;` - Increases `i` by 1 after each iteration. This step is crucial; without it, `i` would stay 0 forever, and the loop would never end, creating an infinite loop.
+
+**Key Points to Remember**
+
+* A while loop **may not run at all** if the condition is false from the start.
+* Always ensure something inside the loop **changes the condition** over time, or you risk an infinite loop.
+* In FreeBSD kernel code, `while` loops are common for:
+	* Polling hardware status registers until a device is ready.
+	* Waiting for a buffer to be filled.
+	* Implementing retry mechanisms.
+
+You can see a real example of `while` loop usage in the function `netmap_fl_refill()` that starts at line 858 of `sys/net/iflib.c` file.
+
+This time, I’ve decided to show you the complete source code for this FreeBSD kernel function because it offers an excellent opportunity to see several concepts from this chapter working together in a real-world context. 
+
+To make it easier to follow, I’ve added explanatory comments at key points so you can connect the theory to the actual implementation. Don’t worry if you don’t fully understand every detail right now; this is normal when first looking at kernel code. 
+
+For our discussion, pay special attention to the while loop that begins at line 915, as it’s the part we will explore in depth. Look for `while (n > 0) {` in the code below:
+
+
+	/*
+ 	* netmap_fl_refill
+ 	* ----------------
+ 	* This function refills receive (RX) buffers in a netmap-enabled
+ 	* FreeBSD network driver so the NIC can continue receiving packets.
+ 	*
+ 	* It is called in two main situations:
+ 	*   1. Initialization (driver start/reset)
+ 	*   2. RX synchronization (during packet reception)
+ 	*
+ 	* The core idea: figure out how many RX slots need refilling,
+ 	* then load and map each buffer so the NIC can use it.
+ 	*/
+	static int
+	netmap_fl_refill(iflib_rxq_t rxq, struct netmap_kring *kring, bool init)
+	{
+	    struct netmap_adapter *na = kring->na;
+	    u_int const lim = kring->nkr_num_slots - 1;
+	    struct netmap_ring *ring = kring->ring;
+	    bus_dmamap_t *map;
+	    struct if_rxd_update iru;
+	    if_ctx_t ctx = rxq->ifr_ctx;
+	    iflib_fl_t fl = &rxq->ifr_fl[0];
+	    u_int nic_i_first, nic_i;   // NIC descriptor indices
+	    u_int nm_i;                 // Netmap ring index
+	    int i, n;                   // i = batch counter, n = buffers to process
+	#if IFLIB_DEBUG_COUNTERS
+	    int rf_count = 0;
+	#endif
+	
+	    /*
+	     * Figure out how many buffers (n) we need to refill.
+	     * - In init mode: refill almost the whole ring (minus those in use)
+	     * - In normal mode: refill from hardware current to ring head
+	     */
+	    if (__predict_false(init)) {
+	        n = kring->nkr_num_slots - nm_kr_rxspace(kring);
+	    } else {
+	        n = kring->rhead - kring->nr_hwcur;
+	        if (n == 0)
+	            return (0); /* Nothing to do, ring already full. */
+	        if (n < 0)
+	            n += kring->nkr_num_slots; /* wrap-around adjustment */
+	    }
+	
+	    // Prepare refill update structure
+	    iru_init(&iru, rxq, 0 /* flid */);
+	    map = fl->ifl_sds.ifsd_map;
+	
+	    // Starting positions
+	    nic_i = fl->ifl_pidx;             // NIC producer index
+	    nm_i = netmap_idx_n2k(kring, nic_i); // Convert NIC index to netmap index
+	
+	    // Sanity checks for init mode
+	    if (__predict_false(init)) {
+	        MPASS(nic_i == 0);
+	        MPASS(nm_i == kring->nr_hwtail);
+	    } else
+	        MPASS(nm_i == kring->nr_hwcur);
+	
+	    DBG_COUNTER_INC(fl_refills);
+	
+	    /*
+	     * OUTER LOOP:
+	     * Keep processing until we have refilled all 'n' needed buffers.
+	     */
+	    while (n > 0) {
+	#if IFLIB_DEBUG_COUNTERS
+	        if (++rf_count == 9)
+	            DBG_COUNTER_INC(fl_refills_large);
+	#endif
+	        nic_i_first = nic_i; // Save where this batch starts
+	
+	        /*
+	         * INNER LOOP:
+	         * Process up to IFLIB_MAX_RX_REFRESH buffers in one batch.
+	         * This avoids calling hardware refill for every single buffer.
+	         */
+	        for (i = 0; n > 0 && i < IFLIB_MAX_RX_REFRESH; n--, i++) {
+	            struct netmap_slot *slot = &ring->slot[nm_i];
+	            uint64_t paddr;
+	            void *addr = PNMB(na, slot, &paddr); // Get buffer address and phys addr
+	
+	            MPASS(i < IFLIB_MAX_RX_REFRESH);
+	
+	            // If the buffer address is invalid, reinitialize the ring
+	            if (addr == NETMAP_BUF_BASE(na))
+	                return (netmap_ring_reinit(kring));
+	
+	            // Save the physical address and NIC index for this buffer
+	            fl->ifl_bus_addrs[i] = paddr + nm_get_offset(kring, slot);
+	            fl->ifl_rxd_idxs[i] = nic_i;
+	
+	            // Load or reload DMA mapping if necessary
+	            if (__predict_false(init)) {
+	                netmap_load_map(na, fl->ifl_buf_tag,
+	                    map[nic_i], addr);
+	            } else if (slot->flags & NS_BUF_CHANGED) {
+	                netmap_reload_map(na, fl->ifl_buf_tag,
+	                    map[nic_i], addr);
+	            }
+	
+	            // Synchronize DMA so the NIC can safely read the buffer
+	            bus_dmamap_sync(fl->ifl_buf_tag, map[nic_i],
+	                BUS_DMASYNC_PREREAD);
+	
+	            // Clear "buffer changed" flag
+	            slot->flags &= ~NS_BUF_CHANGED;
+	
+	            // Move to next position in both netmap and NIC rings (circular increment)
+	            nm_i = nm_next(nm_i, lim);
+	            nic_i = nm_next(nic_i, lim);
+	        }
+	
+	        /*
+	         * Tell the hardware to make these new buffers available.
+	         * This happens once per batch for efficiency.
+	         */
+	        iru.iru_pidx = nic_i_first;
+	        iru.iru_count = i;
+	        ctx->isc_rxd_refill(ctx->ifc_softc, &iru);
+	    }
+	
+	    // Update software producer index
+	    fl->ifl_pidx = nic_i;
+	
+	    // Ensure we refilled exactly up to the intended position
+	    MPASS(nm_i == kring->rhead);
+	    kring->nr_hwcur = nm_i;
+	
+	    // Final DMA sync for descriptors
+	    bus_dmamap_sync(fl->ifl_ifdi->idi_tag, fl->ifl_ifdi->idi_map,
+	        BUS_DMASYNC_PREREAD | BUS_DMASYNC_PREWRITE);
+		
+	    // Flush the buffers to the NIC
+	    ctx->isc_rxd_flush(ctx->ifc_softc, rxq->ifr_id, fl->ifl_id,
+	        nm_prev(nic_i, lim));
+	    DBG_COUNTER_INC(rxd_flush);
+	
+	    return (0);
+	}
+
+
+**Understanding the `while (n > 0)` Loop in `sys/net/iflib.c`**
+
+The loop we’re about to study looks like this:
+
+	while (n > 0) {
+	    ...
+	}
+	
+It comes from **iflib** (the Interface Library) in FreeBSD’s network stack, in a section of code that connects **netmap** with network drivers.
+
+Netmap is a high-performance packet I/O framework designed for very fast packet processing. In this context, the kernel uses the loop to **refill receive buffers**, ensuring the network interface card (NIC) always has space ready to store incoming packets, keeping data flowing smoothly at high speed.
+
+Here, `n` is simply the number of buffers that still need to be prepared. The loop works through them in **efficient batches**, processing a few at a time until all are ready. This batching approach reduces overhead and is a common technique in high-performance network drivers.
+
+**What the `while (n > 0)` Really Does**
+
+As we’ve just seen, `n` is the count of receive buffers still waiting to be prepared. This loop’s job is simple in concept:
+
+*“Work through those buffers in batches until there are none left.”*
+
+Each pass of the loop prepares a group of buffers and hands them off to the NIC. If there’s still work to do, the loop runs again, ensuring that by the end, all required buffers are ready for incoming packets.
+
+**What Happens Inside the while (n > 0) Loop**
+
+Each time the loop runs, it processes one batch of buffers. Here’s the breakdown:
+
+1. **Debug Tracking** – If the driver is compiled with debugging enabled, it may update counters that track how often large batches of buffers are refilled. This is just for performance monitoring.
+1. **Batch Setup** – The driver remembers where this batch starts (nic_i_first) so it can later tell the NIC exactly which slots were updated.
+1. **Inner Batch Processing** – Inside the loop, there’s another for loop that refills up to a maximum number of buffers at a time (IFLIB_MAX_RX_REFRESH). For each buffer in this batch:
+	* Look up the buffer’s address and physical location in memory.
+	* Check if the buffer is valid. If not, reinitialize the receive ring.
+	* Store the physical address and slot index so the NIC knows where to place incoming data.
+	* If the buffer has changed or this is the first initialization, update its DMA (Direct Memory Access) mapping.
+	* Synchronize the buffer for reading so the NIC can safely use it.
+	* Clear any “buffer changed” flags.
+	* Move to the next buffer position in the ring.
+1. **Publishing the Batch to the NIC** – Once the batch is ready, the driver calls a function to tell the NIC: 
+
+“These new buffers are ready for use.”
+
+By breaking the work into manageable batches and looping until every buffer is ready, this while loop ensures the NIC is always prepared to receive incoming data without interruption. It’s a small but crucial part of keeping packet flow continuous in a high-performance networking environment. 
+
+Even if some of the lower-level details—like DMA mapping or ring indices aren’t fully clear yet, the key takeaway is this: 
+
+Loops like this are the engine that quietly keeps the system running at full speed. As you progress through the book, these concepts will become second nature, and you’ll start to recognise similar patterns across many parts of the FreeBSD kernel.
+
+### Understanding `do...while` Loops
+
+A `do...while` loop is a variation of the while loop where the **loop body runs at least once**, and then repeats only **if the condition remains true**:
+
+	int i = 0;
+	do {
+ 	   printf("%d\n", i);
+	    i++;
+	} while (i < 10);
+
+
+* The loop always executes the code inside at least once, even if the condition is false to begin with.
+* Afterwards, it checks the condition (`i < 10`) to decide whether to repeat.
+
+In the FreeBSD kernel, you'll often see this pattern inside macros designed to behave like single statements. For example, in `sys/sys/timespec.h`, you'll find an example of his type of loop starting at line 44:
+
+	#define TIMESPEC_TO_TIMEVAL(tv, ts) \
+	    do { \
+	        (tv)->tv_sec = (ts)->tv_sec; \
+	        (tv)->tv_usec = (ts)->tv_nsec / 1000; \
+	    } while (0)
+
+**What This Macro Does**
+
+1. **Assign Seconds**: Copies `tv_sec` from the source (ts) to the target (tv).
+1. **Convert and Assign Microseconds**: Divides `ts->tv_nsec` by 1000 to convert nanoseconds to microseconds and stores that in `tv_usec`.
+1. `do...while (0)`: Wraps the two statements so that when this macro is used, it behaves syntactically like a single statement, even if followed by a semicolon, preventing issues in constructs like:
+ 
+	if (x) TIMESPEC_TO_TIMEVAL(tv, ts);
+	else ...
+	
+While `do...while (0)` may look odd, it’s a solid C idiom used to make macro expansions safe and predictable in all contexts (like inside conditional statements). It ensures that the entire macro behaves like one statement and avoids accidentally creating half-executed code. Understanding this helps you read and avoid subtle bugs in kernel code that rely heavily on macros for clarity and safety.
+
+### Understanding `break` and `continue`
+
+When working with loops in C, sometimes you need to change the normal flow:
+
+1. `break` – Immediately exits the loop, even if the loop condition could still be true.
+1. `continue` – Skips the rest of the current iteration and jumps directly to the loop’s next iteration.
+
+Here’s a simple example:
+
+	for (int i = 0; i < 10; i++) {
+	    if (i == 5)
+	        continue; // Skip the number 5, move to the next i
+	    if (i == 8)
+	        break;    // Stop the loop entirely when i reaches 8
+	    printf("%d\n", i);	
+	}
+
+**How This Works Step-by-Step**
+
+1. The loop starts with `i = 0` and runs `while i < 10.`
+
+1. When `i == 5`, the continue statement runs:
+	* The rest of the loop body is skipped.
+	* The loop moves directly to `i++` and checks the condition again.
+1. When `i == 8`, the break statement runs:
+	* The loop stops immediately.
+	* Control jumps to the first line of code after the loop.
+
+Output of the Code
+
+	0
+	1
+	2
+	3
+	4
+	6
+	7
+	
+`5` is skipped because of `continue`.
+
+The loop ends at `8` because of `break`.
+
+You can see a real example of `break` and `continue` usage in the function `if_purgeaddrs(ifp)` that starts at line 994 of `sys/net/if.c` file.
+
+	/*
+ 	* Remove any unicast or broadcast network addresses from an interface.
+ 	*/
+	void
+	if_purgeaddrs(struct ifnet *ifp)
+	{
+	        struct ifaddr *ifa;
+
+	#ifdef INET6
+	        /*
+	         * Need to leave multicast addresses of proxy NDP llentries
+	         * before in6_purgeifaddr() because the llentries are keys
+	         * for in6_multi objects of proxy NDP entries.
+	         * in6_purgeifaddr()s clean up llentries including proxy NDPs
+	         * then we would lose the keys if they are called earlier.
+	         */
+	        in6_purge_proxy_ndp(ifp);
+	#endif
+	        while (1) {
+	                struct epoch_tracker et;
+	
+	                NET_EPOCH_ENTER(et);
+	                CK_STAILQ_FOREACH(ifa, &ifp->if_addrhead, ifa_link) {
+	                        if (ifa->ifa_addr->sa_family != AF_LINK)
+	                                break;
+	                }
+	                NET_EPOCH_EXIT(et);
+	
+	                if (ifa == NULL)
+	                        break;
+	#ifdef INET
+	                /* XXX: Ugly!! ad hoc just for INET */
+	                if (ifa->ifa_addr->sa_family == AF_INET) {
+	                        struct ifreq ifr;
+	
+	                        bzero(&ifr, sizeof(ifr));
+	                        ifr.ifr_addr = *ifa->ifa_addr;
+	                        if (in_control(NULL, SIOCDIFADDR, (caddr_t)&ifr, ifp,
+	                            NULL) == 0)
+	                                continue;
+	                }
+	#endif /* INET */
+	#ifdef INET6
+	                if (ifa->ifa_addr->sa_family == AF_INET6) {
+	                        in6_purgeifaddr((struct in6_ifaddr *)ifa);
+	                        /* ifp_addrhead is already updated */
+	                        continue;
+	                }
+	#endif /* INET6 */
+	                IF_ADDR_WLOCK(ifp);
+	                CK_STAILQ_REMOVE(&ifp->if_addrhead, ifa, ifaddr, ifa_link);
+	                IF_ADDR_WUNLOCK(ifp);
+	                ifa_free(ifa);
+	        }
+	}
+	
+**What this function does**
+
+`if_purgeaddrs(ifp)` removes all non-link-layer addresses from a network interface. In plain words, it walks the list of addresses attached to the interface and deletes unicast or broadcast addresses that belong to IPv4 or IPv6. Some families are handled by calling helpers who update the lists for us. Anything not handled by a helper is explicitly removed and freed.
+
+**How the loop is organised**
+
+The outer `while (1)` repeats until there are no more removable addresses. Each pass:
+
+1. Enters the network epoch (`NET_EPOCH_ENTER`) to safely walk the interface address list.
+1. Scans the list with `CK_STAILQ_FOREACH` to find the **first address after the `AF_LINK entries**. Link-layer entries come first and are not purged here.
+1. Leaves the epoch and then decides what to do with the address it found.
+
+**Where the `break` statements act**
+
+Break inside the list scan:
+
+	if (ifa->ifa_addr->sa_family != AF_LINK)
+	break;
+	    
+The scan stops as soon as it reaches the first non-AF_LINK address. We only need one target per pass.
+
+Break after the scan:
+
+	if (ifa == NULL)
+	    break;
+
+If the scan did not find any non-AF_LINK address, there is nothing left to purge. The outer `while` ends.
+
+**Where the `continue` statements act**
+
+IPv4 address handled by ioctl:
+
+	if (in_control(...) == 0)
+	    continue;
+	    
+For IPv4, `in_control(SIOCDIFADDR)` removes the address and updates the list. Since that work is done, we skip the manual removal below and continue to the next outer-loop pass to look for the next address.
+
+IPv6 address removed by helper:
+
+	in6_purgeifaddr((struct in6_ifaddr *)ifa);
+	/* list already updated */
+	continue;
+
+For IPv6, `in6_purgeifaddr()` also updates the list. There is nothing more to do in this pass, so we continue to the next one.
+
+**The fallback removal path**
+
+If the address was neither handled by the IPv4 nor the IPv6 helpers, the code takes the generic path:
+
+	IF_ADDR_WLOCK(ifp);
+	CK_STAILQ_REMOVE(&ifp->if_addrhead, ifa, ifaddr, ifa_link);
+	IF_ADDR_WUNLOCK(ifp);
+	ifa_free(ifa);
+	
+This explicitly removes the address from the list and frees it.
+
+In loops, `break` and `continue` are precision tools for controlling execution flow. In the `if_purgeaddrs()` function from FreeBSD’s `sys/net/if.c`, `break` stops the search when there are no more addresses to remove, or halts the inner scan as soon as a target address is found. `continue` skips the generic removal step when a specialised IPv4 or IPv6 routine has already handled the work, jumping straight to the next pass through the outer loop. This design lets the function repeatedly find one removable address at a time, remove it using the most appropriate method, and keep going until no non-link-layer addresses remain. 
+
+The key takeaway is that well-placed break and continue statements keep loops efficient and focused, avoiding wasted work and making the code’s intent clear, a pattern you’ll encounter often in FreeBSD’s kernel for both clarity and performance.
+
+### Pro Tip: Always Use Braces `{}`
+
+In C, if you omit braces after an if, only one statement is actually controlled by the if. This can easily lead to mistakes:
+
+	if (x > 0)
+		printf("Positive\n");   // Runs only if x > 0
+		printf("Always runs\n"); // Always runs! Not part of the if
+	    
+This is a common source of bugs because the second printf appears to be inside the if, but it isn’t.
+
+To avoid confusion and accidental logic errors, always use braces, even for a single statement:
+
+	if (x > 0) {
+	    printf("Positive\n");
+	}
+	
+This makes your intent explicit, keeps your code safe from subtle changes, and follows the style used in the FreeBSD source tree.
+
+**Also Safer for Future Changes**
+
+When you always use braces, it’s much safer to modify the code later:
+
+	if (x > 0) {
+	    printf("x is positive\n");
+	    log_positive(x);   // Adding this won't break logic!
+	}
+
+### Summary
+
+In this section, you’ve learned:
+
+* How to make decisions using if, else, and switch
+* How to write loops using for, while, and do...while
+* How to exit or skip iterations with break and continue
+* How FreeBSD uses control flow to walk lists and make kernel decisions
+
+You now have the tools to control the logic and flow of your programs, which is the core of programming itself.
+
+*continue with functions soon...*
