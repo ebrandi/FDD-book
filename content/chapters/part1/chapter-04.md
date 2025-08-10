@@ -2,7 +2,7 @@
 title: "A First Look at the C Programming Language"
 description: "This chapter introduces the C programming language for complete beginners."
 author: "Edson Brandi"
-date: "2025-08-05"
+date: "2025-08-10"
 status: "draft"
 part: 1
 chapter: 4
