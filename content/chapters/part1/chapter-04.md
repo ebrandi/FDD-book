@@ -809,7 +809,7 @@ Here’s how it works step by step:
 
 1. `if (x > 0)` – The program checks the first condition. If it’s true, the block inside runs and the rest of the chain is skipped.
 
-1. `else if (x < 0)` – If the first condition was false, this second one is checked. If it’s true, its block runs and the chain ends.
+1. `else if (x < 0)` – If the first condition was false, this second one is checked. If it’s true, it's block runs and the chain ends.
 
 1. `else` – If none of the previous conditions are true, the code inside `else` runs.
 
@@ -853,7 +853,7 @@ Let’s walk through the flow control step by step:
 **How the flow works:**
 
 * Only one of these three paths runs each time.
-* The first matching condition “wins,” and the rest are skipped.
+* The first matching condition “wins", and the rest are skipped.
 * This is a classic example of using `if / else if / else` to handle mutually exclusive conditions,  reject invalid input, handle the empty case, or process a valid value.
 
 In C, `if / else if / else` chains provide a straightforward way to handle several possible outcomes in a single structure. The program checks each condition in order, and as soon as one is true, that block runs and the rest are skipped. This simple rule keeps your logic predictable and easy to follow. In the FreeBSD kernel, you’ll see this pattern everywhere, from network stack functions to device drivers, because it ensures that only the correct code path runs for each situation, making the system’s decision-making both efficient and reliable.
@@ -881,7 +881,7 @@ Here’s a simple example:
 * The `break` statement tells the program to stop checking further cases once a match is found. Without `break`, execution will continue into the next case, a behaviour called **fall-through**.
 * The `default` case runs if none of the listed cases match.
 
-You can see a real use of switch in the FreeBSD kernel inside the function thread_compare() (starting at line 109 in `sys/kern/tty_info.c`). The fragment we’re interested in is from lines 134 to 141:
+You can see a real use of switch in the FreeBSD kernel inside the function `thread_compare()` (starting at line 109 in `sys/kern/tty_info.c`). The fragment we’re interested in is from lines 134 to 141:
 
 	switch (TESTAB(runa, runb)) {
 	    case ONLYA:
@@ -906,7 +906,7 @@ The switch works like this:
 
 1. Case `ONLYA` – If only thread A is runnable, return `0`.
 1. Case `ONLYB` – If only thread B is runnable, return `1`.
-1. Case `BOTH – If both threads are runnable, don’t return immediately; instead, `break` so the rest of the function can handle this situation.
+1. Case `BOTH` – If both threads are runnable, don’t return immediately; instead, `break` so the rest of the function can handle this situation.
 
 In short, `switch` statements provide a clean and efficient way to handle multiple possible outcomes from a single expression, avoiding the clutter of long `if / else if` chains. In the FreeBSD kernel, they are often used to react to different commands, flags, or states, as in our example, which decides between thread A, thread B, or both. Once you become comfortable reading switch structures, you’ll start to recognise them throughout kernel code as a go-to pattern for organising decision-making logic in a clear, maintainable way.
 
@@ -925,7 +925,7 @@ A `for` loop in C is perfect when you know **how many times** you want to repeat
 
 A widespread beginner error is related to off-by-one errors (`<=` vs `<`), and forgetting the increment (which can cause an infinite loop).
 
-You can see a real for loop inside sys/net/iflib.c, in the function netmap_fl_refill(), which begins at line 859. The fragment we care about is the inner batching loop at lines 922–949: 
+You can see a real for loop inside `sys/net/iflib.c`, in the function `netmap_fl_refill()`, which begins at line 859. The fragment we care about is the inner batching loop at lines 922–949: 
 
 	for (i = 0; n > 0 && i < IFLIB_MAX_RX_REFRESH; n--, i++) {
 	    struct netmap_slot *slot = &ring->slot[nm_i];
@@ -943,7 +943,7 @@ You can see a real for loop inside sys/net/iflib.c, in the function netmap_fl_re
 * `i` counts how many buffers we’ve handled in this batch.
 * `n` is the total remaining buffers to refill; it decrements every iteration.
 * For each buffer, the code grabs its slot, figures out the physical address, readies it for DMA, then advances the ring indices (`nm_i`, `nic_i`).
-* The loop stops when either the batch is full (`i hits the max) or there’s nothing left to do (`n == 0`). The batch is then “published” to the NIC by the code right after the loop.
+* The loop stops when either the batch is full (`i` hits the max) or there’s nothing left to do (`n == 0`). The batch is then “published” to the NIC by the code right after the loop.
 
 In essence, a `for` loop is the go-to choice when you have a clear limit on how many times something should run. It packages initialisation, condition checking, and iteration updates into a single, compact header, making the flow easy to follow. 
 
@@ -988,7 +988,7 @@ Lets see a example:
 	    i++;
 	}
 	
-`printf("%d\n", i);` - Prints the value of i followed by a newline (`\n`).
+`printf("%d\n", i);` - Prints the value of `i` followed by a newline (`\n`).
 `i++;` - Increases `i` by 1 after each iteration. This step is crucial; without it, `i` would stay 0 forever, and the loop would never end, creating an infinite loop.
 
 **Key Points to Remember**
@@ -1179,13 +1179,13 @@ Each pass of the loop prepares a group of buffers and hands them off to the NIC.
 Each time the loop runs, it processes one batch of buffers. Here’s the breakdown:
 
 1. **Debug Tracking** – If the driver is compiled with debugging enabled, it may update counters that track how often large batches of buffers are refilled. This is just for performance monitoring.
-1. **Batch Setup** – The driver remembers where this batch starts (nic_i_first) so it can later tell the NIC exactly which slots were updated.
+1. **Batch Setup** – The driver remembers where this batch starts (`nic_i_first`) so it can later tell the NIC exactly which slots were updated.
 1. **Inner Batch Processing** – Inside the loop, there’s another for loop that refills up to a maximum number of buffers at a time (IFLIB_MAX_RX_REFRESH). For each buffer in this batch:
 	* Look up the buffer’s address and physical location in memory.
-	* Check if the buffer is valid. If not, reinitialize the receive ring.
+	* Check if the buffer is valid. If not, reinitialise the receive ring.
 	* Store the physical address and slot index so the NIC knows where to place incoming data.
-	* If the buffer has changed or this is the first initialization, update its DMA (Direct Memory Access) mapping.
-	* Synchronize the buffer for reading so the NIC can safely use it.
+	* If the buffer has changed or this is the first initialisation, update its DMA (Direct Memory Access) mapping.
+	* Synchronise the buffer for reading so the NIC can safely use it.
 	* Clear any “buffer changed” flags.
 	* Move to the next buffer position in the ring.
 1. **Publishing the Batch to the NIC** – Once the batch is ready, the driver calls a function to tell the NIC: 
@@ -1223,11 +1223,15 @@ In the FreeBSD kernel, you'll often see this pattern inside macros designed to b
 **What This Macro Does**
 
 1. **Assign Seconds**: Copies `tv_sec` from the source (ts) to the target (tv).
-1. **Convert and Assign Microseconds**: Divides `ts->tv_nsec` by 1000 to convert nanoseconds to microseconds and stores that in `tv_usec`.
-1. `do...while (0)`: Wraps the two statements so that when this macro is used, it behaves syntactically like a single statement, even if followed by a semicolon, preventing issues in constructs like:
+
+2. **Convert and Assign Microseconds**: Divides `ts->tv_nsec` by 1000 to convert nanoseconds to microseconds and stores that in `tv_usec`.
+
+3. `do...while (0)`: Wraps the two statements so that when this macro is used, it behaves syntactically like a single statement, even if followed by a semicolon, preventing issues in constructs like:
  
-	if (x) TIMESPEC_TO_TIMEVAL(tv, ts);
-	else ...
+ ```c
+if (x) TIMESPEC_TO_TIMEVAL(tv, ts);
+else ...
+
 	
 While `do...while (0)` may look odd, it’s a solid C idiom used to make macro expansions safe and predictable in all contexts (like inside conditional statements). It ensures that the entire macro behaves like one statement and avoids accidentally creating half-executed code. Understanding this helps you read and avoid subtle bugs in kernel code that rely heavily on macros for clarity and safety.
 
