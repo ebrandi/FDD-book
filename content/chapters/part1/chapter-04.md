@@ -1433,4 +1433,298 @@ In this section, you’ve learned:
 
 You now have the tools to control the logic and flow of your programs, which is the core of programming itself.
 
-*continue with functions soon...*
+## Functions
+
+In C, a **function** is like a dedicated workshop in a large factory; it is a self-contained area where a specific task is carried out, start to finish, without disturbing the rest of the production line. When you need that task done, you simply send the work there, and the function delivers the result.
+
+Functions are one of the most important tools you have as a programmer because they let you:
+
+* **Break down complexity**: Large programs become easier to understand when split into smaller, focused operations.
+* **Reuse logic**: Once written, a function can be called anywhere, saving you from typing (and debugging) the same code repeatedly.
+* **Improve clarity**: A descriptive function name turns a block of cryptic code into a clear statement of intent.
+
+You’ve already seen functions at work:
+
+* `main()` — the starting point of every C program.
+* `printf()` — a library function that handles formatted output for you.
+
+In the FreeBSD kernel, you’ll find functions everywhere, from low-level routines that copy data between memory regions to specialised ones that communicate with hardware. For example, when a network packet arrives, the kernel doesn’t put all the processing logic in one giant block of code. Instead, it calls a series of functions, each responsible for a clear, isolated step in the process.
+
+In this section, you’ll learn how to create your own functions, giving you the power to write clean, modular code. This isn’t just good style in FreeBSD device driver development; it’s the foundation for stability, reusability, and long-term maintainability.
+
+**How a Function Call Works in Memory**
+
+When your program calls a function, something important happens behind the scenes:
+
+	   +---------------------+
+	   | Return Address      | <- Where to resume execution after the function ends
+	   +---------------------+
+	   | Function Arguments  | <- Copies of the values you pass in
+	   +---------------------+
+	   | Local Variables     | <- Created fresh for this call
+	   +---------------------+
+	   | Temporary Data      | <- Space the compiler needs for calculations
+	   +---------------------+
+	        ... Stack ...
+
+**Step-by-step:**
+
+1. **The caller pauses** - your program stops at the function call and saves the **return address** on the stack so it knows where to continue afterwards.
+1. **Arguments are placed** - the values you pass to the function (parameters) are stored, either in registers or on the stack, depending on the platform.
+1. **Local variables are created** — the function gets its own workspace in memory, separate from the caller’s variables.
+1. **The function runs** — it executes its statements in order, possibly calling other functions along the way.
+1. **A return value is sent back** — if the function produces a result, it is placed in a register (commonly eax on x86) for the caller to pick up.
+1. **Cleanup and resume** — the function’s workspace is removed from the stack, and the program continues where it left off.
+
+**Why do you need to understand that?**
+
+In kernel programming, every function call has a cost in both time and memory. Understanding this process will help you write efficient driver code and avoid subtle bugs, especially when working with low-level routines where stack space is limited.
+
+### Defining and Declaring Functions
+
+Every function in C follows a simple recipe. To create one, you need to specify four things:
+
+1. **Return type** – what kind of value the function gives back to the caller.
+	* Example: `int` means the function will return an integer.
+	* If it doesn’t return anything, we use the keyword `void`.
+
+1. **Name** – a unique, descriptive label for your function, so you can call it later.
+	* Example: `read_temperature()` is much clearer than `rt()`.
+	
+1. **Parameters** – zero or more values the function needs to do its job.
+	* 	Each parameter has its own type and name.
+	* 	If there are no parameters, use void in the list to make it explicit.
+
+1. **Body** – the block of code, enclosed in {} braces, that performs the task.
+	* This is where you write the actual instructions.
+
+**General form:**
+
+	return_type function_name(parameter_list)
+	{
+	    // statements
+	    return value; // if return_type is not void
+	}
+
+**Example:** A function to add two numbers and return the result
+
+	int add(int a, int b)
+	{
+	    int sum = a + b;
+	    return sum;
+	}
+	
+**Declaration vs. Definition**
+
+A lot of beginners get tripped up here, so let’s make it crystal clear:
+
+* **Declaration** tells the compiler that a function exists, what it’s called, what parameters it takes, and what it returns, but it does not provide the code for it.
+* **Definition** is where you actually write the body of the function, the full implementation that does the work.
+
+Think of it like planning and building a workshop:
+
+* **Declaration**: putting up a sign saying *“This workshop exists, here’s what it’s called, and here’s the kind of work it does.”*
+* **Definition**: actually building the workshop, stocking it with tools, and hiring workers to do the job.
+
+**Example:**
+
+	// Function declaration (prototype)
+	int add(int a, int b);
+	
+	// Function definition
+	int add(int a, int b)
+	{
+	    int sum = a + b;
+	    return sum;
+	}
+	
+**Why declarations are useful**
+
+In small single-file programs, you can just put the definition before you call the function and be done. But in larger programs, especially in FreeBSD drivers, code is often split across many files.
+
+For example:
+
+* The function `mydevice_probe()` might be **defined** in `mydevice.c`.
+* Its **declaration** will go into a header file `mydevice.h` so that other parts of the driver, or even the kernel, can call it without knowing the details of how it works.
+
+When the compiler sees the declaration, it knows how to check that calls to `mydevice_probe()` use the right number and types of parameters, even before it sees the definition.
+
+**FreeBSD driver perspective**
+
+When writing a driver:
+
+* Declarations often live in `.h` header files.
+* Definitions live in `.c` source files.
+* The kernel will call your driver’s functions (like `probe()`, `attach()`, `detach()`) based on the declarations it sees in your driver’s headers, without caring exactly how you implement them as long as the signatures match.
+
+Understanding this difference will save you a lot of compiler errors, especially “implicit declaration of function” or “undefined reference” errors, which are among the most common mistakes beginners hit when starting with C.
+
+**How Declarations and Definitions Work Together**
+
+In small programs, you might write the function’s definition before `main()` and be done.
+But in real projects, like a FreeBSD device driver, code is split into header files (`.h`) for declarations and source files (`.c`) for definitions.
+
+          +----------------------+
+          |   mydevice.h         |   <-- Header file
+          |----------------------|
+          | int my_probe(void);  |   // Declaration (prototype)
+          | int my_attach(void); |   // Declaration
+          +----------------------+
+                     |
+                     v
+          +----------------------+
+          |   mydevice.c         |   <-- Source file
+          |----------------------|
+          | #include "mydevice.h"|   // Include declarations
+          |                      |
+          | int my_probe(void)   |   // Definition
+          | {                    |
+          |     /* detect hw */  |
+          |     return 0;        |
+          | }                    |
+          |                      |
+          | int my_attach(void)  |   // Definition
+          | {                    |
+          |     /* init hw  */   |
+          |     return 0;        |
+          | }                    |
+          +----------------------+
+
+**How it works:**
+
+1. Declaration in the header file tells the compiler: *“These functions exist somewhere, here’s what they look like.”*
+1. Definition in the source file provides the actual code.
+1. Any other `.c` file that includes `mydevice.h` can now call these functions, and the compiler will check the parameters and return types.
+1. At link time, the function calls are connected to their definitions.
+
+**In the context of FreeBSD drivers:**
+
+* You might have `mydevice.c` containing the driver logic, and `mydevice.h` holding the function declarations shared across the driver.
+* The kernel build system will compile your `.c` files and link them into a kernel module.
+* If the declarations don’t match the definitions exactly, you’ll get compiler errors — which is why keeping them in sync is critical.
+
+**Common mistakes with functions and how to fix them**
+
+1) Calling a function before the compiler knows it exists
+Symptom: “implicit declaration of function” warning or error.
+Fix: Add a declaration in a header file and include it, or place the definition above its first use.
+
+2) Declaration and definition do not match
+Symptom: “conflicting types” or odd runtime bugs.
+Fix: Make the signature identical in both places. Same return type, parameter types, and qualifiers in the same order.
+
+3) Forgetting `void` for a function with no parameters
+Symptom: The compiler may think the function takes unknown arguments.
+Fix: Use int `my_fn(void)` instead of int `my_fn()`.
+
+4) Returning a value from a `void` function or forgetting to return a value
+Symptom: “void function cannot return a value” or “control reaches end of non-void function.”
+Fix: For non-void functions, always return the right type. For `void`, do not return a value.
+
+5) Returning pointers to local variables
+Symptom: Random crashes or garbage data.
+Fix: Do not return the address of a stack variable. Use dynamically allocated memory or pass a buffer in as a parameter.
+
+6) Mismatched `const` or pointer levels between declaration and definition
+Symptom: Type mismatch errors or subtle bugs.
+Fix: Keep qualifiers consistent. If the declaration has `const char *`, the definition must match exactly.
+
+7) Multiple definitions across files
+Symptom: Linker error “multiple definition of …”.
+Fix: Only one definition per function. If a helper should be private to a file, mark it `static` in that `.c` file.
+
+8) Putting function definitions in headers by accident
+Symptom: Multiple definition linker errors when the header is included by several `.c` files.
+Fix: Headers should usually have declarations only. If you really need code in a header, make it `static inline` and keep it small.
+
+9) Missing includes for functions you call
+Symptom: Implicit declarations or wrong default types.
+Fix: Include the correct system or project header that declares the function you are calling, for example `#include <stdio.h>` for `printf`.
+
+10) Kernel specific: undefined symbols when building a module
+Symptom: Linker error “undefined reference” while building your KMOD.
+Fix: Ensure the function is actually defined in your module or exported by the kernel, that the declaration matches the definition, and that the right source files are part of the module build.
+
+11) Kernel specific: using a helper that is meant to be file local
+Symptom: “undefined reference” from other files or unexpected symbol visibility.
+Fix: Mark internal helpers as `static` to restrict visibility. Expose only what other files must call through your header.
+
+12) Choosing poor names
+Symptom: Hard to read code and name collisions.
+Fix: Use descriptive, project prefixed names, for example `mydev_read_reg`, not `readreg`.
+
+**Hands-on exercise: Splitting Declarations and Definitions**
+
+For this exercise, we will create 3 files.
+
+`mydevice.h` - This header file declares the functions and makes them available to any .c file that includes it.
+
+	#ifndef MYDEVICE_H
+	#define MYDEVICE_H
+
+	// Function declarations (prototypes)
+	void mydevice_probe(void);
+	void mydevice_attach(void);
+	void mydevice_detach(void);
+
+	#endif // MYDEVICE_H
+
+`mydevice.c` - This source file contains the actual definitions (the working code).
+
+	#include <stdio.h>
+	#include "mydevice.h"
+
+	// Function definitions
+	void mydevice_probe(void)
+	{
+	    printf("[mydevice] Probing hardware... done.\n");
+	}
+
+	void mydevice_attach(void)
+	{
+	    printf("[mydevice] Attaching device and initializing resources...\n");
+	}
+
+	void mydevice_detach(void)
+	{
+	    printf("[mydevice] Detaching device and cleaning up.\n");
+	}
+
+`main.c` - This is the “user” of the functions. It just includes the header and calls them.
+
+	#include "mydevice.h"
+
+	int main(void)
+	{
+	    mydevice_probe();
+	    mydevice_attach();
+	    mydevice_detach();
+	    return 0;
+	}
+
+**How to Compile and Run on FreeBSD**
+
+Open a terminal in the folder with the three files and run:
+
+	cc -Wall -o myprogram main.c mydevice.c
+	./myprogram
+	
+Expected output:
+
+	[mydevice] Probing hardware... done.
+	[mydevice] Attaching device and initialising resources...
+	[mydevice] Detaching device and cleaning up.
+	
+**Why this matters for FreeBSD driver development**
+
+In a real FreeBSD kernel module,
+
+* `mydevice.h` would hold your driver’s public API (function declarations).
+* `mydevice.c` would have the full implementations of those functions.
+* The kernel (or other parts of the driver) would include the header to know how to call into your code, without needing to see the actual implementation details.
+
+This exact pattern is how `probe()`, `attach()`, and `detach()` routines are structured in actual device drivers. Learning it now will make those later chapters feel familiar.
+	
+Understanding the relationship between declarations and definitions is a cornerstone of C programming, and it becomes even more important when you step into the world of FreeBSD device drivers. In kernel development, functions are rarely defined and used in the same file; they are spread across multiple source and header files, compiled separately, and linked together into a single module. A clear separation between **what a function does** (its declaration) and **how it does it** (its definition) keeps code organized, reusable, and easier to maintain. Master this concept now, and you’ll be well-prepared for the more complex modular structures you’ll encounter when we begin building real kernel drivers.
+
+Continue...
