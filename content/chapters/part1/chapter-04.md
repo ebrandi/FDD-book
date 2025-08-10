@@ -1228,10 +1228,10 @@ In the FreeBSD kernel, you'll often see this pattern inside macros designed to b
 
 3. `do...while (0)`: Wraps the two statements so that when this macro is used, it behaves syntactically like a single statement, even if followed by a semicolon, preventing issues in constructs like:
  
- ```c
-if (x) TIMESPEC_TO_TIMEVAL(tv, ts);
-else ...
-
+```c
+	if (x) TIMESPEC_TO_TIMEVAL(tv, ts);
+	else ...
+```
 	
 While `do...while (0)` may look odd, it’s a solid C idiom used to make macro expansions safe and predictable in all contexts (like inside conditional statements). It ensures that the entire macro behaves like one statement and avoids accidentally creating half-executed code. Understanding this helps you read and avoid subtle bugs in kernel code that rely heavily on macros for clarity and safety.
 
