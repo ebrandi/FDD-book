@@ -2427,6 +2427,7 @@ mydriver_detach(device_t dev)
 ```
 
 **Why this works:**
+
 * The `.h` file exposes only the **function interfaces** to the rest of the kernel.
 * The `.c` file contains the **full implementations of the functions declared in the header**.
 * The build system compiles all the source files, and the linker connects calls to the correct function bodies.
@@ -2449,5 +2450,154 @@ Function prototypes may seem like a small detail in C, but they are the glue tha
 In FreeBSD driver development, well-structured prototypes in header files enable the kernel to interact with your driver reliably, without knowing its internal details. Mastering this habit now is non-negotiable if you want to write stable, maintainable drivers. 
 
 In the next section, we’ll explore real examples from the FreeBSD source tree to see exactly how prototypes are used throughout the kernel, from core subsystems to actual device drivers. This will not only reinforce what you’ve learned here, but also help you recognise the patterns and conventions that experienced FreeBSD developers follow every day.
+
+### Real Example from the FreeBSD 14.3 Source Tree: `device_printf()`
+
+Now that you understand how function declarations and definitions work, let’s walk through a concrete example from the FreeBSD kernel. We will follow `device_printf()` from its prototype in a header, to its definition in the kernel source, and finally to a real driver that calls it during initialisation. This shows the full path a function takes in real code and why prototypes are critical in driver development.
+
+**1) Prototype — where it is declared**
+
+The `device_printf()` function is declared in the FreeBSD kernel’s bus interface header `sys/sys/bus.h`. Any driver source that includes this header can call it safely because the compiler knows its signature in advance.
+
+```c
+int	device_printf(device_t dev, const char *, ...) __printflike(2, 3);
+```
+
+What each part means:
+
+* `int` is the return type. The function returns the number of characters printed, similar to `printf(9)`.
+* `device_t dev` is a handle to the device that owns the message, which allows the kernel to prefix the output with the device name and unit, for example `vtnet0:`.
+* `const char *` is the format string, the same idea used by `printf`.
+* `...` indicates a variable argument list. You can pass values that match the format string.
+* `__printflike(2, 3)` is a compiler hint used in FreeBSD. It tells the compiler that parameter 2 is the format string and that type checking for additional arguments starts at parameter 3. This enables compile time checks for format specifiers and argument types.
+
+Because this declaration lives in a shared header, any driver that includes `<sys/sys/bus.h>` can call `device_printf()` without needing to know how it is implemented.
+
+**2) Definition — where it is implemented**
+
+Here is the actual implementation of `device_printf()` in `sys/kern/subr_bus.c` from **FreeBSD 14.3**. The function builds a prefix with the device name and unit, appends your formatted message, and counts how many characters are produced. I have added extra comments to help you understand how this function works.
+
+```c
+/**
+ * @brief Print the name of the device followed by a colon, a space
+ * and the result of calling vprintf() with the value of @p fmt and
+ * the following arguments.
+ *
+ * @returns the number of characters printed
+ */
+int
+device_printf(device_t dev, const char * fmt, ...)
+{
+        char buf[128];                               // Fixed buffer for sbuf to use
+        struct sbuf sb;                              // sbuf structure that manages safe string building
+        const char *name;                            // Will hold the device's base name (e.g., "igc")
+        va_list ap;                                  // Handle for variable argument list
+        size_t retval;                               // Count of characters produced by the drain
+
+        retval = 0;                                  // Initialise the output counter
+
+        sbuf_new(&sb, buf, sizeof(buf), SBUF_FIXEDLEN);
+                                                    // Initialise sbuf 'sb' over 'buf' with fixed length
+
+        sbuf_set_drain(&sb, sbuf_printf_drain, &retval);
+                                                    // Set a "drain" callback that counts characters
+                                                    // Every time sbuf emits bytes, sbuf_printf_drain
+                                                    // updates 'retval' through this pointer
+
+        name = device_get_name(dev);                // Query the device base name (may be NULL)
+
+        if (name == NULL)                           // If we do not know the name
+                sbuf_cat(&sb, "unknown: ");         // Prefix becomes "unknown: "
+        else
+                sbuf_printf(&sb, "%s%d: ", name, device_get_unit(dev));
+                                                    // Otherwise prefix "name" + unit number, e.g., "igc0: "
+
+        va_start(ap, fmt);                          // Start reading the variable arguments after 'fmt'
+        sbuf_vprintf(&sb, fmt, ap);                 // Append the formatted message into the sbuf
+        va_end(ap);                                 // Clean up the variable argument list
+
+        sbuf_finish(&sb);                           // Finalise the sbuf so its contents are complete
+        sbuf_delete(&sb);                           // Release sbuf resources associated with 'sb'
+
+        return (retval);                            // Return the number of characters printed
+}
+```
+
+**What to notice**
+
+* The code uses sbuf to assemble the message safely. The drain callback updates retval so the function can return the number of characters produced.
+*  The device prefix comes from `device_get_name()` and `device_get_unit()`. If the name is not available, it falls back to `unknown:`.
+*  It accepts a format string and variable arguments, handled by `va_list`, `va_start`, and `va_end`, then forwards them to `sbuf_vprintf()`.
+
+**3) Real driver use — where it is called in practice**
+
+Here is a clear example from `sys/dev/virtio/virtqueue.c` that calls `device_printf()` while initialising a virtqueue to use indirect descriptors. And like I did for step 2 above, I have added extra comments to help you understand how this function works.
+
+```c
+static int
+virtqueue_init_indirect(struct virtqueue *vq, int indirect_size)
+{
+        device_t dev;
+        struct vq_desc_extra *dxp;
+        int i, size;
+
+        dev = vq->vq_dev;                               // Cache the device handle for logging and feature checks
+
+        if (VIRTIO_BUS_WITH_FEATURE(dev, VIRTIO_RING_F_INDIRECT_DESC) == 0) {
+                /*
+                 * Driver asked to use indirect descriptors, but the device did
+                 * not negotiate this feature. We do not fail the init here.
+                 * Return 0 so the queue can still be used without this feature.
+                 */
+                if (bootverbose)
+                        device_printf(dev, "virtqueue %d (%s) requested "
+                            "indirect descriptors but not negotiated\n",
+                            vq->vq_queue_index, vq->vq_name);
+                return (0);                             // Continue without indirect descriptors
+        }
+
+        size = indirect_size * sizeof(struct vring_desc); // Total bytes for one indirect table
+        vq->vq_max_indirect_size = indirect_size;        // Remember maximum entries per indirect table
+        vq->vq_indirect_mem_size = size;                 // Remember bytes per indirect table
+        vq->vq_flags |= VIRTQUEUE_FLAG_INDIRECT;         // Mark the queue as using indirect descriptors
+
+        for (i = 0; i < vq->vq_nentries; i++) {          // For each descriptor in the main queue
+                dxp = &vq->vq_descx[i];                  // Access per-descriptor extra bookkeeping
+
+                dxp->indirect = malloc(size, M_DEVBUF, M_NOWAIT);
+                                                         // Allocate an indirect descriptor table for this entry
+                if (dxp->indirect == NULL) {
+                        device_printf(dev, "cannot allocate indirect list\n");
+                                                         // Tag the error with the device name and unit
+                        return (ENOMEM);                 // Tell the caller that allocation failed
+                }
+
+                dxp->indirect_paddr = vtophys(dxp->indirect);
+                                                         // Record the physical address for DMA use
+                virtqueue_init_indirect_list(vq, dxp->indirect);
+                                                         // Initialise the table contents to a known state
+        }
+
+        return (0);                                      // Success. The queue now supports indirect descriptors
+}
+```
+
+**What this driver code is doing**
+
+This helper prepares a virtqueue to use indirect descriptors, a VirtIO feature that allows each top level descriptor to reference a separate table of descriptors. That makes it possible to describe larger I/O requests efficiently. The function first checks whether the device actually negotiated the `VIRTIO_RING_F_INDIRECT_DESC` feature. If not, and if `bootverbose` is enabled, it uses `device_printf()` to log an informative message that includes the device prefix, then carries on without the feature. If the feature is present, it computes the size of the indirect descriptor table, marks the queue as indirect capable, and iterates over every descriptor in the ring. For each one it allocates an indirect table, logs an error with `device_printf()` if allocation fails, records the physical address for DMA, and initialises the table. This is a typical pattern in real drivers: check a feature, allocate resources, log meaningful messages tagged with the device, and handle errors cleanly.
+
+**Why this example matters**
+
+You have now seen the complete journey:
+
+* **Prototype** in a shared header tells the compiler how to call the function and enables compile time checks.
+* **Definition** in the kernel source implements the behaviour, using helpers like sbuf to assemble messages safely.
+* **Real usage** in a driver shows how the function is called during initialisation and error paths, producing logs that are easy to trace back to a specific device.
+
+This is the same pattern you will follow when writing your own driver helpers. Declare them in your header so the rest of the driver, and sometimes the kernel, can call them. Implement them in your `.c` files with small, focused logic. Call them from `probe()`, `attach()`, interrupt handlers, and teardown. Prototypes are the bridge that lets these pieces work together cleanly.
+
+By now, you’ve seen how a function prototype, its implementation, and its real-world usage come together inside the FreeBSD kernel. From the declaration in a shared header, through the implementation in kernel code, to the call site inside a real driver, each step shows why prototypes are the “glue” that lets different parts of the system communicate cleanly. In driver development, they ensure the kernel can call into your code with complete confidence about the parameters and return type no guesswork, no surprises. Getting this right is a matter of both correctness and maintainability, and it’s a habit you’ll use in every driver you write.
+
+Before we go further into writing complex driver logic, we need to understand one of the most fundamental concepts in C programming: variable scope. Scope determines where a variable can be accessed in your code, how long it stays alive in memory, and what parts of the program can modify it. In FreeBSD driver development, misunderstanding scope can lead to elusive bugs from uninitialised values corrupting hardware state to variables mysteriously changing between function calls. By mastering scope rules, you’ll gain fine-grained control over your driver’s data, ensuring that values are only visible where they should be, and that critical state is preserved or isolated as needed. In the next section, we’ll break down scope into clear, practical categories and show you how to apply them effectively in kernel code.
 
 *continue soon...*
