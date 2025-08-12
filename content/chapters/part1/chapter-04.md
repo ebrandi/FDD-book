@@ -2068,4 +2068,386 @@ In driver code, even though `void` functions don’t return data, they can still
 
 Understanding void functions is important because in real-world FreeBSD driver development, not every task produces data to return; many simply perform an action that prepares the system or the hardware for something else. Whether it’s initializing a device, cleaning up resources, or logging a status message, these functions still play a critical role in the overall behavior of your driver. By recognizing when a function should return a value and when it should simply do its job and return nothing, you’ll write cleaner, more purposeful code that matches the way the FreeBSD kernel itself is structured.
 
+## Function Declarations (Prototypes)
+
+In C, it’s a good habit and often essential to **declare** a function before you use it.
+
+A function declaration, also called a **prototype**, tells the compiler:
+
+* The function’s name.
+* The type of value it returns (if any).
+* The number, types, and order of its parameters.
+
+This way, the compiler can check that your function calls are correct, even if the actual definition (the body of the function) appears later in the file or in a different file entirely.
+
+**Let's see a basic example**
+
+```c
+#include <stdio.h>
+
+// Function declaration (prototype)
+int add(int a, int b);
+
+int main(void)
+{
+    int result = add(3, 4);
+    printf("Result: %d\n", result);
+    return 0;
+}
+
+// Function definition
+int add(int a, int b)
+{
+    return a + b;
+}
+```
+
+When the compiler reads the prototype for `add()` before `main()`, it immediately knows:
+
+* the function’s name is `add`,
+* it takes two `int` parameters, and
+* it will return an `int`.
+
+Later, when the compiler finds the definition, it checks that the name, parameters, and return type match the prototype exactly. If they don’t, it raises an error.
+
+### Why prototypes matter
+
+Placing the prototype before a function is called provides several benefits:
+
+1. **Prevents unnecessary warnings and errors**: If you call a function before the compiler knows it exists, you’ll often get an *“implicit declaration of function”* warning or even a compilation error.
+
+1. **Catches mistakes early**: If your call passes the wrong number or types of arguments, the compiler will flag the problem immediately instead of letting it cause unpredictable behaviour at runtime.
+
+1. **Enables modular programming**: Prototypes allow you to split your program into multiple source files. You can keep the function definitions in one file and the calls to them in another, with the prototypes stored in a shared header file.
+
+By declaring your functions before you use them, either at the top of your .c file or in a .h header, you’re not just keeping the compiler happy; you’re building code that’s easier to organise, maintain, and scale.
+
+Now that you understand why prototypes are important, let’s look at the two most common places to put them: directly in your `.c ` file or in a shared header file.
+
+### Prototypes in header files
+
+Although you can write prototypes directly at the top of your `.c` file, the more common and scalable approach is to place them in **header files** (`.h`).
+
+This allows multiple `.c` files to share the same declarations without repeating them.
+
+**Example:**
+
+`mathutils.h`
+
+```c 
+#ifndef MATHUTILS_H
+#define MATHUTILS_H
+
+int add(int a, int b);
+int subtract(int a, int b);
+
+#endif // MATHUTILS_H
+```
+
+`main.c`
+
+```c
+#include <stdio.h>
+#include "mathutils.h"
+
+int main(void)
+{
+    printf("Sum: %d\n", add(3, 4));
+    printf("Difference: %d\n", subtract(10, 4));
+    return 0;
+}
+```
+
+`mathutils.c`
+
+```c
+#include "mathutils.h"
+
+int add(int a, int b)
+{
+    return a + b;
+}
+
+int subtract(int a, int b)
+{
+    return a - b;
+}
+```
+
+This pattern keeps your code organized and avoids having to manually keep multiple prototypes in sync across files.
+
+### FreeBSD driver perspective
+
+In FreeBSD driver development, prototypes are essential because the kernel often needs to call into your driver without knowing how your functions are implemented.
+
+For example, in your driver’s header file you might declare:
+
+```c
+int mydevice_init(void);
+void mydevice_start_transmission(void);
+```
+
+These tell the kernel or bus subsystem that your driver has these functions available, even if the actual definitions live deep inside your `.c` files.
+
+The build system compiles all the pieces together and links the calls to the correct implementations.
+
+### Try It Yourself – Moving a Function Below `main()`
+
+One of the main reasons to use prototypes is so you can call a function that hasn’t been defined yet in the file. Let’s see this in action.
+
+**Step 1 — Start without a prototype**
+
+```c
+#include <stdio.h>
+
+int main(void)
+{
+    int result = add(3, 4); // This will cause a compiler warning or error
+    printf("Result: %d\n", result);
+    return 0;
+}
+
+// Function definition
+int add(int a, int b)
+{
+    return a + b;
+}
+```
+
+Compile it:
+
+```c
+cc -Wall -o testprog testprog.c
+```
+
+You’ll likely get a warning such as:
+
+```c
+testprog.c:5:18:
+warning: call to undeclared function 'add'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+    5 |     int result = add(3, 4); // This will cause a compiler warning or error
+      |                  ^
+1 warning generated.
+
+```
+
+**Step 2 — Fix it with a prototype**
+
+Add the function prototype before `main()` like this:
+
+```c
+#include <stdio.h>
+
+// Function declaration (prototype)
+int add(int a, int b);
+
+int main(void)
+{
+    int result = add(3, 4); // No warnings now
+    printf("Result: %d\n", result);
+    return 0;
+}
+
+// Function definition
+int add(int a, int b)
+{
+    return a + b;
+}
+```
+
+Recompile, the warning is gone, and the program runs:
+
+```
+Result: 7
+```
+
+**Note:** Depending on the compiler you use, the warning message might look a little different from the example shown above, but the meaning will be the same.
+
+By adding a prototype, you’ve just seen how the compiler can recognize a function and validate its use even before it sees the actual code. This same principle is what allows the FreeBSD kernel to call into your driver; it doesn’t need the whole function body up front, only the declaration. In the next section, we’ll look at how this works in a real driver, where prototypes in header files act as the kernel’s “map” to your driver’s capabilities.
+
+### FreeBSD Driver Connection
+
+In the FreeBSD kernel, function prototypes are the way the system “introduces” your driver’s functions to the rest of the codebase.
+
+When the kernel wants to interact with your driver, it doesn’t search for the function’s code directly; it relies on the function’s declaration to know the name, parameters, and return type.
+
+For example, during device detection, the kernel might call your `probe()` function to check whether a specific piece of hardware is present. The actual definition of `probe()` could be deep inside your `mydriver.c` file, but the **prototype** lives in your driver’s header file (`mydriver.h`). That header is included by the kernel or bus subsystem so it can compile code that calls `probe()` without needing to see its full implementation.
+
+This arrangement ensures two critical things:
+
+1. **Compiler validation**: The compiler can confirm that any calls to your functions use the correct parameters and return type.
+1. **Linker resolution**: When building the kernel or your driver module, the linker knows exactly which compiled function body to connect to the calls.
+
+Without correct prototypes, the kernel build could fail or, worse, compile but behave unpredictably at runtime. In kernel programming, that’s not just a bug, it could mean a crash.
+
+**Example — Prototypes in a FreeBSD Driver**
+
+`mydriver.h` — Driver header file with prototypes:
+
+```c
+#ifndef _MYDRIVER_H_
+#define _MYDRIVER_H_
+
+#include <sys/types.h>
+#include <sys/bus.h>
+
+// Public entry points: declared here so bus/framework code can call them
+// These are the entry points the kernel will call during the device's lifecycle
+// Function prototypes (declarations)
+int  mydriver_probe(device_t dev);
+int  mydriver_attach(device_t dev);
+int  mydriver_detach(device_t dev);
+
+#endif /* _MYDRIVER_H_ */
+```
+
+Here, we declare three key entry points `probe()`, `attach()`, and `detach()`, but don’t include their bodies.
+
+The kernel or bus subsystem will include this header so it knows how to call these functions during device lifecycle events.
+
+`mydriver.c` — Driver source file with definitions:
+
+```c
+/*
+ * FreeBSD device driver lifecycle (quick map)
+ *
+ * 1) Kernel enumerates devices on a bus
+ *    The bus framework walks hardware and creates device_t objects.
+ *
+ * 2) probe()
+ *    The kernel asks your driver if it supports a given device.
+ *    You inspect IDs or capabilities and return a score.
+ *      - Return ENXIO if this driver does not match.
+ *      - Return BUS_PROBE_DEFAULT or a better score if it matches.
+ *
+ * 3) attach()
+ *    Called after a successful probe to bring the device online.
+ *    Typical work:
+ *      - Allocate resources (memory, IRQ) with bus_alloc_resource_any()
+ *      - Map registers and set up bus_space
+ *      - Initialize hardware to a known state
+ *      - Set up interrupts and handlers
+ *    Return 0 on success, or an errno if something fails.
+ *
+ * 4) Runtime
+ *    Your driver services requests. This may include:
+ *      - Interrupt handlers
+ *      - I/O paths invoked by upper layers or devfs interfaces
+ *      - Periodic tasks, callouts, or taskqueues
+ *
+ * 5) detach()
+ *    Called when the device is being removed or the module unloads.
+ *    Cleanup tasks:
+ *      - Quiesce hardware, stop DMA, disable interrupts
+ *      - Tear down handlers and timers
+ *      - Unmap registers and release resources with bus_release_resource()
+ *    Return 0 on success, or an errno if detach must be denied.
+ *
+ * 6) Optional lifecycle events
+ *      - suspend() and resume() during power management
+ *      - shutdown() during system shutdown
+ *
+ * Files to remember
+ *    - mydriver.h declares the entry points that the kernel and bus code will call
+ *    - mydriver.c defines those functions and contains the implementation details
+ */
+#include <sys/param.h>
+#include <sys/kernel.h>
+#include <sys/module.h>
+#include <sys/bus.h>
+#include <sys/systm.h>   // device_printf
+#include "mydriver.h"
+
+/*
+ * mydriver_probe()
+ * Called early during device enumeration.
+ * Purpose: decide if this driver matches the hardware represented by dev.
+ * Return: BUS_PROBE_DEFAULT for a normal match, a better score for a strong match,
+ *         or ENXIO if the device is not supported.
+ */
+int
+mydriver_probe(device_t dev)
+{
+    device_printf(dev, "Probing device...\n");
+
+    /*
+     * Here you would usually check vendor and device IDs or use bus-specific
+     * helper routines. If the device is not supported, return (ENXIO).
+     */
+
+    return (BUS_PROBE_DEFAULT);
+}
+
+/*
+ * mydriver_attach()
+ * Called after a successful probe when the kernel is ready to attach the device.
+ * Purpose: allocate resources, map registers, initialise hardware, register interrupts,
+ *          and make the device ready for use.
+ * Return: 0 on success, or an errno value (like ENOMEM or EIO) on failure.
+ */
+int
+mydriver_attach(device_t dev)
+{
+    device_printf(dev, "Attaching device and initializing resources...\n");
+
+    /*
+     * Typical steps you will add here:
+     * 1) Allocate device resources (I/O memory, IRQs) with bus_alloc_resource_any().
+     * 2) Map register space and set up bus_space tags and handles.
+     * 3) Initialise hardware registers to a known state.
+     * 4) Set up interrupt handlers if needed.
+     * 5) Create device nodes or child devices if this driver exposes them.
+     * On any failure, release what you allocated and return an errno.
+     */
+
+    return (0);
+}
+
+/*
+ * mydriver_detach()
+ * Called when the device is being detached or the module is unloading.
+ * Purpose: stop the hardware, free resources, and leave the system clean.
+ * Return: 0 on success, or an errno value if detach must be refused.
+ */
+int
+mydriver_detach(device_t dev)
+{
+    device_printf(dev, "Detaching device and cleaning up...\n");
+
+    /*
+     * Typical steps you will add here:
+     * 1) Disable interrupts and stop DMA or timers.
+     * 2) Tear down interrupt handlers.
+     * 3) Unmap register space and free bus resources with bus_release_resource().
+     * 4) Destroy any device nodes or sysctl entries created at attach time.
+     */
+
+    return (0);
+}
+```
+
+**Why this works:**
+* The `.h` file exposes only the **function interfaces** to the rest of the kernel.
+* The `.c` file contains the **full implementations of the functions declared in the header**.
+* The build system compiles all the source files, and the linker connects calls to the correct function bodies.
+* The kernel can call these functions without knowing how they work internally; it only needs the prototypes.
+
+Understanding how the kernel uses your driver’s function prototypes is more than just a formality; it’s a safeguard for correctness and stability. In kernel programming, even a slight mismatch between a declaration and a definition can lead to build failures or unpredictable runtime behaviour. That’s why experienced FreeBSD developers follow a few best practices to keep their prototypes clean, consistent, and easy to maintain. Let’s go over some of those tips next.
+
+### Tip for Kernel Code
+
+When you start writing FreeBSD drivers, function prototypes aren’t just a formality; they’re a key part of keeping your code organised and error-free in a large, multi-file project. In the kernel, where functions are often called from deep within the system, a mismatch between a declaration and its definition can cause build failures or subtle bugs that are hard to track down.
+
+To avoid problems and keep your headers clean:
+
+* **Always match parameter types exactly** between the declaration and the definition; the return type, parameter list, and order must be identical.
+* **Include qualifiers like `const` and `*` consistently** so you don’t accidentally change how parameters are treated between the declaration and the definition.
+* **Group related prototypes together** in header files so they’re easy to find. For example, put all initialisation functions in one section, and hardware access functions in another.
+
+Function prototypes may seem like a small detail in C, but they are the glue that holds multi-file projects and especially kernel code together. By declaring your functions before they are used, you give the compiler the information it needs to catch mistakes early, keep your code organised, and allow different parts of a program to communicate cleanly. 
+
+In FreeBSD driver development, well-structured prototypes in header files enable the kernel to interact with your driver reliably, without knowing its internal details. Mastering this habit now is non-negotiable if you want to write stable, maintainable drivers. 
+
+In the next section, we’ll explore real examples from the FreeBSD source tree to see exactly how prototypes are used throughout the kernel, from core subsystems to actual device drivers. This will not only reinforce what you’ve learned here, but also help you recognise the patterns and conventions that experienced FreeBSD developers follow every day.
+
 *continue soon...*
