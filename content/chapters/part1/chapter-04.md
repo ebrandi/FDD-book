@@ -2,7 +2,7 @@
 title: "A First Look at the C Programming Language"
 description: "This chapter introduces the C programming language for complete beginners."
 author: "Edson Brandi"
-date: "2025-08-10"
+date: "2025-08-14"
 status: "draft"
 part: 1
 chapter: 4
@@ -2994,4 +2994,247 @@ We have explored the three main storage durations in C: automatic, static, and d
 
 In FreeBSD driver development, careful management of variable lifetimes is not optional; it is a fundamental skill. Done right, it helps you write code that is predictable, efficient, and resilient under load. With these principles in mind, you are ready to explore the next piece of the puzzle: understanding how variable linkage affects visibility across files and modules.
 
-*Continue soon...*
+## Variable Linkage (Visibility Across Files)
+
+So far, we’ve explored **scope** (where a name is visible inside your code) and **storage duration** (how long an object exists in memory). The third and final piece in this visibility puzzle is **linkage**, the rule that decides whether code in other source files can refer to a given name.
+
+In C (and in FreeBSD kernel code), programs are often split into multiple `.c` files plus the header files they include. Each `.c` file and its headers form a translation unit. By default, most names you define are visible only inside the translation unit where they’re declared. If you want other files to see them or, **often more importantly**, to hide them, linkage is the mechanism that controls that access.
+
+### The three kinds of linkage in C
+
+Think of linkage as *“who outside this file can see this name?”*:
+
+* **External linkage:** A name is visible across translation units. Global variables and functions defined at file scope without static have external linkage. Other files can refer to them by declaring extern (for variables) or including a prototype (for functions).
+* **Internal linkage:** A name is visible only within the current file. You get internal linkage by writing static at file scope (for variables or functions). This is how you keep helpers and the private state hidden from the rest of the kernel/program.
+* **No linkage:** A name is visible only within its own block (e.g., variables inside a function). These are locals; they can’t be named from outside their scope at all.
+
+### A tiny two-file illustration
+
+To really see linkage in action, let’s build the smallest possible program that spans two `.c` files. This will let us test all three cases, external, internal, and no linkage, side by side. We’ll create one file (`foo.c`) that defines a few variables and a helper function, and another file (`main.c`) that tries to use them.
+
+Below, `shared_counter` has **external linkage** (visible in both files), `internal_flag` has **internal linkage** (visible only inside `foo.c`), and the locals inside `increment()` have **no linkage** (visible only in that function).
+
+`foo.c`
+
+```c
+#include <stdio.h>
+
+/* 
+ * Global variable with external linkage:
+ * - Visible to other files (translation units) in the program.
+ * - No 'static' keyword means it has external linkage by default.
+ */
+int shared_counter = 0;
+
+/* 
+ * File-private variable with internal linkage:
+ * - The 'static' keyword at file scope means this name
+ *   is only visible inside foo.c.
+ */
+static int internal_flag = 1;
+
+/*
+ * Function with external linkage by default:
+ * - Can be called from other files if they declare its prototype.
+ */
+void increment(void) {
+    /* 
+     * Local variable with no linkage:
+     * - Exists only during this function call.
+     * - Cannot be accessed from anywhere else.
+     */
+    int step = 1;
+
+    if (internal_flag)         // Only code in foo.c can see internal_flag
+        shared_counter += step; // Modifies the global shared_counter
+
+    printf("Counter: %d\n", shared_counter);
+}
+```
+
+`main.c`
+
+```c
+#include <stdio.h>
+
+/*
+ * 'extern' tells the compiler:
+ * - This variable exists in another file (foo.c).
+ * - Do not allocate storage for it here.
+ */
+extern int shared_counter;
+
+/*
+ * Forward declaration for the function defined in foo.c:
+ * - Lets us call increment() from this file.
+ */
+void increment(void);
+
+int main(void) {
+    increment();            // Calls increment() from foo.c
+    shared_counter += 10;   // Legal: shared_counter has external linkage
+    increment();
+
+    // internal_flag = 0;   // ERROR: not visible here (internal linkage in foo.c)
+    return 0;
+}
+```
+
+The pattern generalizes directly to kernel code: keep helpers and private state `static` in one `.c` file, expose only the minimal surface via headers (prototypes) or intentionally exported globals.
+
+### Real FreeBSD 14.3 Example: External vs. Internal vs. No Linkage
+
+Let’s ground this in the FreeBSD network stack (`sys/net/if.c`). We’ll look at:
+
+1. a **global** variable with **external** linkage (`ifqmaxlen`),
+1. **file-private** toggles with **internal linkage** (`log_link_state_change`, `log_promisc_mode_change`), and
+1. a **function** with a **local variable** (no linkage) (`sysctl_ifcount()`), plus how it’s exposed via `SYSCTL_PROC`.
+
+**1) External linkage: a tunable global**
+
+In `sys/net/if.c`, `ifqmaxlen` is a global integer that other parts of the kernel can reference. That’s **external linkage**.
+
+```c
+int ifqmaxlen = IFQ_MAXLEN;  // external linkage: visible to other files
+```
+
+You’ll also see it referenced from the SYSCTL tree setup:
+
+```c
+SYSCTL_INT(_net_link, OID_AUTO, ifqmaxlen, CTLFLAG_RDTUN,
+    &ifqmaxlen, 0, "max send queue size");
+```
+
+This exposes the global through `sysctl`, so administrators can read/tune it at boot (depending on flags).
+
+**2) Internal linkage: file-private toggles**
+
+Right above, the file defines two static integers. Because they’re **static** at file scope, they have **internal** linkage only `if.c` can name them:
+
+```c
+/* Log link state change events */
+static int log_link_state_change = 1;
+
+SYSCTL_INT(_net_link, OID_AUTO, log_link_state_change, CTLFLAG_RW,
+    &log_link_state_change, 0,
+    "log interface link state change events");
+
+/* Log promiscuous mode change events */
+static int log_promisc_mode_change = 1;
+
+SYSCTL_INT(_net_link, OID_AUTO, log_promisc_mode_change, CTLFLAG_RDTUN,
+    &log_promisc_mode_change, 1,
+    "log promiscuous mode change events");
+```
+
+Later in the same file, `log_link_state_change` is used to decide whether to print a message, but only code inside `if.c` can refer to that symbol by name:
+
+```c
+if (log_link_state_change)
+    if_printf(ifp, "link state changed to %s\n",
+        (link_state == LINK_STATE_UP) ? "UP" : "DOWN");
+```
+
+See `sys/net/if.c` for the static definitions and the reference in `do_link_state_change()`.
+
+**3) No linkage (locals) + how a private function is exported via SYSCTL**
+
+Here’s the full `sysctl_ifcount()` function (as in FreeBSD 14.3), with line-by-line commentary. Notice how `rv` is a local; it has no linkage and exists only for the duration of this call.
+
+Note: I’ve added some extra comments to highlight what’s happening at each step.
+
+```c
+/* sys/net/if.c */
+
+/*
+ * 'static' at file scope:
+ * - Gives the function internal linkage (only visible in if.c).
+ * - Other files cannot call sysctl_ifcount() directly.
+ */
+static int
+sysctl_ifcount(SYSCTL_HANDLER_ARGS)  // SYSCTL handler signature used in the kernel
+{
+    /*
+     * Local variable with no linkage:
+     * - Exists only during this function call.
+     * - Tracks the highest interface index in the current vnet.
+     */
+    int rv = 0;
+
+    /*
+     * IFNET_RLOCK():
+     * - Acquires a read lock on the ifnet index table.
+     * - Ensures safe concurrent access in an SMP kernel.
+     */
+    IFNET_RLOCK();
+
+    /*
+     * Loop through interface indices from 1 up to the current max (if_index).
+     * If an entry is in use and belongs to the current vnet,
+     * update rv with the highest index seen.
+     */
+    for (int i = 1; i <= if_index; i++)
+        if (ifindex_table[i].ife_ifnet != NULL &&
+            ifindex_table[i].ife_ifnet->if_vnet == curvnet)
+            rv = i;
+
+    /*
+     * Release the read lock on the ifnet index table.
+     */
+    IFNET_RUNLOCK();
+
+    /*
+     * Return rv to user space via the sysctl framework.
+     * - sysctl_handle_int() handles copying the value to the request buffer.
+     */
+    return (sysctl_handle_int(oidp, &rv, 0, req));
+}
+```
+
+The function is then **registered** with the sysctl tree so other kernel parts (and user space via `sysctl`) can invoke it without needing external linkage to the function name:
+
+```c
+/*
+ * SYSCTL_PROC:
+ * - Creates a sysctl entry named 'ifcount' under:
+ *   net.link.generic.system
+ * - Flags: integer type, vnet-aware, read-only.
+ * - Calls sysctl_ifcount() when queried.
+ * - Even though sysctl_ifcount() is static, the sysctl framework
+ *   acts as the public interface to its result.
+ */
+SYSCTL_PROC(_net_link_generic_system, IFMIB_IFCOUNT, ifcount,
+    CTLTYPE_INT | CTLFLAG_VNET | CTLFLAG_RD, NULL, 0,
+    sysctl_ifcount, "I", "Maximum known interface index");
+```
+
+This pattern is common in the kernel: the function itself has **internal linkage** (`static`), but it’s exposed through a registration mechanism (sysctl, eventhandler, devfs methods, etc.). 
+
+### Why this matters for drivers
+
+* **Encapsulation with internal linkage:** Use static at file scope to keep helpers and private state inside a single .c file. This reduces accidental coupling and eliminates a whole class of “who changed this?” bugs under SMP.
+* **Safe temporaries with no linkage:** Prefer locals for per-call data so nothing outside the function can modify it. This helps ensure correctness and makes concurrency easier to reason about.
+* **Intentional exposure through interfaces:** When you need to share information, expose it through a registration mechanism such as SYSCTL_PROC, an eventhandler, or devfs methods, rather than exporting function names directly.
+
+In `sys/net/if.c`, you can see all three visibility levels in action:
+
+* **External linkage:** `ifqmaxlen` is a global variable accessible to other files.
+* **Internal linkage:** `log_link_state_change` and `log_promisc_mode_change` are file-private toggles.
+* **No linkage:** Local variable `rv` inside `sysctl_ifcount()`, exposed intentionally via `SYSCTL_PROC`.
+
+### Common beginner pitfalls (and how to sidestep them)
+
+A few patterns trip people up when they first juggle scope, storage duration, and linkage:
+
+* **Using file-private helpers from another file.** If you see “undefined reference” at link time for a helper you thought was global, check for a `static` on its definition. If it’s truly meant to be shared, move the prototype to a header and remove `static` from the definition. If not, keep it private and call it indirectly via a registered interface (like sysctl or an ops table).
+* **Accidentally exporting private state.** A bare `int myflag;` at file scope has external linkage. If you intended it to be file-local, write `static int myflag;`. This one keyword prevents cross-file name collisions and unintended writes.
+* **Leaning on globals instead of passing arguments.** If two unrelated call paths tweak the same global, you’ve invited heisenbugs. Prefer locals and function parameters, or encapsulate shared state in a per-device struct referenced through `softc`.
+* B**eginners often confuse** `static` in file scope (**linkage control**) with `static` inside a function (**storage duration control**). In file scope, static hides a symbol from other files (linkage control). Inside a function, static makes a variable keep its value between calls (storage duration control).
+
+### Wrapping up
+
+You now understand **scope**, **storage duration**, and **linkage**, the three pillars that define where a variable can be used, how long it exists, and who can access it. These concepts form the foundation for managing state in any C program, and they are especially critical in FreeBSD drivers, where per-call locals, file-private helpers, and global kernel state must coexist without interfering with one another.
+
+Next, we’ll see what happens when you pass those variables into a function. In C, function parameters are copies of the original values, so changes inside the function won’t affect the originals unless you pass their addresses. Understanding this behaviour is key to writing driver code that updates state intentionally, avoids subtle bugs, and communicates data effectively between functions.
+
+*continue soon*
