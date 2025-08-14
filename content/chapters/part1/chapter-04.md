@@ -3229,7 +3229,7 @@ A few patterns trip people up when they first juggle scope, storage duration, an
 * **Using file-private helpers from another file.** If you see “undefined reference” at link time for a helper you thought was global, check for a `static` on its definition. If it’s truly meant to be shared, move the prototype to a header and remove `static` from the definition. If not, keep it private and call it indirectly via a registered interface (like sysctl or an ops table).
 * **Accidentally exporting private state.** A bare `int myflag;` at file scope has external linkage. If you intended it to be file-local, write `static int myflag;`. This one keyword prevents cross-file name collisions and unintended writes.
 * **Leaning on globals instead of passing arguments.** If two unrelated call paths tweak the same global, you’ve invited heisenbugs. Prefer locals and function parameters, or encapsulate shared state in a per-device struct referenced through `softc`.
-* B**eginners often confuse** `static` in file scope (**linkage control**) with `static` inside a function (**storage duration control**). In file scope, static hides a symbol from other files (linkage control). Inside a function, static makes a variable keep its value between calls (storage duration control).
+* **Beginners often confuse** `static` in file scope (**linkage control**) with `static` inside a function (**storage duration control**). In file scope, static hides a symbol from other files (linkage control). Inside a function, static makes a variable keep its value between calls (storage duration control).
 
 ### Wrapping up
 
