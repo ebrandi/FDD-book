@@ -3237,4 +3237,157 @@ You now understand **scope**, **storage duration**, and **linkage**, the three p
 
 Next, we’ll see what happens when you pass those variables into a function. In C, function parameters are copies of the original values, so changes inside the function won’t affect the originals unless you pass their addresses. Understanding this behaviour is key to writing driver code that updates state intentionally, avoids subtle bugs, and communicates data effectively between functions.
 
-*continue soon*
+## Parameters Are Copies
+
+When you call a function in C, the values you pass to it are **copied** into the function’s parameters. The function then works with those copies, not the originals. This is known as **call by value**, and it means that any changes made to the parameter inside the function are lost when the function returns; the caller’s variables remain untouched.
+
+This is different from some other programming languages that use “pass by reference” by default, where a function can directly modify a caller’s variable without special syntax. In C, if you want a function to modify something outside its own scope, you must give it the **address** of that thing. That’s done using **pointers**, which we’ll explore in depth in the next section.
+
+Understanding this behaviour is critical in FreeBSD driver development. Many driver functions perform setup work, check for conditions, or calculate values without touching the caller’s variables unless they are explicitly passed a pointer. This design helps maintain isolation between different parts of the kernel, reducing the risk of unintended side effects.
+
+### A Simple Example: Modifying a Copy
+
+To see this in action, we’ll write a short program that passes an integer to a function. Inside the function, we’ll try to change it. If C worked the way many beginners expect, this would update the original value. But because parameters in C are **copies**, the change will only affect the function’s local version, leaving the original untouched.
+
+```c
+#include <stdio.h>
+
+void modify(int x) {
+    x = 42;  // Only updates the function's own copy
+}
+
+int main(void) {
+    int original = 5;
+    modify(original);
+    printf("%d\n", original);  // Still prints 5, not 42!
+    return 0;
+}
+```
+
+Here, `modify()` changes its local version of `x`, but the original variable in `main()` stays at 5. The copy disappears as soon as `modify()` returns, leaving `main()`’s data untouched.
+
+If you do want to change the original variable inside a function, you must pass a reference to it rather than a copy. In C, that reference takes the form of a pointer, which lets the function work directly with the original data in memory. Don’t worry if pointers sound mysterious, we’ll cover them thoroughly in the next section.
+
+### A Real Example from FreeBSD 14.3
+
+This concept shows up in production kernel code all the time. Let's see a real function from 'sys/net/if.c' in FreeBSD 14.3 that removes an interface from a group (this function is located between lines 1470 and 1512). Pay special attention to the **parameters** at the top: `ifp`, `ifgl`, and `groupname`. Each is a  **copy** of the value that the caller passed in. They’re local to this function call, even though they **refer to** shared kernel objects.
+
+In the listing below, I’ve added extra comments so you can see exactly what’s happening at each step.
+
+Notice how these parameters are local copies, even though they hold pointers to shared kernel data.
+
+```c
+/*
+ * Helper function to remove a group out of an interface.  Expects the global
+ * ifnet lock to be write-locked, and drops it before returning.
+ */
+static void
+_if_delgroup_locked(struct ifnet *ifp, struct ifg_list *ifgl,
+    const char *groupname)
+{
+        struct ifg_member *ifgm;   // local (automatic) variable: lives only during this call
+        bool freeifgl;             // local flag on the stack: also per-call
+
+        /*
+         * PARAMETERS ARE COPIES:
+         *  - 'ifp' is a copy of a pointer to the interface object.
+         *  - 'ifgl' is a copy of a pointer to a (interface,group) link record.
+         *  - 'groupname' is a copy of a pointer to constant text.
+         * The pointer VALUES are copied, but they still refer to the same kernel data
+         * as the caller’s originals. Reassigning 'ifp' or 'ifgl' here wouldn’t affect
+         * the caller; modifying the *pointed-to* structures does persist.
+         */
+
+        IFNET_WLOCK_ASSERT();  // sanity: we entered with the global ifnet write lock held
+
+        // Remove the (ifnet,group) link from the interface's list.
+        IF_ADDR_WLOCK(ifp);
+        CK_STAILQ_REMOVE(&ifp->if_groups, ifgl, ifg_list, ifgl_next);
+        IF_ADDR_WUNLOCK(ifp);
+
+        // Walk the group's member list and remove this interface from it.
+        CK_STAILQ_FOREACH(ifgm, &ifgl->ifgl_group->ifg_members, ifgm_next) {
+                if (ifgm->ifgm_ifp == ifp) {
+                        CK_STAILQ_REMOVE(&ifgl->ifgl_group->ifg_members, ifgm,
+                            ifg_member, ifgm_next);
+                        break;
+                }
+        }
+
+        // Decrement the group's reference count; if it hits zero, mark for free.
+        if (--ifgl->ifgl_group->ifg_refcnt == 0) {
+                CK_STAILQ_REMOVE(&V_ifg_head, ifgl->ifgl_group, ifg_group,
+                    ifg_next);
+                freeifgl = true;
+        } else {
+                freeifgl = false;
+        }
+        IFNET_WUNLOCK();  // drop the global ifnet lock before potentially freeing memory
+
+        // Wait for current readers to exit the epoch section before freeing (RCU-style safety).
+        NET_EPOCH_WAIT();
+
+        // Notify listeners that a group membership changed (uses the 'groupname' pointer).
+        EVENTHANDLER_INVOKE(group_change_event, groupname);
+
+        if (freeifgl) {
+                // If the group is now empty: announce detach and free the group object.
+                EVENTHANDLER_INVOKE(group_detach_event, ifgl->ifgl_group);
+                free(ifgl->ifgl_group, M_TEMP);
+        }
+
+        // Free the membership record and the (ifnet,group) link record.
+        free(ifgm, M_TEMP);
+        free(ifgl, M_TEMP);
+}
+```
+
+In this kernel example, the parameters behave like they’re passed “by reference” because they hold addresses to kernel objects. However, the pointer values themselves are still copies.
+
+**What This Shows**
+
+Here, `ifp`, `ifgl`, and `groupname` are copies of what the caller passed. If we reassigned `ifp = NULL;` inside this function, the caller’s ifp would be unaffected. But because the pointer values still point to real kernel structures, changes to those structures, like removing from lists or freeing memory, are seen system-wide.
+
+Meanwhile, `ifgm` and `freeifgl` are purely local automatic variables. They live only while this function runs and vanish immediately after it returns.
+
+This mirrors our tiny user-space example exactly; the only difference is that here, the parameters are pointers into complex, shared kernel data.
+
+### Why This Matters in FreeBSD Driver Development
+
+In driver code, understanding that parameters are copies helps you avoid dangerous assumptions:
+
+* If you change the parameter variable itself (like reassigning a pointer), the caller won’t see that change.
+* If you change the object the pointer refers to, the caller and possibly the rest of the kernel will see the change, so you must be sure it’s safe.
+* Passing large structures by value creates full copies on the stack; passing pointers shares the same data.
+
+This distinction is vital for writing predictable, race-free kernel code.
+
+### Common Beginner Mistakes
+
+When working with parameters in C, especially in FreeBSD kernel code, beginners often get caught in subtle traps that stem from not fully grasping the “copy” rule. 
+
+Let’s look at some of the most common:
+
+1. **Passing a structure by value instead of a pointer**: 
+You expect changes to update the original, but they only update your local copy.
+Example: passing a struct ifreq by value and wondering why the interface isn’t reconfigured.
+2. **Forgetting that a pointer grants write access**: 
+Passing `struct mydev *` gives the callee full ability to change the device state. Without proper locking, this can corrupt kernel data.
+3. **Confusing a pointer copy with copying data**: 
+Reassigning the pointer parameter (`ptr = NULL;`) doesn’t affect the caller’s pointer.
+Modifying the pointed-to object (`ptr->field = 42;`) does affect the caller.
+4. **Copying large structures by value in kernel space**
+This wastes CPU time and risks overflowing the limited kernel stack.
+5. **Failing to document modification intent**: 
+If your function will modify its input, make it evident in the function name, comments, and parameter type.
+
+**Rule of Thumb**: 
+Pass by value to keep data safe. Pass a pointer only when you intend to modify the data and make that intent explicit.
+
+**Wrapping Up**
+
+You’ve now seen that parameters in C work by **value** and functions get their own private copies of what you pass, even when those values are addresses pointing to shared data. In kernel programming, this gives you both safety and responsibility: safety, because the variable itself is isolated; responsibility, because the data it points to may be shared and mutable.
+
+In the next section, we’ll go deeper into the world of **pointers**, the mechanism that lets you write functions that truly modify a caller’s data. That’s where the real power (and risk) comes in.
+
+*continue soon...*
