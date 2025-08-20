@@ -1,4 +1,4 @@
----
+﻿---
 title: "A First Look at the C Programming Language"
 description: "This chapter introduces the C programming language for complete beginners."
 author: "Edson Brandi"
@@ -135,7 +135,7 @@ Run it:
 	Hello, World!
 
 
-	
+​	
 Congratulations! You just compiled and ran your first C program on FreeBSD.
 
 ### Using Makefiles
@@ -3654,6 +3654,211 @@ Pointers let us share information between parts of a program without copying it 
 That's why understanding pointers is not just an academic exercise, but a survival skill for FreeBSD driver development.
 
 In the next section, we'll move from the big picture into the nuts and bolts: how to correctly **declare pointers**, how to **use them in practice**, and how to start building **safe habits from the very beginning**.
+
+### Declaring and Using Pointers
+
+Now that you know what a pointer is, a variable that stores a memory address instead of a direct value, it is time to learn how to declare and use them in your programs. This is where the idea of a pointer stops being abstract and becomes something you can experiment with in code.
+
+We will move carefully, step by step, with small and fully commented examples. You will see how to declare a pointer, how to assign it the address of another variable, how to dereference it to reach the stored value, and how to modify data indirectly. Along the way, we will look at real FreeBSD kernel code that relies on pointers every day.
+
+#### Declaring a Pointer
+
+In C, you declare a pointer using the star symbol `*`. The general pattern looks like this:
+
+```c
+int *ptr;
+```
+
+This line means:
+
+*"I am declaring a variable called `ptr`, and it will hold the address of an integer."*
+
+The `*` here does not mean that the name of the variable is `*ptr`. It is part of the type declaration, telling the compiler that `ptr` is not a plain integer but a pointer to an integer.
+
+Let's see a complete program that you can type and run:
+
+```c
+#include <stdio.h>
+
+int main(void) {
+    int value = 10;       // Declare a regular integer
+    int *ptr;             // Declare a pointer to an integer
+
+    ptr = &value;         // Store the address of 'value' in 'ptr'
+
+    printf("The value is: %d\n", value);         
+    printf("Address of value is: %p\n", (void *)&value); 
+    printf("Pointer ptr holds: %p\n", (void *)ptr);       
+    printf("Value through ptr: %d\n", *ptr);     
+
+    return 0;
+}
+```
+
+Run this program and compare the output. You will see that `ptr` contains the same address as `&value`, and when you use `*ptr`, you get back the integer stored there.
+
+Think of it like this: writing down a friend's street address is `&value`. Saving that address in your contacts list is `ptr`. Actually going to that house to say hello (or grab a snack) is `*ptr`.
+
+#### The Importance of Initialisation
+
+One of the most important rules about pointers is: never use them before you assign them a valid address. An uninitialised pointer holds garbage data, which means it may point to a random memory location. If you try to dereference it, the program will almost certainly crash.
+
+Here is an unsafe example:
+
+```c
+int *dangerous_ptr;
+printf("%d\n", *dangerous_ptr);  // Undefined behaviour!
+```
+
+Since `dangerous_ptr` was never assigned a valid address, the program will attempt to read some unpredictable area of memory. In user programs this usually causes a crash. In kernel code it can be far worse, leading to corruption of critical data structures and even security vulnerabilities. This is why being disciplined about initialisation is so important when programming for FreeBSD.
+
+#### A Real Example from FreeBSD
+
+If you open the file `sys/kern/tty_info.c`, you will find the following declaration inside the `tty_info()` function, at line 289:
+
+```c
+struct thread *td, *tdpick;
+```
+
+Both `td` and `tdpick` are pointers to a structure called `thread`. FreeBSD uses these pointers to walk through all threads that belong to a process. Later in the code, at line 341, you will see these pointers being utilised:
+
+```c
+FOREACH_THREAD_IN_PROC(p, tdpick)
+    if (thread_compare(td, tdpick))
+        td = tdpick;
+```
+
+The kernel is looping through each thread in process `p`. It compares them using the helper function `thread_compare()`, and if one is a better match, it updates the pointer `td` to refer to that thread.
+
+Notice that `td` itself is just a label. What changes is the address it holds, which in turn tells the kernel which thread to focus on. This pattern is extremely common in the kernel: pointers are declared at the top of a function, then updated step by step as the function works its way through structures.
+
+#### Modifying a Value Through a Pointer
+
+Another classic use of pointers is indirect modification. Let's walk through a simple program:
+
+```c
+#include <stdio.h>
+
+int main(void) {
+    int age = 30;           // A regular variable
+    int *p = &age;          // Pointer to that variable
+
+    printf("Before: age = %d\n", age);
+
+    *p = 35;                // Change the value through the pointer
+
+    printf("After: age = %d\n", age);
+
+    return 0;
+}
+```
+
+When we run this code, it prints `30` before and `35` after. We never assigned directly to `age`, but by dereferencing `p`, we reached into its memory location and changed the value stored there.
+
+This technique is used everywhere in system programming. Functions that need to return more than one value, or that must directly alter data structures inside the kernel, rely on pointers. Without them, it would be impossible to write efficient drivers or manage complex objects like processes, devices, and memory buffers.
+
+#### Mini Hands-On Lab — Pointer Chains
+
+**Goal**
+Learn how multiple pointers can point to the same variable, and how a pointer-to-pointer works in practice. This prepares you for real kernel patterns where functions receive not just data but pointers to pointers that need updating.
+
+**Starter Code**
+
+```c
+#include <stdio.h>
+
+int main(void) {
+    int value = 42;
+    int *p = &value;      // p points to value
+    int **pp = &p;        // pp points to p (pointer to pointer)
+
+    /* 1. Print value directly, through p, and through pp */
+    
+    /* 2. Change value to 100 using *p */
+    
+    /* 3. Change value to 200 using **pp */
+    
+    /* 4. Make p point to a new variable other = 77, via pp */
+    
+    /* 5. Print value, other, *p, and **pp to observe the changes */
+    
+    return 0;
+}
+```
+
+**Tasks**
+
+1. Print the same integer in three different ways:
+   - Directly (`value`)
+   - Indirectly with `*p`
+   - Double indirection with `**pp`
+2. Assign `100` to `value` using `*p`, then print `value`.
+3. Assign `200` to `value` using `**pp`, then print `value`.
+4. Declare a second variable `int other = 77;`
+    Use the double pointer (`*pp = &other;`) to make `p` point to `other` instead.
+5. Print `other`, `*p`, and `**pp`. Confirm that all three match.
+
+**Expected Output (addresses will differ)**
+
+```c
+value = 42
+*p = 42
+**pp = 42
+value after *p write = 100
+value after **pp write = 200
+other = 77
+*p now points to other = 77
+**pp also sees 77
+```
+
+**Stretch Exercise**
+
+Write a function that takes a pointer to a pointer:
+
+```c
+void redirect(int **pp, int *new_target) {
+    *pp = new_target;
+}
+```
+
+- Call it to redirect `p` from `value` to `other`.
+- Print `*p` afterwards to see the result.
+
+This is a common idiom in kernel code, where functions receive a pointer to a pointer so they can safely update what the caller's pointer points to.
+
+#### Common Beginner Pitfalls at Declaration and Use
+
+When you start declaring and using pointers, a new set of mistakes can creep in. They are different from the conceptual traps we already covered, and each has a simple way to avoid it.
+
+One mistake is misplacing the star `*` in a declaration. Writing `int* a, b;` looks like you declared two pointers, but in reality only `a` is a pointer, and `b` is a plain integer. To avoid this confusion, always write the star next to each variable name: `int *a, *b;`. This makes it explicit that both are pointers.
+
+Another trap is assigning a pointer without matching the type. For instance, storing the address of a `char` in an `int *` may compile with warnings but is unsafe. Always ensure the pointer type matches the type of the variable you are pointing to. If you need to work with different types, use casts carefully and deliberately, not by accident.
+
+A common error is dereferencing too early. Beginners sometimes write `*p` before assigning `p` a valid address, which leads to undefined behaviour. Get into the habit of initialising pointers at declaration. Use `NULL` if you do not yet have a valid address, and only dereference after you have assigned a real target.
+
+Another pitfall is overthinking addresses. Printing or comparing the raw numeric value of pointers is rarely meaningful. What matters is the relationship between a pointer and its pointee. Focus on using `%p` in `printf` to display addresses for debugging, but remember that addresses themselves are not portable values you can calculate casually.
+
+Finally, declaring multiple pointers in one line without care often causes subtle errors. A line like `int *a, b, c;` gives you one pointer and two integers, not three pointers. To avoid mistakes, keep pointer declarations simple and clear, and never assume all variables in a list share the same pointer type.
+
+By adopting these habits early, clear declarations, matching types, safe initialisation, and careful dereferencing, you will build a strong foundation for working with pointers in larger programs and in FreeBSD kernel code.
+
+#### Why This Matters in Driver Development
+
+Declaring and using pointers correctly is more than a matter of style. In FreeBSD drivers, you will often see entire groups of pointers declared together, each one tied to a subsystem of the kernel or a hardware resource. If you misdeclare one of these pointers, you might end up mixing integers and addresses, leading to very subtle bugs.
+
+Consider linked lists in the kernel. A device driver might declare several pointers to structures like `struct mbuf` (network buffers) or `struct cdev` (device entries). These pointers are chained together to form queues, and every declaration must be precise. One missing star or one mismatched type can mean that a list traversal ends in a kernel panic.
+
+Another reason declaration matters is efficiency. Kernel code often creates pointers that refer to existing objects instead of making copies. Declaring pointers correctly means you can traverse large structures, like the list of threads in a process, without duplicating data or wasting memory.
+
+The lesson is clear: understanding how to declare and use pointers properly gives you the vocabulary to describe kernel objects, navigate them, and connect them together safely.
+
+#### Wrapping Up
+
+At this point, you have moved beyond simply knowing what a pointer is. You can now declare a pointer, initialise it, print its address, dereference it, and even use it to modify a variable indirectly. You have seen how FreeBSD uses these techniques in real code, such as iterating through process threads or updating kernel structures. You also practised with pointer chains and saw how a pointer-to-pointer lets you redirect another pointer, a pattern that will appear often in kernel APIs.
+
+What makes this knowledge powerful is that it transforms your ability to work with functions. Passing pointers into functions allows those functions to update the caller's data, to redirect a pointer to a new target, or to return multiple results at once. In kernel development, this is not a rare pattern but the norm. Drivers almost always interact with the kernel and hardware by passing pointers into functions and receiving updated pointers back.
+
+In the next section, we will explore **Pointers and Functions**, and you will see how this combination becomes the standard way to write flexible, efficient, and safe code inside FreeBSD.
 
 *continue soon...*
 
