@@ -2,13 +2,13 @@
 title: "A First Look at the C Programming Language"
 description: "This chapter introduces the C programming language for complete beginners."
 author: "Edson Brandi"
-date: "2025-08-14"
+date: "2025-08-21"
 status: "draft"
 part: 1
 chapter: 4
 reviewer: "TBD"
 translator: "TBD"
-estimatedReadTime: 25
+estimatedReadTime: 240
 ---
 
 # A First Look at the C Programming Language
@@ -3860,5 +3860,296 @@ What makes this knowledge powerful is that it transforms your ability to work wi
 
 In the next section, we will explore **Pointers and Functions**, and you will see how this combination becomes the standard way to write flexible, efficient, and safe code inside FreeBSD.
 
-*continue soon...*
+### Pointers and Functions
 
+Back in Section 4.7, we learned that function parameters are always passed by value. This means that when you call a function, it usually receives only a copy of the variable you provide. As a result, the function can't change the original value that lives in the caller.
+
+Now that we've introduced pointers, we have a new possibility. By passing a pointer into a function, you give it direct access to the caller's memory. This is the standard way in C and especially in FreeBSD kernel code to let functions modify data outside their own scope or return multiple results.
+
+Let's walk through the difference step by step.
+
+#### First Try: Passing by Value (Doesn't Work)
+
+```c
+#include <stdio.h>
+
+void set_to_zero(int n) {
+    n = 0;  // Only changes the copy
+}
+
+int main(void) {
+    int x = 10;
+
+    set_to_zero(x);  
+    printf("x is now: %d\n", x);  // Still prints 10!
+
+    return 0;
+}
+```
+
+Here, the function `set_to_zero()` receives a copy of `x`. That copy is modified, but the real `x` in `main()` never changes.
+
+#### Second Try: Passing by Pointer (Works)
+
+```c
+#include <stdio.h>
+
+void set_to_zero(int *n) {
+    *n = 0;  // Follow the pointer and change the real variable
+}
+
+int main(void) {
+    int x = 10;
+
+    set_to_zero(&x);  // Give the function the address of x
+    printf("x is now: %d\n", x);  // Prints 0!
+
+    return 0;
+}
+```
+
+This time the caller sends the address of `x` using `&x`. Inside the function, `*n` lets us reach into that memory location and actually change the variable in `main()`.
+
+This pattern is simple but incredibly powerful. It transforms functions from isolated workshops into tools that can work directly on the caller's data.
+
+#### Why This Matters in the Kernel
+
+In kernel code, this technique is not just helpful, it's essential. Kernel functions often need to report back multiple pieces of information. Since C does not allow multiple return values, the usual approach is to pass pointers to variables or structures that the function can fill in.
+
+Here's an example you can find in the FreeBSD source file `sys/kern/tty_info.c`, at line 382:
+
+```c
+rufetchcalc(p, &ru, &utime, &stime);
+```
+
+The function `rufetchcalc()` fills in statistics about CPU usage for a process. It can't simply "return" all three results, so it accepts pointers to variables where it will write the data.
+
+Let's simplify this with a small simulation:
+
+```c
+#include <stdio.h>
+
+// A simplified kernel-style function
+void get_times(int *user, int *system) {
+    *user = 12;     // Fake "user time"
+    *system = 8;    // Fake "system time"
+}
+
+int main(void) {
+    int utime, stime;
+
+    get_times(&utime, &stime);  
+
+    printf("User time: %d\n", utime);
+    printf("System time: %d\n", stime);
+
+    return 0;
+}
+```
+
+Here, `get_times()` updates both `utime` and `stime` in one call. That's precisely how kernel code returns complex results without extra overhead.
+
+#### Common Beginner Pitfalls
+
+Pointers with functions are a frequent stumbling block for beginners. Watch out for these mistakes:
+
+- **Forgetting the `&` in the call**: If you write `set_to_zero(x)` instead of `set_to_zero(&x)`, you'll pass the value instead of the address, and nothing will change.
+- **Assigning the pointer, not the value**: Inside the function, writing `n = 0;` only overwrites the pointer itself. You must use `*n = 0;` to change the caller's variable.
+- **Overstepping responsibilities**: A function should not free or reallocate memory that belongs to the caller unless it is explicitly designed to do so. Otherwise, you risk creating dangling pointers.
+
+The safest habit is always to be clear about what the pointer represents, and to think carefully before modifying anything that belongs to the caller.
+
+#### Hands-On Lab: Write Your Own Setter
+
+Here's a small challenge to test your understanding. Complete the function so that it doubles the value of the variable given:
+
+```c
+#include <stdio.h>
+
+void double_value(int *n) {
+    // TODO: Write code that makes *n twice as large
+}
+
+int main(void) {
+    int x = 5;
+
+    double_value(&x);
+    printf("x is now: %d\n", x);  // Should print 10
+
+    return 0;
+}
+```
+
+If your function works, you've just written your first function that modifies a caller's variable using a pointer, precisely the kind of operation you'll use constantly in device drivers.
+
+#### Wrapping Up: Pointers Unlock New Possibilities
+
+By themselves, functions only work with copies. With pointers, functions gain the ability to modify the caller's variables and to pass back multiple results efficiently. This pattern shows up everywhere in FreeBSD, from memory management to process scheduling, and it is one of the most essential techniques you can master as a future driver developer.
+
+Now that we've seen how pointers connect with functions, let's take the next step. Pointers also form a natural partnership with another key feature of C: arrays. In the next section, we'll explore **Pointers and Arrays: A Powerful Duo**, and you'll discover how these two concepts work together to make memory access both flexible and efficient.
+
+### Pointers and Arrays: A Powerful Duo
+
+In C, arrays and pointers are like close friends. They are not the same thing, but they are deeply connected, and in practice, they often work together. This connection shows up constantly in kernel code, where performance and direct memory access matter. If you can understand how arrays and pointers interact, you will unlock a powerful toolset for navigating buffers, strings, and hardware data.
+
+#### What's the Connection?
+
+There is a straightforward rule that explains most of the relationship:
+
+**In most expressions, the name of an array acts like a pointer to its first element.**
+
+That means if you declare:
+
+```c
+int numbers[3] = {10, 20, 30};
+```
+
+Then the name `numbers` can be treated as if it were the same as `&numbers[0]`. So the line:
+
+```c
+int *ptr = numbers;
+```
+
+Is equivalent to:
+
+```c
+int *ptr = &numbers[0];
+```
+
+The pointer `ptr` now points directly to the first element of the array.
+
+#### A Simple Example
+
+```c
+#include <stdio.h>
+
+int main(void) {
+    int values[3] = {100, 200, 300};
+
+    int *p = values;  // 'values' behaves like &values[0]
+
+    printf("First value: %d\n", *p);         // prints 100
+    printf("Second value: %d\n", *(p + 1));  // prints 200
+    printf("Third value: %d\n", *(p + 2));   // prints 300
+
+    return 0;
+}
+```
+
+Here, the pointer `p` starts at the first element. Adding `1` to `p` moves it forward by one integer, and so on. This is called **pointer arithmetic**, and we will study its rules more carefully in the next section. For now, the key idea is that arrays and pointers share the same memory layout, which makes moving through an array with a pointer both natural and efficient.
+
+#### Using Arrays and Pointers in FreeBSD
+
+The FreeBSD kernel makes heavy use of this connection. A good example is found inside `sys/kern/tty_info.c` in the `tty_info()` function, at line 384:
+
+```c
+strlcpy(comm, p->p_comm, sizeof comm);
+```
+
+Here, `p->p_comm` is a character array that belongs to a process structure. The variable `comm` is another array declared locally, at line 295:
+
+```c
+char comm[MAXCOMLEN + 1];
+```
+
+The function `strlcpy()` copies the string from one array into another. Under the hood, it uses pointer arithmetic to walk through each character until the copy is done. You do not need to see those details to use it, but it is important to know that arrays and pointers make this possible. This is why so many kernel functions operate on "char *" even though you often start with a character array.
+
+#### Arrays and Pointers: The Differences That Matter
+
+Since arrays and pointers behave in similar ways, it is tempting to think they are the same thing. But they are not, and understanding the differences will help you avoid many subtle bugs.
+
+When you declare an array, the compiler reserves a fixed block of memory large enough to hold all its elements. The array's name represents this memory location, and that association cannot be changed. For example, if you declare `int a[5];`, the compiler allocates space for five integers, and `a` will always refer to that same block of memory. You cannot later reassign `a` to point somewhere else.
+
+A pointer, by contrast, is a variable that stores an address. It does not allocate storage for multiple items by itself. Instead, it can point to any valid memory location you choose. For instance, `int *p;` creates a pointer that may later hold the address of the first element of an array, the address of a single variable, or memory that has been allocated dynamically. You can also reassign the pointer freely, making it a much more flexible tool.
+
+Another key distinction is that the compiler knows the size of an array, but it does not track the size of the memory a pointer refers to. This means the array's boundaries are known at compile time, while a pointer only knows where it starts, not how far it extends. That responsibility falls on you as the programmer.
+
+These rules can be summarised in plain language. An array is a fixed block of storage, like a house built on a specific lot of land. A pointer is like a set of keys: you can use them to access that house, but tomorrow you might use the same keys to open another house entirely. Both are useful, but they serve different purposes, and the distinction becomes crucial in kernel code where memory management and safety cannot be left to chance.
+
+#### Common Beginner Pitfall: Off-by-One Errors
+
+Because arrays and pointers are so closely related, the same mistake can happen in two different guises: stepping one element too far.
+
+With arrays, the error looks like this:
+
+```c
+int items[3] = {1, 2, 3};
+printf("%d\n", items[3]);  // Invalid! Out of bounds
+```
+
+Here, the valid indices are `0`, `1`, and `2`. Using `3` goes past the end.
+
+With pointers, the same error can happen more subtly:
+
+```c
+int items[3] = {1, 2, 3};
+int *p = items;
+
+printf("%d\n", *(p + 3));  // Also invalid, same as items[3]
+```
+
+In both cases, you are asking for memory beyond the array's boundary. The compiler will not stop you, and the program may even seem to run correctly sometimes, which makes the bug even more dangerous.
+
+In user programs, this usually means corrupted data or a crash. In kernel code, it can mean memory corruption, a kernel panic, or even a security hole. That is why experienced FreeBSD developers are extremely careful when writing loops that walk through arrays or buffers with pointers. The loop condition is just as important as the loop body.
+
+##### Safety Habit
+
+The best way to avoid off-by-one errors is to make your loop boundaries explicit and double-check them. If an array has `n` elements, valid indices always run from `0` to `n - 1`. When using a pointer, think in terms of "how many elements have I advanced?" rather than "how many bytes."
+
+For example:
+
+```c
+for (int i = 0; i < 3; i++) {
+    printf("%d\n", items[i]);  // Safe, i goes 0..2
+}
+
+for (int i = 0; i < 3; i++) {
+    printf("%d\n", *(p + i));  // Safe, same rule
+}
+```
+
+By making the upper limit part of your loop condition, you ensure you never walk past the end of the array. This habit will save you from many subtle bugs, especially when you move from small exercises into real kernel code.
+
+#### Why FreeBSD Style Embraces This Duo
+
+Many FreeBSD subsystems manage buffers as arrays while navigating them with pointers. This combination lets the kernel avoid unnecessary copying, keep operations efficient, and interact directly with hardware. Whether you are looking at character device buffers, network packet rings, or process command names, you will see this pattern again and again.
+
+By mastering the array–pointer relationship, you will be able to read and write kernel code more confidently, recognizing when the code is simply walking through memory one element at a time.
+
+#### Hands-On Lab: Walking an Array with a Pointer
+
+Try writing a small program that prints all the elements of an array using a pointer instead of array indexing.
+
+```c
+#include <stdio.h>
+
+int main(void) {
+    int numbers[5] = {10, 20, 30, 40, 50};
+    int *p = numbers;
+
+    for (int i = 0; i < 5; i++) {
+        printf("numbers[%d] = %d\n", i, *(p + i));
+    }
+
+    return 0;
+}
+```
+
+Now, modify the loop so that instead of writing `*(p + i)`, you increment the pointer directly:
+
+```c
+for (int i = 0; i < 5; i++) {
+    printf("numbers[%d] = %d\n", i, *p);
+    p++;
+}
+```
+
+Notice that the result is the same. This is the power of combining pointers and arrays. Try experimenting by starting the pointer at `&numbers[2]` and see what gets printed.
+
+#### Wrapping Up: Arrays and Pointers Work Best Together
+
+You have now seen how arrays and pointers fit together. Arrays provide the structure, while pointers provide the flexibility to navigate memory efficiently. In the FreeBSD kernel, this combination is everywhere, from device buffers to string manipulation. Always remember the two golden rules: `array[i]` is equivalent to `*(array + i)`, and you must never step outside the bounds of the array.
+
+In the next section, we will explore Pointer Arithmetic more deeply. You will learn how incrementing a pointer works under the hood, why it follows the size of the type, and what boundaries you must respect to avoid stepping into dangerous memory.
+
+*continue soon...*
