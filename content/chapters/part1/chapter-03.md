@@ -1,5 +1,6 @@
 ---
 title: "A Gentle Introduction to UNIX"
+description: "This chapter provides a hands-on introduction to UNIX and FreeBSD basics."
 author: "Edson Brandi"
 date: "2025-08-23"
 status: "complete"
