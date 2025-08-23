@@ -12,13 +12,13 @@ estimatedReadTime: 120
 
 # Chapter 3: A Gentle Introduction to UNIX
 
-Now that your FreeBSD system is installed and running, it's time to get comfortable living inside it. FreeBSD isn't just an operating system—it's part of a long tradition that started with UNIX more than fifty years ago.
+Now that your FreeBSD system is installed and running, it's time to get comfortable living inside it. FreeBSD isn't just an operating system, it's part of a long tradition that started with UNIX more than fifty years ago.
 
 In this chapter, we'll take our first real tour of the system. You'll learn how to navigate the filesystem, run commands in the shell, manage processes, and install applications. Along the way, you'll see how FreeBSD inherits the UNIX philosophy of simplicity and consistency, and why that matters for us as future driver developers.
 
 Think of this chapter as your **survival guide** for working inside FreeBSD. Before we start diving into C code and kernel internals, you'll need to be comfortable moving around the system, manipulating files, and using the tools that every developer relies on daily.
 
-By the end of this chapter, you won't just know *what UNIX is*—you'll be using FreeBSD confidently as both a user and an aspiring systems programmer.
+By the end of this chapter, you won't just know *what UNIX is*; you'll be using FreeBSD confidently as both a user and an aspiring systems programmer.
 
 ## Reader Guidance: How to Use This Chapter
 
@@ -34,7 +34,7 @@ Recommendation: Don't try to do everything in one sitting. Break the chapter int
 
 Before we start writing device drivers for FreeBSD, we need to pause and talk about the foundation they stand on: **UNIX**.
 
-Every driver you'll ever write for FreeBSD, every system call you'll explore, every kernel message you'll read—they all make sense only when you understand the operating system they live in. For a beginner, the world of UNIX can feel mysterious, filled with odd commands and a very different philosophy compared to Windows or macOS. But once you learn its logic, you'll see it's not only approachable but also elegant and incredibly powerful.
+Every driver you'll ever write for FreeBSD, every system call you'll explore, every kernel message you'll read, they all make sense only when you understand the operating system they live in. For a beginner, the world of UNIX can feel mysterious, filled with odd commands and a very different philosophy compared to Windows or macOS. But once you learn its logic, you'll see it's not only approachable but also elegant and incredibly powerful.
 
 This chapter is about giving you a **gentle introduction** to UNIX as it appears in FreeBSD. By the end, you'll feel comfortable navigating the system, working with files, running commands, managing processes, installing applications, and even writing small scripts to automate your tasks. These are everyday skills for any FreeBSD developer and absolutely essential before we dive into kernel development.
 
@@ -655,7 +655,7 @@ And here's a table with some of the most important directories you'll work with:
 
 Understanding this layout is critical for a driver developer because some directories, especially `/dev`, `/boot`, and `/usr/src`, are directly tied to the kernel and drivers. But even outside of those, knowing where things live helps you navigate confidently.
 
-**Base system vs local software**: One key idea in FreeBSD is the separation between the base system and user-installed software. The base system—kernel, libraries, and essential tools—live in `/bin`, `/sbin`, `/usr/bin`, and `/usr/sbin`. Everything you install later with pkg or ports goes into `/usr/local`. This separation keeps your core OS stable, while letting you add and update software freely.
+**Base system vs local software**: One key idea in FreeBSD is the separation between the base system and user-installed software. The base system: kernel, libraries, and essential tools live in `/bin`, `/sbin`, `/usr/bin`, and `/usr/sbin`. Everything you install later with pkg or ports goes into `/usr/local`. This separation keeps your core OS stable while letting you add and update software freely.
 
 ### Devices as Files: `/dev`
 
@@ -1213,7 +1213,7 @@ Example of the output (simplified):
 
 Here you can see:
 
-- Process **1** is `init`—the ancestor of all processes.
+- Process **1** is `init`, the ancestor of all processes.
 - `cron` was started by `init`.
 - A `sh` shell process was started by `cron`.
 - The `sleep 100` process was started by the shell.
@@ -1243,7 +1243,7 @@ FreeBSD provides simple commands to check system health:
   % du -sh /var/log
   ```
 
-- **freebsd-version**—Show OS version.
+- **freebsd-version** - Show OS version.
 
   ```
   % freebsd-version
@@ -1464,8 +1464,8 @@ During the build, you may see a menu of options, such as enabling sensors or col
 
 The `make install clean` process does three things:
 
-- **install**—builds and installs the program.
-- **clean**—removes temporary build files.
+- **install** - builds and installs the program.
+- **clean** - removes temporary build files.
 
 #### Mixing Ports and Packages
 
@@ -2587,9 +2587,9 @@ That's exactly what we'll cover next. In the following section, you'll learn how
 
 ## 3.11 Seeking Help and Documentation in FreeBSD
 
-No one—not even the most experienced developer—remembers every command, option, or system call. The real strength of a UNIX system like FreeBSD is that it ships with **excellent documentation** and has a supportive community that can help when you get stuck.
+No one, not even the most experienced developer, remembers every command, option, or system call. The real strength of a UNIX system like FreeBSD is that it ships with **excellent documentation** and has a supportive community that can help when you get stuck.
 
-In this section, we'll explore the main ways to get information: **man pages, the FreeBSD Handbook, online resources, and the community**. By the end, you'll know exactly where to look when you have a question—whether it's about using `ls` or writing a device driver.
+In this section, we'll explore the main ways to get information: **man pages, the FreeBSD Handbook, online resources, and the community**. By the end, you'll know exactly where to look when you have a question, whether it's about using `ls` or writing a device driver.
 
 ### The Power of man Pages
 
@@ -2607,14 +2607,14 @@ This opens the documentation for `ls`, the command to list directory contents. U
 
 FreeBSD organizes man pages into numbered sections. The same name may exist in multiple sections, so you specify which one you want.
 
-- **1**—User commands (e.g., `ls`, `cp`, `ps`)
-- **2**—System calls (e.g., `open(2)`, `write(2)`)
-- **3**—Library functions (C standard library, math functions)
-- **4**—Device drivers and special files (e.g., `null(4)`, `random(4)`)
-- **5**—File formats and conventions (`passwd(5)`, `rc.conf(5)`)
-- **7**—Miscellaneous (protocols, conventions)
-- **8**—System administration commands (e.g., `ifconfig(8)`, `shutdown(8)`)
-- **9**—Kernel developer interfaces (critical for driver writers!)
+- **1** - User commands (e.g., `ls`, `cp`, `ps`)
+- **2** - System calls (e.g., `open(2)`, `write(2)`)
+- **3** - Library functions (C standard library, math functions)
+- **4** - Device drivers and special files (e.g., `null(4)`, `random(4)`)
+- **5** - File formats and conventions (`passwd(5)`, `rc.conf(5)`)
+- **7** - Miscellaneous (protocols, conventions)
+- **8** - System administration commands (e.g., `ifconfig(8)`, `shutdown(8)`)
+- **9** - Kernel developer interfaces (critical for driver writers!)
 
 Example:
 
@@ -2631,11 +2631,11 @@ Section 9 contains the **kernel developer interfaces** documentation for functio
 
 Some examples:
 
-- `man 9 device`—Overview of device driver interfaces.
-- `man 9 bus_space`—Accessing hardware registers.
-- `man 9 mutex`—Synchronization primitives for the kernel.
-- `man 9 taskqueue`—Scheduling deferred work in the kernel.
-- `man 9 malloc`—Memory allocation inside the kernel.
+- `man 9 device` - Overview of device driver interfaces.
+- `man 9 bus_space` - Accessing hardware registers.
+- `man 9 mutex` - Synchronization primitives for the kernel.
+- `man 9 taskqueue` - Scheduling deferred work in the kernel.
+- `man 9 malloc` - Memory allocation inside the kernel.
 
 Unlike section 2 (system calls) or section 3 (libraries), these are **not available in user space**. They are part of the kernel itself, and you'll use them when writing drivers and kernel modules.
 
@@ -2696,20 +2696,20 @@ The Handbook is an **excellent complement to this book**. While we focus on devi
 
 #### Other Documentation
 
-- **Online man pages**: https://man.freebsd.org/
-- **FreeBSD Wiki**: https://wiki.freebsd.org/ (community-maintained notes, HOWTOs, and work-in-progress documentation).
-- **Developer's Handbook**: https://docs.freebsd.org/en/books/developers-handbook/ is aimed at programmers.
-- **Porter's Handbook**: https://docs.freebsd.org/en/books/porters-handbook/ if you package software for FreeBSD.
+- **Online man pages**: https://man.freebsd.org
+- **FreeBSD Wiki**: https://wiki.freebsd.org (community-maintained notes, HOWTOs, and work-in-progress documentation).
+- **Developer's Handbook**: https://docs.freebsd.org/en/books/developers-handbook is aimed at programmers.
+- **Porter's Handbook**: https://docs.freebsd.org/en/books/porters-handbook if you package software for FreeBSD.
 
 ### Community and Support
 
 Documentation will get you far, but sometimes you need to talk to real people. FreeBSD has an active and welcoming community.
 
-- **Mailing lists**: https://lists.freebsd.org/
+- **Mailing lists**: https://lists.freebsd.org
   - `freebsd-questions@` is for general user help.
   - `freebsd-hackers@` is for development discussions.
   - `freebsd-drivers@` is specific to device driver development.
-- **FreeBSD Forums**: https://forums.freebsd.org/—a friendly and beginner-friendly place to ask questions.
+- **FreeBSD Forums**: https://forums.freebsd.org a friendly and beginner-friendly place to ask questions.
 - **User Groups**:
   - Around the world, there are **FreeBSD and BSD user groups** that organize meetups, talks, and workshops.
   - Examples include *NYCBUG (New York City BSD User Group)*, *BAFUG (Bay Area FreeBSD User Group)*, and many university-based clubs.
@@ -2812,9 +2812,9 @@ At this point, you know how to move around in FreeBSD, manage files, control pro
 
 FreeBSD gives you **three magical windows into the kernel's state**:
 
-1. **`dmesg`**—the kernel's diary.
-2. **`sysctl`**—the control panel full of switches and meters.
-3. **`/dev`**—the doorway where devices show up as files.
+1. **`dmesg`** - the kernel's diary.
+2. **`sysctl`** - the control panel full of switches and meters.
+3. **`/dev`** - the doorway where devices show up as files.
 
 These three tools will become your **companions**. Every time you add or debug a driver, you'll use them. Let's explore them now, step by step.
 
@@ -2908,11 +2908,11 @@ To see all parameters that you can finetune with `sysctl`, you can run the comma
 
 This prints the **entire control panel** thousands of values. They are organized by categories:
 
-- `kern.*`—kernel properties and settings.
-- `hw.*`—hardware information.
-- `net.*`—network stack details.
-- `vfs.*`—filesystem settings.
-- `debug.*`—debugging variables (often useful for developers).
+- `kern.*` - kernel properties and settings.
+- `hw.*` - hardware information.
+- `net.*` - network stack details.
+- `vfs.*` - filesystem settings.
+- `debug.*` - debugging variables (often useful for developers).
 
 It's overwhelming at first, but don't worry, you'll learn to fish out what matters.
 
@@ -2945,12 +2945,12 @@ Run:
 
 You'll see a sea of names:
 
-- `/dev/null`—the "black hole" where data goes to disappear.
-- `/dev/zero`—an infinite stream of zeros.
-- `/dev/random`—cryptographically secure random numbers.
-- `/dev/tty`—your terminal.
-- `/dev/ada0`—your SATA disk.
-- `/dev/da0`—a USB disk.
+- `/dev/null`- the "black hole" where data goes to disappear.
+- `/dev/zero` - an infinite stream of zeros.
+- `/dev/random` - cryptographically secure random numbers.
+- `/dev/tty` - your terminal.
+- `/dev/ada0` - your SATA disk.
+- `/dev/da0` - a USB disk.
 
 Try interacting:
 
@@ -3076,13 +3076,13 @@ Exploring the kernel can be exciting, but here are some common mistakes to watch
 
 In this section, you opened three magical windows into FreeBSD's kernel:
 
-- `dmesg`—the diary of the system, recording hardware detection and driver messages.
-- `sysctl`—the control panel that reveals (and sometimes adjusts) kernel settings.
-- `/dev`—the place where devices come to life as files.
+- `dmesg`- the diary of the system, recording hardware detection and driver messages.
+- `sysctl` - the control panel that reveals (and sometimes adjusts) kernel settings.
+- `/dev`- the place where devices come to life as files.
 
 The **big picture** to remember is this: whenever you type a command, it travels through the shell, down into the kernel, and finally to the hardware. The results then bubble back up for you to see. Tools like `dmesg`, `sysctl`, and `/dev` let you peek into that flow and see what the kernel is doing behind the scenes.
 
-These aren't just abstract tools—they're exactly how you'll see your **own driver** appear in the system. When you load your module, you'll watch `dmesg` light up, you may expose a knob with `sysctl`, and you'll interact with your device node under `/dev`.
+These aren't just abstract tools; they're exactly how you'll see your **own driver** appear in the system. When you load your module, you'll watch `dmesg` light up, you may expose a knob with `sysctl`, and you'll interact with your device node under `/dev`.
 
 Before we move on to the next chapter and start learning about C programming, let's pause to consolidate everything you've learned in this chapter. In the next section, we'll review the key ideas and give you a set of challenges to practice, exercises that will help lock in these new skills and prepare you for the journey ahead.
 
