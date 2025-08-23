@@ -133,9 +133,7 @@ Run it:
 
 	% ./hello
 	Hello, World!
-
-
-​	
+    
 Congratulations! You just compiled and ran your first C program on FreeBSD.
 
 ### Using Makefiles
