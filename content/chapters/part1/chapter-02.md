@@ -222,7 +222,7 @@ To get started execute VirtualBox App in your computer and in the main screen se
    
      Click in **Next** to continue
 
-![image-20250823183742036](/images/image-20250823183742036.png)
+![image-20250823183742036](https://freebsd.edsonbrandi.com/images/image-20250823183742036.png)
 
 2. **Allocate resources**:
 
@@ -234,145 +234,145 @@ To get started execute VirtualBox App in your computer and in the main screen se
    
      Click in **Next** to continue
 
-![image-20250823183937505](/images/image-20250823183937505.png)
+![image-20250823183937505](https://freebsd.edsonbrandi.com/images/image-20250823183937505.png)
 
 3. **Review your options**: If you are happy with the summary, click in **Finish** to create the VM.
 
-![image-20250823184925505](/images/image-20250823184925505.png)
+![image-20250823184925505](https://freebsd.edsonbrandi.com/images/image-20250823184925505.png)
 
 4. **Start the virtual machine**: Click in the green **Start** button. When starting the VM, it will boot using the FreeBSD installation disk that you specified when creating it.
 
-![image-20250823185259010](/images/image-20250823185259010.png)
+![image-20250823185259010](https://freebsd.edsonbrandi.com/images/image-20250823185259010.png)
 
 5. **Boot the VM**:  The VM will show the FreeBSD boot loader, press **1** to continue the boot into the FreeBSD.
 
-![image-20250823185756980](/images/image-20250823185756980.png)
+![image-20250823185756980](https://freebsd.edsonbrandi.com/images/image-20250823185756980.png)
 
 6. **Run the installer**: The boot process, the installer will run automatically, choose **[ Install ]** to continue.
 
-![image-20250823190016799](/images/image-20250823190016799.png)
+![image-20250823190016799](https://freebsd.edsonbrandi.com/images/image-20250823190016799.png)
 
 7. **Keyboard layout**:  Choose your preferred language/keyboard, the default is US layout. Press **Enter** to continue.
 
-![image-20250823190046619](/images/image-20250823190046619.png)
+![image-20250823190046619](https://freebsd.edsonbrandi.com/images/image-20250823190046619.png)
 
 8. **Hostname**: Type the hostname for your lab, in the example I choose `fbsd-lab`. Press **Enter** to continue.
 
-![image-20250823190129010](/images/image-20250823190129010.png)
+![image-20250823190129010](https://freebsd.edsonbrandi.com/images/image-20250823190129010.png)
 
 9. **Distribution Select**: Leave defaults (base system, kernel). Press **Enter** to continue.
 
-![image-20250823190234155](/images/image-20250823190234155.png)
+![image-20250823190234155](https://freebsd.edsonbrandi.com/images/image-20250823190234155.png)
 
 10. **Partitioning**: Choose *Auto (UFS)* unless you want to learn ZFS later. Press **Enter** to continue.
 
-![image-20250823190350815](/images/image-20250823190350815.png)
+![image-20250823190350815](https://freebsd.edsonbrandi.com/images/image-20250823190350815.png)
 
 11. **Partition**: Choose **[ Entire Disk ]**. Press **Enter** to continue.
 
-![image-20250823190450571](/images/image-20250823190450571.png)
+![image-20250823190450571](https://freebsd.edsonbrandi.com/images/image-20250823190450571.png)
 
 12. **Partition Scheme**: Choose **GPT GUID Partition Table**. Press **Enter** to continue.
 
-![image-20250823190622981](/images/image-20250823190622981.png)
+![image-20250823190622981](https://freebsd.edsonbrandi.com/images/image-20250823190622981.png)
 
 13. **Partition Editor**: Accept the default, and choose **[Finish]**. Press **Enter** to continue.
 
-![image-20250823190742861](/images/image-20250823190742861.png)
+![image-20250823190742861](https://freebsd.edsonbrandi.com/images/image-20250823190742861.png)
 
 14. **Confirmation**: In this screen you will confirm that you want to proceed with the FreeBSD Installation, after this confirmation the installer will start writing data to your hard disk. To proceed with the installation choose **[Commit]** and press **Enter** to continue.
 
-![image-20250823190903913](/images/image-20250823190903913.png)
+![image-20250823190903913](https://freebsd.edsonbrandi.com/images/image-20250823190903913.png)
 
 15. **Checksum Verification**: At beginning of the process FreeBSD installer will check the integrity of the installation files.
 
-![image-20250823191020839](/images/image-20250823191020839.png)
+![image-20250823191020839](https://freebsd.edsonbrandi.com/images/image-20250823191020839.png)
 
 16. **Archive Extraction**:  After the files were validated, the installer will extract the files to your hard disk
 
-![image-20250823191053163](/images/image-20250823191053163.png)
+![image-20250823191053163](https://freebsd.edsonbrandi.com/images/image-20250823191053163.png)
 
 17. **Root Password**:  When the installer finish extracting the files, you will need to choose a password for your root access. Choose one that you will remember. Press **Enter** to continue.
 
-![image-20250823191405000](/images/image-20250823191405000.png)
+![image-20250823191405000](https://freebsd.edsonbrandi.com/images/image-20250823191405000.png)
 
 18. **Network Configuration**:  Choose the network interface (**em0**) that you want to use and press **Enter** to continue. 
 
-![image-20250823191520068](/images/image-20250823191520068.png)
+![image-20250823191520068](https://freebsd.edsonbrandi.com/images/image-20250823191520068.png)
 
 19. **Network Configuration**:  Choose **[ Yes ]** to enable **IPv4** in your network interface and press **Enter** to continue. 
 
-![image-20250823191559429](/images/image-20250823191559429.png)
+![image-20250823191559429](https://freebsd.edsonbrandi.com/images/image-20250823191559429.png)
 
 20. **Network Configuration**:  Choose **[ Yes ]** to enable **DHCP** in your network interface ,if you prefer to use a static IP address, choose **[ No ]**. Press **Enter** to continue.
 
-![image-20250823191626027](/images/image-20250823191626027.png)
+![image-20250823191626027](https://freebsd.edsonbrandi.com/images/image-20250823191626027.png)
 
 21. **Network Configuration**:  Choose **[ No ]** to disable **IPv6** in your network interface and press **Enter** to continue.
 
-![image-20250823191705347](/images/image-20250823191705347.png)
+![image-20250823191705347](https://freebsd.edsonbrandi.com/images/image-20250823191705347.png)
 
 22. **Network Configuration**:  Type the IP Address of your preferred DNS servers, in the example I`m using the Google DNS. Press **Enter** to continue.
 
-![image-20250823191748088](/images/image-20250823191748088.png)
+![image-20250823191748088](https://freebsd.edsonbrandi.com/images/image-20250823191748088.png)
 
 23. **Time Zone Selector**:  Choose the desired Time Zone for your FreeBSD System, for this example I`m using **UTC**. Press **Enter** to continue.
 
-![image-20250823191820859](/images/image-20250823191820859.png)
+![image-20250823191820859](https://freebsd.edsonbrandi.com/images/image-20250823191820859.png)
 
 24. **Confirm Time Zoner**:  Confirm the Time Zone you want to use. Choose **[ YES ]** and press **Enter** to continue.
 
-![image-20250823191849469](/images/image-20250823191849469.png)
+![image-20250823191849469](https://freebsd.edsonbrandi.com/images/image-20250823191849469.png)
 
 25. **Time & Date**: The installer will give you the chance to adjust manually the Date and Time. Normally its safe to choose **[ Skip ]**. Press **Enter** to continue.
 
-![image-20250823191926758](/images/image-20250823191926758.png)
+![image-20250823191926758](https://freebsd.edsonbrandi.com/images/image-20250823191926758.png)
 
-![image-20250823191957558](/images/image-20250823191957558.png)
+![image-20250823191957558](https://freebsd.edsonbrandi.com/images/image-20250823191957558.png)
 
 26. **System Configuration**: The installer will give you the chance to choose some services to start at boot, select **ntpd** and press **Enter** to continue.
 
-![image-20250823192055299](/images/image-20250823192055299.png)
+![image-20250823192055299](https://freebsd.edsonbrandi.com/images/image-20250823192055299.png)
 
 27. **System hardening**: The installer will give you the chance to enable some security hardening to be applied at boot, accept the default for now and press **Enter** to continue.
 
-![image-20250823192128039](/images/image-20250823192128039.png)
+![image-20250823192128039](https://freebsd.edsonbrandi.com/images/image-20250823192128039.png)
 
 28. **Firmware Check**: The installer will verify if your hardware components need any specific firmware to work properly and will install it if needed. Press **Enter** to continue.
 
-![image-20250823192211024](/images/image-20250823192211024.png)
+![image-20250823192211024](https://freebsd.edsonbrandi.com/images/image-20250823192211024.png)
 
 29. **Add User Accounts**: The installer will give you the opportunity to add a normal user to your system. Choose **[ Yes ]** and press **Enter** to continue.
 
-![image-20250823192233281](/images/image-20250823192233281.png)
+![image-20250823192233281](https://freebsd.edsonbrandi.com/images/image-20250823192233281.png)
 
 30. **Create a User**: The installer will ask you to type the user information and to answer some basic questions, you should choose your desired **username** and **password**, you can **accept the default answers** for all questions except for the question ***"Invite USER into other groups?"***, to this question you need answer "**wheel**", this is the group in FreeBSD that will allow you to use the command `su`to become root during a normal session.
 
-![image-20250823192452683](/images/image-20250823192452683.png)
+![image-20250823192452683](https://freebsd.edsonbrandi.com/images/image-20250823192452683.png)
 
 31. **Create a User**: After you have answered all questions and have created your user, the FreeBSD installer will ask if you want to add another user. Just press **Enter** to accept the default answer (no) to go to the Final Configuration menu.
 
-![image-20250823192600794](/images/image-20250823192600794.png)
+![image-20250823192600794](https://freebsd.edsonbrandi.com/images/image-20250823192600794.png)
 
 32. **Final Configuration**: At this point you have already finished the FreeBSD installation. This final menu allow you to review and change the options that you have made in the previous steps. Select **Exit** to leave the installer and press **Enter**.
 
-![image-20250823192642433](/images/image-20250823192642433.png)
+![image-20250823192642433](https://freebsd.edsonbrandi.com/images/image-20250823192642433.png)
 
 33. **Manual Configuration**: The installer will ask you if you want to open a shell to do manual configurations in your fresh installed system. Choose **[ No ]** and press **Enter**.
 
-![image-20250823192704460](/images/image-20250823192704460.png)
+![image-20250823192704460](https://freebsd.edsonbrandi.com/images/image-20250823192704460.png)
 
 34. **Eject the Install Disc**: Before we reboot the VM, we need to eject the virtual disc that we used for the installation. To do that, left click with your mouse in the CD/DVD icon in the lower status bar of your VirtualBox VM window, and right click in the menu "Remove Disk From Virtual Drive". 
 
-![image-20250823193213602](/images/image-20250823193213602.png)
+![image-20250823193213602](https://freebsd.edsonbrandi.com/images/image-20250823193213602.png)
 
 If for some reason you receive a message telling that the virtual optical disk is in use and can't be ejected, click in the button "Force Unmount", after that you can proceed to reboot.
 
-![image-20250823193252804](/images/image-20250823193252804.png)
+![image-20250823193252804](https://freebsd.edsonbrandi.com/images/image-20250823193252804.png)
 
 35. **Reboot your VM**: Press **Enter** in this menu to reboot your FreeBSD VM.
 
-![image-20250823192732830](/images/image-20250823192732830.png)
+![image-20250823192732830](https://freebsd.edsonbrandi.com/images/image-20250823192732830.png)
 
 ### Installing FreeBSD on Bare Metal
 
@@ -402,7 +402,7 @@ On Windows, the easiest tool is **Rufus**:
 4. Click *Start*. Rufus will warn you that all data will be destroyed, accept it.
 5. Wait until the process finishes. Your USB stick is now bootable.
 
-![image-20250823210622431](/images/image-20250823210622431.png)
+![image-20250823210622431](https://freebsd.edsonbrandi.com/images/image-20250823210622431.png)
 
 If you already have a UNIX-like system, you can create the USB from the terminal using the `dd` command:
 
@@ -428,11 +428,11 @@ After installation completes, remove the USB stick and reboot. FreeBSD will now 
 
 After installation, you'll see the FreeBSD boot menu:
 
-![image-20250823213050882](/images/image-20250823213050882.png)
+![image-20250823213050882](https://freebsd.edsonbrandi.com/images/image-20250823213050882.png)
 
 Followed by the login prompt:
 
-![image-20250823212856938](/images/image-20250823212856938.png)
+![image-20250823212856938](https://freebsd.edsonbrandi.com/images/image-20250823212856938.png)
 
 Congratulations! Your FreeBSD lab machine is now alive and ready for configuration.
 
@@ -459,7 +459,7 @@ At the login prompt:
 
 You're now inside FreeBSD as a regular user.
 
-![image-20250823212710535](/images/image-20250823212710535.png)
+![image-20250823212710535](https://freebsd.edsonbrandi.com/images/image-20250823212710535.png)
 
 ### Switching to the Root User
 
@@ -472,7 +472,7 @@ Password:
 
 Enter the root password you set during installation. The prompt will change from `%` to `#`, which means you are now root.
 
-![image-20250823213238499](/images/image-20250823213238499.png)
+![image-20250823213238499](https://freebsd.edsonbrandi.com/images/image-20250823213238499.png)
 
 ### Setting the Hostname and Time
 
@@ -526,7 +526,7 @@ ifconfig_em0="DHCP"
 
 Replace `em0` with your actual interface name from `ifconfig`.
 
-![image-20250823213433266](/images/image-20250823213433266.png)
+![image-20250823213433266](https://freebsd.edsonbrandi.com/images/image-20250823213433266.png)
 
 ### Installing and Configuring `sudo`
 
@@ -583,7 +583,7 @@ Before installing development tools, bring your system up to date:
 
 This ensures you're running the latest security patches.
 
-![image-20250823215034288](/images/image-20250823215034288.png)
+![image-20250823215034288](https://freebsd.edsonbrandi.com/images/image-20250823215034288.png)
 
 ### Creating a Comfortable Environment
 
@@ -961,17 +961,17 @@ If you're running FreeBSD in a VM (VirtualBox, VMware, bhyve), you have a huge s
 
 3. Name it: `Clean FreeBSD 14.3 Install`.
 
-   ![image-20250823231838089](/images/image-20250823231838089.png)
+   ![image-20250823231838089](https://freebsd.edsonbrandi.com/images/image-20250823231838089.png)
 
-   ![image-20250823231940246](/images/image-20250823231940246.png)
+   ![image-20250823231940246](https://freebsd.edsonbrandi.com/images/image-20250823231940246.png)
 
 4. Later, before testing risky kernel code, take another snapshot: `Before Hello Driver`.
 
-   ![image-20250823232320392](/images/image-20250823232320392.png)
+   ![image-20250823232320392](https://freebsd.edsonbrandi.com/images/image-20250823232320392.png)
 
 5. If the system crashes or you break networking, just restore the snapshot.
 
-![image-20250823232420760](/images/image-20250823232420760.png)
+![image-20250823232420760](https://freebsd.edsonbrandi.com/images/image-20250823232420760.png)
 
 #### Example Workflow in bhyve (with ZFS)
 
