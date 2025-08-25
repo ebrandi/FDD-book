@@ -133,7 +133,7 @@ Run it:
 
 	% ./hello
 	Hello, World!
-    
+
 Congratulations! You just compiled and ran your first C program on FreeBSD.
 
 ### Using Makefiles
@@ -4149,5 +4149,1014 @@ Notice that the result is the same. This is the power of combining pointers and 
 You have now seen how arrays and pointers fit together. Arrays provide the structure, while pointers provide the flexibility to navigate memory efficiently. In the FreeBSD kernel, this combination is everywhere, from device buffers to string manipulation. Always remember the two golden rules: `array[i]` is equivalent to `*(array + i)`, and you must never step outside the bounds of the array.
 
 In the next section, we will explore Pointer Arithmetic more deeply. You will learn how incrementing a pointer works under the hood, why it follows the size of the type, and what boundaries you must respect to avoid stepping into dangerous memory.
+
+### Pointer Arithmetic and Boundaries
+
+Now that you know how pointers can point to individual variables and even to arrays, we are ready to take the next step: learning how to move those pointers around. This ability is called **pointer arithmetic**.
+
+The name might sound intimidating, but the idea is simple. Imagine a row of boxes placed neatly side by side. A pointer is like your finger pointing to one of those boxes. Pointer arithmetic is nothing more than moving your finger forward or backward to reach another box.
+
+#### What Is Pointer Arithmetic?
+
+When you add or subtract an integer from a pointer, C advances the pointer by **elements**, not by raw bytes. The step size depends on the type the pointer refers to:
+
+- If `p` is an `int *`, then `p + 1` moves by `sizeof(int)` bytes.
+- If `q` is a `char *`, then `q + 1` moves by `sizeof(char)` bytes (which is always 1).
+- If `r` is a `double *`, then `r + 1` moves by `sizeof(double)` bytes.
+
+This behaviour is what makes pointer arithmetic natural for walking arrays, because arrays live in contiguous memory. Each "+1" lands you precisely on the next element, not in the middle of it.
+
+Let’s see a complete program that demonstrates this. I have added comments to allow you to understand what's happening at each step. 
+
+Save it as `pointer_arithmetic_demo.c`:
+
+```c
+/*
+ * Pointer Arithmetic Demo (commented)
+ *
+ * This program shows that when you add 1 to a pointer, it moves by
+ * the size of the element type (in elements, not raw bytes).
+ * It prints addresses and values for int, char, and double arrays,
+ * and then shows how to compute the distance between two pointers
+ * using ptrdiff_t. All accesses stay within bounds.
+ */
+
+#include <stdio.h>    // printf
+#include <stddef.h>   // ptrdiff_t, size_t
+
+int main(void) {
+    /*
+     * Three arrays of different element types.
+     * Arrays live in contiguous memory, which is why pointer arithmetic
+     * can step through them safely when we stay within bounds.
+     */
+    int    arr[]  = {10, 20, 30, 40};
+    char   text[] = {'A', 'B', 'C', 'D'};
+    double nums[] = {1.5, 2.5, 3.5};
+
+    /*
+     * Pointers to the first element of each array.
+     * In most expressions, an array name "decays" to a pointer to its first element.
+     * So arr has type "array of int", but here it becomes "int *" automatically.
+     */
+    int    *p = arr;
+    char   *q = text;
+    double *r = nums;
+
+    /*
+     * Compute the number of elements in each array.
+     * sizeof(array) gives the total bytes in the array object.
+     * sizeof(array[0]) gives the bytes in one element.
+     * Dividing the two gives the element count.
+     */
+    size_t n_ints    = sizeof(arr)  / sizeof(arr[0]);
+    size_t n_chars   = sizeof(text) / sizeof(text[0]);
+    size_t n_doubles = sizeof(nums) / sizeof(nums[0]);
+
+    printf("Pointer Arithmetic Demo\n\n");
+
+    /*
+     * INT DEMO
+     * p + i moves i elements forward, which is i * sizeof(int) bytes.
+     * We print both the address and the value to see how it steps.
+     * %zu is the correct format specifier for size_t.
+     * %p prints a pointer address; cast to (void *) for correct printf typing.
+     */
+    printf("== int demo ==\n");
+    printf("sizeof(int) = %zu bytes\n", sizeof(int));
+    for (size_t i = 0; i < n_ints; i++) {
+        printf("p + %zu -> address %p, value %d\n",
+               i, (void*)(p + i), *(p + i));   // *(p + i) reads the i-th element
+    }
+    printf("\n");
+
+    /*
+     * CHAR DEMO
+     * For char, sizeof(char) is 1 by definition.
+     * q + i advances one byte per step.
+     */
+    printf("== char demo ==\n");
+    printf("sizeof(char) = %zu byte\n", sizeof(char));
+    for (size_t i = 0; i < n_chars; i++) {
+        printf("q + %zu -> address %p, value '%c'\n",
+               i, (void*)(q + i), *(q + i));
+    }
+    printf("\n");
+
+    /*
+     * DOUBLE DEMO
+     * For double, sizeof(double) is typically 8 on modern systems.
+     * r + i advances by 8 bytes per step on those systems.
+     */
+    printf("== double demo ==\n");
+    printf("sizeof(double) = %zu bytes\n", sizeof(double));
+    for (size_t i = 0; i < n_doubles; i++) {
+        printf("r + %zu -> address %p, value %.1f\n",
+               i, (void*)(r + i), *(r + i));
+    }
+    printf("\n");
+
+    /*
+     * Pointer difference
+     * Subtracting two pointers that point into the same array
+     * yields a value of type ptrdiff_t that represents the distance
+     * in elements, not bytes.
+     *
+     * Here, a points to arr[0] and b points to arr[3].
+     * The difference b - a is 3 elements.
+     */
+    int *a = &arr[0];
+    int *b = &arr[3];
+    ptrdiff_t diff = b - a; // distance in ELEMENTS
+
+    /*
+     * %td is the correct format specifier for ptrdiff_t.
+     * We also verify that advancing a by diff elements lands exactly on b.
+     */
+    printf("Pointer difference (b - a) = %td elements\n", diff);
+    printf("Check: a + diff == b ? %s\n", (a + diff == b) ? "yes" : "no");
+
+    /*
+     * Program ends successfully.
+     */
+    return 0;
+}
+```
+
+Compile and run it on FreeBSD:
+
+```sh
+% cc -Wall -Wextra -o pointer_arithmetic_demo pointer_arithmetic_demo.c
+% ./pointer_arithmetic_demo
+```
+
+You will see how each type moves by its element size. The `int *` steps by 4 bytes (on most modern FreeBSD systems), the `char *` steps by 1, and the `double *` steps by 8. Notice how the addresses jump accordingly, while the values are fetched correctly with `*(pointer + i)`.
+
+The final check with `b - a` shows that pointer subtraction is also measured in **elements, not bytes**. If `a` points to the start of the array and `b` points three elements ahead, then `b - a` gives `3`.
+
+This program demonstrates the essential rule of pointer arithmetic: **C moves pointers in units of the pointed-to type**. That is why it works so well with arrays, but also why you must be careful, a wrong step can quickly take you beyond the valid memory region.
+
+#### Walking Through Arrays with Pointers
+
+This property makes pointers especially useful when working with arrays. Since arrays are laid out in contiguous blocks of memory, a pointer can naturally step through them one element at a time.
+
+```c
+#include <stdio.h>
+
+int main() {
+    int numbers[] = {1, 2, 3, 4, 5};
+    int *ptr = numbers;  // Start at the first element
+
+    for (int i = 0; i < 5; i++) {
+        printf("Element %d: %d\n", i, *(ptr + i));
+        // *(ptr + i) is equivalent to numbers[i]
+    }
+
+    return 0;
+}
+```
+
+Here, the expression `*(ptr + i)` asks C to move forward `i` positions from the starting pointer, then fetch the value at that location. The result is identical to `numbers[i]`. In fact, C allows both notations interchangeably. Whether you write `numbers[i]` or `*(numbers + i)`, you are doing the same thing.
+
+#### Staying Within Boundaries
+
+Pointer arithmetic is powerful, but it comes with a serious responsibility: you must never move beyond the memory that belongs to your array. If you do, you step into undefined behaviour. That can mean a crash, corrupted memory, or silent errors that appear much later.
+
+```c
+#include <stdio.h>
+
+int main() {
+    int data[] = {42, 77, 99};
+    int *ptr = data;
+
+    // Wrong! This goes past the last element.
+    printf("Invalid access: %d\n", *(ptr + 3));
+
+    return 0;
+}
+```
+
+The array `data` has three elements, valid at indices 0, 1, and 2. But `ptr + 3` points to a place immediately after the last element. C does not stop you, but the result is unpredictable.
+
+The safe way is to always respect the number of elements in your array. Instead of hardcoding the size, you can calculate it:
+
+```c
+for (int i = 0; i < sizeof(data) / sizeof(data[0]); i++) {
+    printf("%d\n", *(data + i));
+}
+```
+
+This expression divides the total size of the array by the size of a single element, giving the correct element count regardless of the array's length.
+
+#### A Glimpse into the FreeBSD Kernel
+
+Pointer arithmetic shows up frequently in the FreeBSD kernel. Sometimes it is used directly with arrays, but more often it appears while navigating through structures linked together in memory. Let us look at a small excerpt adapted from `sys/kern/tty_info.c` (near line 333):
+
+```c
+struct proc *p, *ppick;
+
+p = NULL;
+LIST_FOREACH(ppick, &tp->t_pgrp->pg_members, p_pglist) {
+    if (proc_compare(p, ppick))
+        p = ppick;
+}
+```
+
+This loop is not using `ptr + 1` as in our array examples, but it is doing the same conceptual job: moving through memory by following pointer links. Instead of stepping through integers in a row, it walks through a chain of process structures connected in a list. The lesson is the same: pointers let you move from one element to the next, but you must always be careful to stay within the intended bounds of the structure.
+
+#### Common Beginner Pitfalls
+
+1. **Forgetting that pointers move by type size**: If you assume `p + 1` moves one byte, you will misunderstand the result. It always moves by the size of the type the pointer refers to.
+2. **Going past array limits**: Accessing `arr[5]` when the array has only 5 elements (valid indices 0-4) is a classic off-by-one mistake.
+3. **Mixing arrays and pointers too casually**: Although `arr[i]` and `*(arr + i)` are equivalent, an array name itself is not a modifiable pointer. Beginners sometimes try to reassign an array name as if it were a variable, which is not allowed.
+
+To avoid these traps, always calculate sizes carefully, use `sizeof` when possible, and keep in mind that arrays and pointers are close relatives but not identical twins.
+
+#### Tip: Arrays Decay into Pointers
+
+When you pass an array to a function, C actually gives the function only a pointer to the first element. The function has no way to know how many elements exist. For safety, always pass the array size along with the pointer. This is why so many C library and FreeBSD kernel functions include both a buffer pointer and a length parameter.
+
+#### Mini Hands-On Lab: Walking Safely with Pointer Arithmetic
+
+In this lab, you will experiment with pointer arithmetic on arrays, see how to walk through memory step by step, and learn how to detect and prevent stepping outside array boundaries.
+
+Create a file called `lab_pointer_bounds.c` with the following code:
+
+```c
+#include <stdio.h>
+
+int main(void) {
+    int values[] = {5, 10, 15, 20};
+    int *ptr = values;  // Start at the first element
+    int length = sizeof(values) / sizeof(values[0]);
+
+    printf("Array has %d elements\n", length);
+
+    // Walk forward through the array
+    for (int i = 0; i < length; i++) {
+        printf("Forward step %d: %d\n", i, *(ptr + i));
+    }
+
+    // Walk backwards using pointer arithmetic
+    for (int i = length - 1; i >= 0; i--) {
+        printf("Backward step %d: %d\n", i, *(ptr + i));
+    }
+
+    // Demonstrate boundary checking
+    int index = 4; // Out-of-bounds index
+    if (index >= 0 && index < length) {
+        printf("Safe access: %d\n", *(ptr + index));
+    } else {
+        printf("Index %d is out of bounds, refusing to access\n", index);
+    }
+
+    return 0;
+}
+```
+
+##### Step 1: Compile and run
+
+```sh
+% cc -o lab_pointer_bounds lab_pointer_bounds.c
+% ./lab_pointer_bounds
+```
+
+You should see output that walks forward and backward through the array. Notice how both directions are handled using the same pointer, just with different arithmetic.
+
+##### Step 2: Try breaking the rule
+
+Now, change the boundary check:
+
+```c
+printf("Unsafe access: %d\n", *(ptr + 4));
+```
+
+Compile and run again. On your system, it might print a random number, or it might crash. This is **undefined behaviour** in action. The program stepped outside the array’s safe memory and read garbage. On FreeBSD in user space this might only crash your program, but in kernel space the same mistake could crash the whole system.
+
+##### Step 3: Think like a kernel developer
+
+Kernel code often passes around buffers and pointers, but the kernel does not automatically check array limits for you. Safe coding habits like the check we used earlier, are critical:
+
+```c
+if (index >= 0 && index < length) { ... }
+```
+
+Always validate that you are within valid bounds before dereferencing a pointer.
+
+**Key Takeaways from This Lab**
+
+- Pointer arithmetic lets you move forward and backwards through arrays.
+- Arrays do not carry their length with them; you must track it yourself.
+- Accessing memory beyond array boundaries is undefined behaviour.
+- In FreeBSD kernel code, these mistakes can lead to panics or vulnerabilities, so always include boundary checks.
+
+#### Challenge Questions
+
+1. **Forward and backwards in one pass**: Write a function `void walk_both(const int *base, size_t n)` that prints pairs `(base[i], base[n-1-i])` using only pointer arithmetic, no array indexing. Stop when the pointers meet or cross.
+2. **Bounds checked accessor**: Implement `int get_at(const int *base, size_t n, size_t i, int *out)` that returns 0 on success and a non-zero error code if `i` is out of range. Use only pointer arithmetic to read the value.
+3. **Find first match**: Write `int *find_first(int *base, size_t n, int target)` that returns a pointer to the first occurrence or `NULL` if not found. Walk using a moving pointer from `base` to `base + n`.
+4. **Reverse in place**: Create `void reverse_in_place(int *base, size_t n)` that swaps elements from the ends toward the middle using two pointers. Do not use indexing.
+5. **Safe slice print**: Write `void print_slice(const int *base, size_t n, size_t start, size_t count)` that prints at most `count` elements beginning at `start`, but never steps beyond `n`.
+6. **Off by one detector**: Introduce an off-by-one bug in a loop, then add a runtime check that detects it. Fix the loop and confirm the check remains silent.
+7. **Stride walk**: Treat the array as records of `stride` ints. Write `void walk_stride(const int *base, size_t n, size_t stride)` that visits only the first element of each record.
+8. **Pointer difference**: Given two pointers `a` and `b` into the same array, compute the element distance using `ptrdiff_t`. Verify that `a + distance == b`.
+9. **Guarded dereference**: Implement `int try_deref(const int *p, const int *begin, const int *end, int *out)` that only dereferences if `p` lies within `[begin, end)`.
+10. **Refactor into functions**: Rewrite the lab so that walking, printing, and boundary checking are separate functions that all use pointer arithmetic.
+
+#### Wrapping Up
+
+Pointer arithmetic gives you a new way to move through memory. It allows you to scan arrays efficiently, traverse structures, and interact with hardware buffers. But with this power comes the danger of stepping outside the safe zone. In user programs, that might crash only your program. In kernel code, a mistake could crash the entire system or open a security hole.
+
+As you continue your journey, keep the mental image of walking along a row of boxes. Step carefully, never wander off the edge, and always count how many boxes you really have. With this habit, you will be ready for the next topic: using pointers to access not just plain values, but entire **structures**, the building blocks of more complex data in FreeBSD.
+
+### Pointers to Structs
+
+In C programming, especially when writing device drivers or working inside the FreeBSD kernel, you will constantly encounter **structs**. A struct is a way of grouping several related variables together under one name. These variables, called *fields*, can be of different types, and together they represent a more complex entity.
+
+Because structs are often large and frequently shared between parts of the kernel, we usually interact with them through **pointers**. Understanding how to work with pointers to structs is, therefore, a crucial skill for reading kernel code and writing drivers of your own.
+
+Let’s build this step by step.
+
+#### What Is a Struct?
+
+A struct groups multiple variables into a single unit. For example:
+
+```c
+struct Point {
+    int x;
+    int y;
+};
+```
+
+This defines a new type called `struct Point`, which has two integer fields: `x` and `y`.
+
+We can create a variable of this type and assign values to its fields:
+
+```c
+struct Point p1;
+p1.x = 10;
+p1.y = 20;
+```
+
+At this point, `p1` is a concrete object in memory, holding two integers side by side.
+
+#### Introducing Pointers to Structs
+
+Just like we can have a pointer to an integer or a pointer to a character, we can also have a pointer to a struct:
+
+```c
+struct Point *ptr;
+```
+
+If we already have a variable of type `struct Point`, we can store its address in the pointer:
+
+```c
+ptr = &p1;
+```
+
+Now `ptr` holds the address of `p1`. To reach the fields of the struct through this pointer, C provides two notations.
+
+#### Accessing Struct Fields Through Pointers
+
+Suppose we have:
+
+```c
+struct Point p1 = {10, 20};
+struct Point *ptr = &p1;
+```
+
+There are two ways to access the fields via the pointer:
+
+```c
+// Method 1: Explicit dereference
+printf("x = %d\n", (*ptr).x);
+
+// Method 2: Arrow operator
+printf("y = %d\n", ptr->y);
+```
+
+Both are correct, but the arrow operator (`->`) is much cleaner and is the style you will see everywhere in FreeBSD kernel code.
+
+So:
+
+```c
+ptr->x
+```
+
+Means the same as:
+
+```c
+(*ptr).x
+```
+
+But it is easier to read and write.
+
+#### Why Pointers Are Preferred
+
+Passing an entire struct around by value can be expensive, since C would need to copy every field each time. Instead, the kernel almost always passes around *pointers to structs*. This way, only an address (a small integer) is passed, and different parts of the system can all work with the same underlying object.
+
+This is particularly important in device drivers, where structs often represent significant and complex entities such as devices, processes, or threads.
+
+#### A Real FreeBSD Example
+
+Let’s look at a real snippet from the FreeBSD source tree. 
+
+In `sys/kern/tty_info.c`, the `tty_info()` function works with a `struct proc`, which represents a process. This code appears **around lines 331-350** in the FreeBSD 14.3 source: 
+
+```c
+struct proc *p, *ppick;
+
+p = NULL;
+
+// Walk through all members of the foreground process group
+LIST_FOREACH(ppick, &tp->t_pgrp->pg_members, p_pglist)
+        // Use proc_compare() to decide if this candidate is "better"
+        if (proc_compare(p, ppick))
+                p = ppick;
+
+// Later in the function, access the chosen process
+pid = p->p_pid;                        // get the process ID
+strlcpy(comm, p->p_comm, sizeof comm); // copy the process name into a local buffer
+```
+
+Here’s what happens, step by step:
+
+- `p` and `ppick` are pointers to `struct proc`. The code initialises `p` to `NULL`, then iterates over the foreground process group with `LIST_FOREACH`. 
+- On each step, it calls `proc_compare()` to decide whether the current candidate `ppick` is "better" than the one already chosen; if so, it updates `p`. Later, it reads fields from the selected process via `p->p_pid` and `p->p_comm`. 
+
+This is a typical kernel pattern: **select a struct instance via pointer traversal, then access its fields through `->`.**
+
+**Note:** `proc_compare()` encapsulates the selection logic: it prefers runnable processes, then the one with higher recent CPU usage, de-prioritises zombies, and breaks ties by choosing the higher PID.
+
+#### A Quick Bridge: what `LIST_FOREACH` does
+
+Beginners often see `LIST_FOREACH(...)` and wonder what magic is happening. There’s no magic, it’s a macro that walks a **singly-linked list**. Its common BSD style is:
+
+```c
+LIST_FOREACH(item, &head->list_field, link_field) {
+    /* use item->field ... */
+}
+```
+
+- `item` is the loop variable that points to each element.
+- `&head->list_field` is the list head you’re iterating.
+- `link_field` is the name of the link that chains elements together (the "next" pointer field in each node).
+
+In our snippet, `ppick` is the loop variable, `&tp->t_pgrp->pg_members` is the list of processes in the foreground process group, and `p_pglist` is the link field inside each `struct proc`. Each iteration points `ppick` at the next process, allowing the code to compare and ultimately select the one stored in `p`. 
+
+This small macro hides the pointer-chasing details so your code reads like: "for each process in this process group, consider it as a candidate."
+
+#### A Minimal User-Space Example
+
+Here’s a simple program you can compile and run yourself to get hands-on practice:
+
+```c
+#include <stdio.h>
+#include <string.h>
+
+// Define a simple struct
+struct Device {
+    int id;
+    char name[20];
+};
+
+int main() {
+    struct Device dev1 = {42, "tty0"};
+    struct Device *dev_ptr = &dev1;
+
+    // Access fields through the pointer
+    printf("Device ID: %d\n", dev_ptr->id);
+    printf("Device Name: %s\n", dev_ptr->name);
+
+    // Change values through the pointer
+    dev_ptr->id = 43;
+    strcpy(dev_ptr->name, "ttyS1");
+
+    // Show updated values
+    printf("Updated Device ID: %d\n", dev_ptr->id);
+    printf("Updated Device Name: %s\n", dev_ptr->name);
+
+    return 0;
+}
+```
+
+This mirrors what happens in the kernel. We define a struct, create an instance of it, then use a pointer to access and modify its fields.
+
+#### Common Beginner Pitfalls with Struct Pointers
+
+Working with pointers to structs is straightforward once you get used to it, but beginners often fall into the same traps. Let’s look at the most frequent mistakes and how to avoid them.
+
+**1. Forgetting to Initialise the Pointer**
+ A pointer that hasn’t been given a value points to "somewhere" in memory,  which usually means garbage. Accessing it causes undefined behaviour, often leading to crashes.
+
+```c
+struct Device *d;  // Uninitialised, points to who-knows-where
+d->id = 42;        // Undefined behaviour
+```
+
+**How to avoid it:** Always initialise your pointer, either to `NULL` or to the address of a real struct.
+
+```c
+struct Device dev1;
+struct Device *d = &dev1; // Safe: d points to dev1
+```
+
+**2. Confusing `.` and `->`**
+ Remember: use the dot (`.`) to access a field when you have a real struct variable, and use the arrow (`->`) when you have a pointer to a struct. Mixing them up is a common beginner error.
+
+```c
+struct Point p1 = {1, 2};
+struct Point *ptr = &p1;
+
+printf("%d\n", p1.x);    // Dot for variables
+printf("%d\n", ptr->x);  // Arrow for pointers
+printf("%d\n", ptr.x);   // Error: ptr is not a struct
+```
+
+**How to avoid it:** Ask yourself: "Am I working with a pointer or the struct itself?" That tells you which operator to use.
+
+**3. Dereferencing NULL Pointers**
+ If a pointer is set to `NULL` (which is common as an initial or error state), dereferencing it will immediately crash your program.
+
+```c
+struct Device *d = NULL;
+printf("%d\n", d->id);  // Crash: d is NULL
+```
+
+**How to avoid it:** Always check pointers before dereferencing:
+
+```c
+if (d != NULL) {
+    printf("%d\n", d->id);
+}
+```
+
+In kernel code, this check is especially important. Dereferencing a NULL pointer inside the kernel can bring the whole system down.
+
+**4. Using a Pointer After the Struct Has Gone Out of Scope**
+ Pointers don’t "own" the struct they point to. If the struct disappears (for example, because it was a local variable in a function that has returned), the pointer becomes invalid, a *dangling pointer*.
+
+```c
+struct Device *make_device(void) {
+    struct Device d = {99, "tty0"};
+    return &d; // Dangerous: d disappears after function returns
+}
+```
+
+**How to avoid it:** Never return the address of a local variable. Allocate dynamically (with `malloc` in user programs or `malloc(9)` in the kernel) if you need a struct to outlive the function that creates it.
+
+**5. Assuming a Struct Is Small Enough to Copy Around**
+ In user programs, you can sometimes get away with passing structs by value. But in kernel code, structs often represent large, complex objects,  sometimes with embedded lists or pointers of their own. Copying them accidentally can cause subtle and serious bugs.
+
+```c
+struct Device dev1 = {1, "tty0"};
+struct Device dev2 = dev1; // Copies all fields, not a shared reference
+```
+
+**How to avoid it:** Pass pointers to structs instead of copying them, unless you are certain that a shallow copy is intended.
+
+**Main Takeaway:**
+The most common mistakes with struct pointers come from forgetting what a pointer really is: just an address. Always initialise pointers, distinguish carefully between `.` and `->`, check for NULL, and be mindful of scope and lifetime. In kernel development, a single misstep with a struct pointer can destabilise the entire system, so adopting safe habits early will serve you well.
+
+#### Mini Hands-On Lab: Struct Pointer Pitfalls (No `malloc` yet)
+
+This lab reproduces common mistakes with pointers to structs and then shows safe, beginner-friendly alternatives using only stack variables and function "out-parameters".
+
+Create a file `lab_struct_pointer_pitfalls_nomalloc.c`:
+
+```c
+/*
+ * lab_struct_pointer_pitfalls_nomalloc.c
+ *
+ * Classic pitfalls with pointers to structs, rewritten to avoid malloc.
+ * Build and run each case and read the console output as you go.
+ */
+
+#include <stdio.h>
+#include <string.h>
+
+struct Device {
+    int  id;
+    char name[16];
+};
+
+/* -----------------------------------------------------------
+ * Case 1: Uninitialised pointer (UB) vs. correctly initialised
+ * ----------------------------------------------------------- */
+static void case_uninitialised_pointer(void) {
+    printf("\n[Case 1] Uninitialised pointer vs initialised\n");
+
+    /* Wrong: d has no valid target. Dereferencing is undefined. */
+    /* struct Device *d; */
+    /* d->id = 42;  // Do NOT do this */
+
+    /* Right: point to a real object or keep NULL until assigned. */
+    struct Device dev = { 1, "tty0" };
+    struct Device *ok = &dev;
+    ok->id = 2;
+    strcpy(ok->name, "ttyS0");
+    printf(" ok->id=%d ok->name=%s\n", ok->id, ok->name);
+
+    struct Device *maybe = NULL;
+    if (maybe == NULL) {
+        printf(" maybe is NULL, avoiding dereference\n");
+    }
+}
+
+/* -----------------------------------------------------------
+ * Case 2: Dot vs arrow confusion
+ * ----------------------------------------------------------- */
+static void case_dot_vs_arrow(void) {
+    printf("\n[Case 2] Dot vs arrow\n");
+
+    struct Device dev = { 7, "console0" };
+    struct Device *p = &dev;
+
+    /* Correct usage */
+    printf(" dev.id=%d dev.name=%s\n", dev.id, dev.name);    /* variable: use .  */
+    printf(" p->id=%d p->name=%s\n", p->id, p->name);        /* pointer:  use -> */
+
+    /* Uncomment to observe the compiler error for teaching purposes */
+    /* printf("%d\n", p.id); */ /* p is a pointer, not a struct */
+}
+
+/* -----------------------------------------------------------
+ * Case 3: NULL pointer dereference vs guarded access
+ * ----------------------------------------------------------- */
+static void case_null_deref(void) {
+    printf("\n[Case 3] NULL dereference guard\n");
+
+    struct Device *p = NULL;
+
+    /* Wrong: would crash */
+    /* printf("%d\n", p->id); */
+
+    /* Right: guard before dereferencing if pointer may be NULL */
+    if (p != NULL) {
+        printf(" id=%d\n", p->id);
+    } else {
+        printf(" p is NULL, skipping access\n");
+    }
+}
+
+/* -----------------------------------------------------------
+ * Case 4: Dangling pointer (returning address of a local)
+ * and two safe alternatives WITHOUT malloc
+ * ----------------------------------------------------------- */
+
+/* Dangerous factory: returns address of a local variable (dangling) */
+static struct Device *make_device_bad(void) {
+    struct Device d = { 99, "bad-local" };
+    return &d; /* The address becomes invalid when the function returns */
+}
+
+/* Safe alternative A: initialiser that writes into caller-provided struct */
+static void init_device(struct Device *out, int id, const char *name) {
+    if (out == NULL) return;
+    out->id = id;
+    strncpy(out->name, name, sizeof(out->name) - 1);
+    out->name[sizeof(out->name) - 1] = '\0';
+}
+
+/* Safe alternative B: return-by-value (fine for small, plain structs) */
+static struct Device make_device_value(int id, const char *name) {
+    struct Device d;
+    d.id = id;
+    strncpy(d.name, name, sizeof(d.name) - 1);
+    d.name[sizeof(d.name) - 1] = '\0';
+    return d; /* Returned by value: the caller receives its own copy */
+}
+
+static void case_dangling_and_safe_alternatives(void) {
+    printf("\n[Case 4] Dangling vs safe init (no malloc)\n");
+
+    /* Wrong: pointer becomes dangling immediately */
+    struct Device *bad = make_device_bad();
+    (void)bad; /* Do not dereference; it is invalid. */
+    printf(" bad points to invalid memory; we will not dereference it\n");
+
+    /* Safe A: caller owns storage; callee fills it via pointer */
+    struct Device owned_a;
+    init_device(&owned_a, 123, "owned-A");
+    printf(" owned_a.id=%d owned_a.name=%s\n", owned_a.id, owned_a.name);
+
+    /* Safe B: small plain struct returned by value */
+    struct Device owned_b = make_device_value(124, "owned-B");
+    printf(" owned_b.id=%d owned_b.name=%s\n", owned_b.id, owned_b.name);
+}
+
+/* -----------------------------------------------------------
+ * Case 5: Accidental struct copy vs pointer sharing
+ * ----------------------------------------------------------- */
+static void case_copy_vs_share(void) {
+    printf("\n[Case 5] Copy vs share\n");
+
+    struct Device a = { 1, "tty0" };
+
+    /* Accidental copy: b is a separate struct */
+    struct Device b = a;
+    strcpy(b.name, "tty1");
+    printf(" after copy+edit: a.name=%s, b.name=%s\n", a.name, b.name);
+
+    /* Intentional sharing via pointer */
+    struct Device *pa = &a;
+    strcpy(pa->name, "tty2");
+    printf(" after shared edit: a.name=%s (via pa)\n", a.name);
+}
+
+/* Bonus: safe initialisation pattern via out-parameter */
+static void case_safe_init_pattern(void) {
+    printf("\n[Bonus] Safe initialisation via pointer\n");
+    struct Device dev;
+    init_device(&dev, 55, "control0");
+    printf(" dev.id=%d dev.name=%s\n", dev.id, dev.name);
+}
+
+int main(void) {
+    case_uninitialised_pointer();
+    case_dot_vs_arrow();
+    case_null_deref();
+    case_dangling_and_safe_alternatives();
+    case_copy_vs_share();
+    case_safe_init_pattern();
+    return 0;
+}
+```
+
+Build and run:
+
+```sh
+% cc -Wall -Wextra -o lab_struct_pointer_pitfalls_nomalloc lab_struct_pointer_pitfalls_nomalloc.c
+% ./lab_struct_pointer_pitfalls_nomalloc
+```
+
+What to notice:
+
+1. **Uninitialised versus initialised**
+    You never dereference an uninitialised pointer. Point it to a real object or keep it as `NULL` until you have one.
+2. **Dot versus arrow**
+    Use `.` with a struct variable, `->` with a pointer. If you uncomment the `p.id` line, the compiler will flag it.
+3. **NULL dereference**
+    Always guard against `NULL` when there is any chance the pointer might be unset.
+4. **Dangling pointer without malloc**
+    Returning the address of a local variable is unsafe because the local goes out of scope. Two safe options that require no heap:
+    
+    - Let the caller **provide the storage** and pass a pointer to be filled in.
+    
+    - **Return a small, plain struct by value** when a copy is intended.
+    
+5. **Copy vs share**
+    Copying a struct makes a separate object; editing one does not alter the other. Using a pointer means both names refer to the same object.
+
+#### Why this matters for driver code
+
+Kernel code passes pointers to structs everywhere. The habits you just practiced are foundational: initialise pointers, choose the correct operator, guard against `NULL`, avoid dangling pointers by respecting scope, and be deliberate about copying versus sharing. These patterns keep kernel code safe and predictable, long before you ever need dynamic allocation.
+
+#### Challenge Questions: Pointers to Structs
+
+Try these exercises to make sure you really understand how struct pointers work. Write small C programs for each one and experiment with the output.
+
+1. **Dot vs Arrow**
+    Write a program that creates a `struct Point` and a pointer to it. Print the fields twice: once using the dot operator (`.`) and once using the arrow operator (`->`). Explain why one works with the variable and the other with the pointer.
+
+2. **Struct Initialiser Function**
+    Write a function `void init_point(struct Point *p, int x, int y)` that fills in a struct given a pointer. Call it from `main` with a local variable and print the result.
+
+3. **Returning by Value vs Returning a Pointer**
+    Write two functions:
+
+   - `struct Point make_point_value(int x, int y)` that returns a struct by value.
+   - `struct Point *make_point_pointer(int x, int y)` that (wrongly) returns a pointer to a local struct.
+      What happens if you use the second function? Why is it dangerous?
+
+4. **Safe NULL Handling**
+    Modify the program so that a pointer may be set to `NULL`. Write a function `print_point(const struct Point *p)` that safely prints `"(null)"` if `p` is `NULL` instead of crashing.
+
+5. **Copy vs Share**
+    Create two structs: one by copying another (`struct Point b = a;`) and one by sharing via pointer (`struct Point *pb = &a;`). Change the values in each and print both. What differences do you observe?
+
+6. **Mini Linked List**
+    Define a simple struct:
+
+   ```c
+   struct Node {
+       int value;
+       struct Node *next;
+   };
+   ```
+
+   Manually create three nodes and chain them together (`n1 -> n2 -> n3`). Use a pointer to walk through the list and print the values. This mimics what `LIST_FOREACH` does in the kernel.
+
+#### Wrapping Up
+
+Pointers to structs are one of the most important idioms in kernel programming. They allow you to work with complex objects efficiently, without copying large blocks of memory, and they provide the foundation for navigating linked lists and device tables.
+
+You’ve now seen how:
+
+- Structs group related fields into a single object.
+- Pointers to structs let you access and modify those fields efficiently.
+- The arrow operator (`->`) is the preferred way to reach struct fields through a pointer.
+- Real kernel code relies heavily on struct pointers to represent processes, threads, and devices.
+
+With the challenge questions, you can now test yourself and confirm you really understand how struct pointers behave in C.
+
+The natural next step is to see what happens when we combine these ideas with **arrays**. Arrays of pointers and pointer arrays are a powerful duo that appear everywhere in kernel code, from device tables to argument lists.
+
+Let’s continue and learn about the next topic:  **Arrays of Pointers and Pointer Arrays**.
+
+### Arrays of Pointers and Pointer Arrays
+
+This is one of those topics that many C beginners find tricky: the difference between an **array of pointers** and a **pointer to an array**. The declarations look confusingly similar, but they describe very different things. The difference is not just academic. Arrays of pointers are everywhere in FreeBSD code, while pointers to arrays are less common but still important to understand because they appear in contexts where hardware requires contiguous memory blocks.
+
+We will first look at arrays of pointers, then at pointers to arrays, and then connect them to real FreeBSD examples and driver development.
+
+#### Array of Pointers
+
+An array of pointers is simply an array where each element is itself a pointer. Instead of holding values directly, the array holds addresses pointing to values stored elsewhere.
+
+##### Example: Array of Strings
+
+```c
+#include <stdio.h>
+
+int main() {
+    // Array of 3 pointers to const char (i.e., strings)
+    const char *messages[3] = {
+        "Welcome",
+        "to",
+        "FreeBSD"
+    };
+
+    for (int i = 0; i < 3; i++) {
+        printf("Message %d: %s\n", i, messages[i]);
+    }
+
+    return 0;
+}
+```
+
+Here, `messages` is an array of three pointers. Each element, such as `messages[0]`, holds the address of a string literal. When passed to `printf`, it prints the string.
+
+This is exactly the same structure as the `argv` parameter to `main()`: it is just an array of pointers to characters.
+
+##### Real FreeBSD Example: Locale Names
+
+Looking into FreeBSD 14.3 source code, more specifically in `bin/sh/var.c`, around line 130:
+
+```c
+static const char *const locale_names[7] = {
+    "LANG", "LC_ALL", "LC_COLLATE", "LC_CTYPE",
+    "LC_MESSAGES", "LC_MONETARY", "LC_NUMERIC",
+};
+```
+
+This is an **array of constant character pointers**. Each element points to a string literal with the name of a locale category. The shell uses this array to check or set environment variables consistently. This is a compact, idiomatic way to store a table of names.
+
+##### Real FreeBSD Example: SNMP Transport Names
+
+Looking into FreeBSD 14.3 source code, more specifically, in `contrib/bsnmp/lib/snmpclient.c`, around line 1887:
+
+```c
+static const char *const trans_list[] = {
+    "udp", "tcp", "local", NULL
+};
+```
+
+This is another array of string pointers, terminated by `NULL`. The SNMP client library uses this list to recognise valid transport names. The use of `NULL` as a terminator is a very common C idiom.
+
+**Note**: Arrays of pointers are common in FreeBSD because they allow flexible, dynamic lookup tables without copying large amounts of data. Instead of storing the strings inline, the array stores pointers to them.
+
+#### Pointer to an Array
+
+A pointer to an array is very different from an array of pointers. Instead of pointing to scattered objects, it points to one single, contiguous array block. The syntax can look intimidating, but the underlying idea is simple: the pointer represents the entire array as a unit.
+
+##### Example: Pointer to an Array of Integers
+
+```c
+#include <stdio.h>
+
+int main() {
+    int numbers[5] = {1, 2, 3, 4, 5};
+
+    // Pointer to an array of 5 integers
+    int (*p)[5] = &numbers;
+
+    printf("Third number: %d\n", (*p)[2]);
+
+    return 0;
+}
+```
+
+Breaking it down:
+
+- `int (*p)[5];` declares `p` as a pointer to an array of 5 integers.
+- `p = &numbers;` makes `p` point to the whole `numbers` array.
+- `(*p)[2]` first dereferences the pointer (giving us the array) and then indexes into it.
+
+##### Another Example with Structures
+
+```c
+#include <stdio.h>
+
+#define SIZE 4
+
+struct Point {
+    int x, y;
+};
+
+int main(void) {
+    struct Point pts[SIZE] = {
+        {0, 0}, {1, 2}, {2, 4}, {3, 6}
+    };
+
+    struct Point (*parray)[SIZE] = &pts;
+
+    printf("Third element: x=%d, y=%d\n",
+           (*parray)[2].x, (*parray)[2].y);
+
+    // Modify via the pointer
+    (*parray)[2].x = 42;
+    (*parray)[2].y = 84;
+
+    printf("After modification: x=%d, y=%d\n",
+           pts[2].x, pts[2].y);
+
+    return 0;
+}
+```
+
+Here, `parray` points to the entire array of four `struct Point`. Accessing through it is equivalent to accessing the original array directly, but it emphasises that the pointer represents the array as a single unit.
+
+You have now seen two different examples of pointers to arrays. Both show how a single pointer can name a whole, contiguous region of memory. The natural question is how often this appears in real FreeBSD code.
+
+##### Why You Rarely See This in FreeBSD
+
+Literal `T (*p)[N]` declarations are uncommon in the kernel source. FreeBSD developers usually represent fixed-size blocks in one of two ways:
+
+- Wrap the array inside a `struct`, which keeps size and type information together and leaves room for metadata.
+- Pass a base pointer along with an explicit length, especially for buffers and I/O regions.
+
+This style makes the code more transparent, easier to maintain, and integrates better with kernel subsystems. The random subsystem is a good example, where structures carry fixed arrays that are treated as single units by the code paths that process them. For background on how drivers and subsystems feed entropy into the kernel, see the `random_harvest(9)` manual page. 
+
+##### Real FreeBSD Example: Struct with a Fixed-Size Array
+
+FreeBSD 14.3 source, `sys/dev/random/random_harvestq.h`, lines 33-44:
+
+```c
+#define HARVESTSIZE     2       /* Max length in words of each harvested entropy unit */
+
+/* These are used to queue harvested packets of entropy. The entropy
+ * buffer size is pretty arbitrary.
+ */
+struct harvest_event {
+        uint32_t        he_somecounter;         /* fast counter for clock jitter */
+        uint32_t        he_entropy[HARVESTSIZE];/* some harvested entropy */
+        uint8_t         he_size;                /* harvested entropy byte count */
+        uint8_t         he_destination;         /* destination pool of this entropy */
+        uint8_t         he_source;              /* origin of the entropy */
+};
+```
+
+This is not a raw `T (*p)[N]` declaration, yet it captures the same idea in a form that is clearer and more practical for the kernel. The `struct` groups a fixed array `he_entropy[HARVESTSIZE]` with related fields. Code then passes a pointer to `struct harvest_event`, treating the entire block as one object. In `random_harvestq.c` you can see how an instance is filled and processed, including copying into `he_entropy` and setting the size and metadata fields, which reinforces that the array is handled as part of a single unit.
+
+Even though raw pointers to arrays are rare in the tree, understanding them helps you recognise why kernel code tends to wrap arrays in structures or pair a base pointer with an explicit length. Conceptually, it is the same pattern of referring to a contiguous block as a whole.
+
+#### Mini Hands-On Lab
+
+Let’s test your understanding. For each declaration, decide whether it is an **array of pointers** or a **pointer to an array**. Then explain how you would access the third element.
+
+1. `const char *names[] = { "a", "b", "c", NULL };`
+2. `int (*ring)[64];`
+3. `struct foo *ops[8];`
+4. `char (*line)[80];`
+
+**Check yourself:**
+
+1. Array of pointers. Third element with `names[2]`.
+2. Pointer to an array of 64 ints. Use `(*ring)[2]`.
+3. Array of pointers to `struct foo`. Use `ops[2]`.
+4. Pointer to an array of 80 chars. Use `(*line)[2]`.
+
+#### Challenge Questions
+
+1. Why is `argv` in `main(int argc, char *argv[])` considered an array of pointers rather than a pointer to an array?
+2. In kernel code, why do developers prefer to use a `struct` wrapping a fixed-size array instead of a raw pointer-to-array declaration?
+3. How does using `NULL` as a terminator in arrays of pointers simplify iteration?
+4. Imagine a driver that manages a ring of DMA descriptors. Would you expect this to be represented as an array of pointers or a pointer to an array? Why?
+5. What could go wrong if you mistakenly treated a pointer to an array as if it were an array of pointers?
+
+#### Why This Matters for Kernel and Driver Development
+
+In FreeBSD device drivers, **arrays of pointers** appear constantly. They are used for option lists, function pointer tables, protocol name arrays, and sysctl handlers. This idiom saves space and allows code to iterate flexibly through lists without knowing their exact size in advance.
+
+**Pointers to arrays**, while rarer, are conceptually important because they match the way hardware often works. A NIC, for example, may expect a contiguous ring buffer of descriptors. In practice FreeBSD developers usually hide the raw pointer-to-array inside a `struct` that describes the ring, but the underlying idea is identical: the driver is passing around "a single block of fixed-size elements."
+
+Understanding both patterns is part of thinking like a systems programmer. It ensures you will not confuse two declarations that look similar but behave differently, which prevents subtle and painful bugs.
+
+#### Wrapping Up
+
+By now you can clearly see the difference between an array of pointers and a pointer to an array. You have also seen why this distinction matters when reading or writing real code. Arrays of pointers give flexibility by letting each element point to different objects, while a pointer to an array treats a whole block of memory as a single unit.
+
+With this foundation in place, we are ready to take the next step: moving from fixed arrays to dynamically allocated memory. In the following section on **Dynamic Memory Allocation**, you will learn how to use functions such as `malloc`, `calloc`, `realloc`, and `free` to create arrays at runtime. We will connect this to pointers by showing how to allocate each element separately, how to request one contiguous block when you need a pointer to an array, and how to clean up properly if something goes wrong. This transition from static to dynamic memory is essential for real systems programming and will prepare you for the way memory is managed inside the FreeBSD kernel.
 
 *continue soon...*
