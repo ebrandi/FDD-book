@@ -2,7 +2,7 @@
 title: "A First Look at the C Programming Language"
 description: "This chapter introduces the C programming language for complete beginners."
 author: "Edson Brandi"
-date: "2025-08-25"
+date: "2025-08-26"
 status: "draft"
 part: 1
 chapter: 4
@@ -3253,7 +3253,7 @@ You now understand **scope**, **storage duration**, and **linkage**, the three p
 
 Next, we'll see what happens when you pass those variables into a function. In C, function parameters are copies of the original values, so changes inside the function won't affect the originals unless you pass their addresses. Understanding this behaviour is key to writing driver code that updates state intentionally, avoids subtle bugs, and communicates data effectively between functions.
 
-### Parameters Are Copies
+## 4.8 Parameters Are Copies
 
 When you call a function in C, the values you pass to it are **copied** into the function's parameters. The function then works with those copies, not the originals. This is known as **call by value**, and it means that any changes made to the parameter inside the function are lost when the function returns; the caller's variables remain untouched.
 
@@ -3400,13 +3400,543 @@ If your function will modify its input, make it evident in the function name, co
 **Rule of Thumb**: 
 Pass by value to keep data safe. Pass a pointer only when you intend to modify the data and make that intent explicit.
 
-**Wrapping Up**
+### Wrapping Up
 
-You've now seen that parameters in C work by **value** and functions get their own private copies of what you pass, even when those values are addresses pointing to shared data. In kernel programming, this gives you both safety and responsibility: safety, because the variable itself is isolated; responsibility, because the data it points to may be shared and mutable.
+You've now seen that parameters in C work by **value**: every function receives its own private copy of what you pass, even if that value is an address pointing to shared data. This model gives you both safety and responsibility: safety, because variables themselves are isolated between caller and callee; responsibility, because the data being pointed to may still be shared and mutable.
 
-In the next section, we'll go deeper into the world of **pointers**, the mechanism that lets you write functions that truly modify a caller's data. That's where the real power (and risk) comes in.
+Next, we'll shift focus from individual variables to collections of data that C programmers (and FreeBSD drivers) use constantly: **arrays and strings**.
 
-## 4.8 Pointers and Memory
+## 4.9 Arrays and Strings in C
+
+In the previous section, you learned that function parameters are passed by value. That lesson sets the stage for working with **arrays and strings**, two of the most common structures in C. Arrays give you a way to handle collections of elements in contiguous memory. In contrast, strings are simply arrays of characters with a special terminator.
+
+Both are central to FreeBSD driver development: arrays become buffers that move data in and out of hardware, and strings carry device names, configuration options, and environment variables.
+
+In this section, we will build from the basics, highlight common pitfalls, and then connect the concepts to real FreeBSD kernel code, concluding with hands-on labs.
+
+### Declaring and Using Arrays
+
+An array in C is a fixed-size collection of elements, all of the same type, stored in contiguous memory. Once defined, its size cannot change.
+
+```c
+int numbers[5];        // Declares an array of 5 integers
+```
+
+You can initialize an array at the time of declaration:
+
+```c
+int primes[3] = {2, 3, 5};  // Initialize with values
+```
+
+Each element is accessed by its index, starting at zero:
+
+```c
+primes[0] = 7;           // Change the first element
+int second = primes[1];  // Read the second element (3)
+```
+
+In memory, arrays are laid out sequentially. If `numbers` starts at address 1000 and each integer takes 4 bytes, then `numbers[0]` is at 1000, `numbers[1]` at 1004, `numbers[2]` at 1008, and so on. This detail becomes very important when we study pointers.
+
+### Strings in C
+
+Unlike some languages where strings are a distinct type, in C, a string is simply an array of characters terminated with a special `'\0'` character known as the **null terminator**.
+
+```c
+char name[6] = {'E', 'd', 's', 'o', 'n', '\0'};
+```
+
+A more convenient form lets the compiler insert the null terminator for you:
+
+```c
+char name[] = "Edson";  // Stored as E d s o n \0
+```
+
+Strings can be accessed and modified character by character:
+
+```c
+name[0] = 'A';  // Now the string reads "Adson"
+```
+
+If the terminating `'\0'` is missing, functions that expect a string will continue reading memory until they hit a zero byte somewhere else. This often results in garbage output, memory corruption, or kernel crashes.
+
+### 4.9.3 Common String Functions (`<string.h>`)
+
+The C standard library provides helper functions for strings. Although you cannot use the full standard library within the FreeBSD kernel, many equivalents are available. It is important to know the standard ones first:
+
+```c
+#include <string.h>
+
+char src[] = "FreeBSD";
+char dest[20];
+
+strcpy(dest, src);          // Copy src into dest
+int len = strlen(dest);     // Get string length
+int cmp = strcmp(src, dest); // Compare two strings
+```
+
+Frequently used functions include:
+
+- `strcpy()` - copy one string into another (unsafe, no bounds checking).
+- `strncpy()` - safer variant, lets you specify maximum characters.
+- `strlen()` - count characters before the null terminator.
+- `strcmp()` - compare two strings lexicographically.
+
+**Warning**: many standard functions like `strcpy()` are unsafe because they do not check buffer sizes. In kernel development, this can corrupt memory and cause the system to crash. Safer variants such as `strncpy()` or kernel-provided helpers should always be preferred.
+
+### Why This Matters in FreeBSD Drivers
+
+Arrays and strings are not just a basic C feature; they're at the heart of how FreeBSD drivers manage data. Nearly every driver you write or study relies on them in one form or another:
+
+- **Buffers** that temporarily hold data moving between hardware and the kernel, such as keystrokes, network packets, or bytes written to disk.
+- **Device names** like `/dev/ttyu0` or `/dev/random` are presented to user space by the kernel.
+- **Configuration tunables (sysctl)** that depend on arrays and strings to store parameter names and values.
+- **Lookup tables** are fixed-size arrays that hold supported hardware IDs, feature flags, or hardware-to-human-readable name mappings.
+
+Because arrays and strings interact closely with hardware interfaces, mistakes here have consequences far beyond a user-space crash. While a runaway write in user-space might only crash that process, the same bug in kernel-space **can overwrite critical memory**, cause a kernel panic, corrupt data, or even open a security hole.
+
+A real-world example makes this point clear. In **CVE-2024-45288**, the FreeBSD `libnv` library (used in both the kernel and userland) mishandled arrays of strings: it assumed strings were null-terminated without verifying their termination. A maliciously crafted `nvlist` could cause memory beyond the allocated buffer to be read or written, leading to kernel panic or even privilege escalation. The fix required explicit checks, safer memory allocation, and overflow protection.
+
+Here's a simplified before/after look at the bug and its correction:
+
+```c
+/*
+ * CVE-2024-45288 Analysis: Missing Null-Termination in libnv String Arrays
+ * 
+ * VULNERABILITY: A missing null-termination character in the last element 
+ * of an nvlist array string can lead to writing outside the allocated buffer.
+ */
+
+// BEFORE (Vulnerable Code):
+static char **
+nvpair_unpack_string_array(bool isbe __unused, nvpair_t *nvp,
+    const char *data, size_t *leftp)
+{
+    char **value, *tmp, **valuep;
+    size_t ii, size, len;
+
+    tmp = (char *)(uintptr_t)data;
+    size = nvp->nvp_datasize;
+    
+    for (ii = 0; ii < nvp->nvp_nitems; ii++) {
+        len = strnlen(tmp, size - 1) + 1;
+        size -= len;
+        // BUG: No check if tmp[len-1] is actually '\0'!
+        tmp += len;
+    }
+
+    // BUG: nv_malloc does not zero-initialize
+    value = nv_malloc(sizeof(*value) * nvp->nvp_nitems);
+    if (value == NULL)
+        return (NULL);
+    // ...
+}
+
+// AFTER (Fixed Code):
+static char **
+nvpair_unpack_string_array(bool isbe __unused, nvpair_t *nvp,
+    const char *data, size_t *leftp)
+{
+    char **value, *tmp, **valuep;
+    size_t ii, size, len;
+
+    tmp = (char *)(uintptr_t)data;
+    size = nvp->nvp_datasize;
+    
+    for (ii = 0; ii < nvp->nvp_nitems; ii++) {
+        len = strnlen(tmp, size - 1) + 1;
+        size -= len;
+        
+        // FIX: Explicitly check null-termination
+        if (tmp[len - 1] != '\0') {
+            ERRNO_SET(EINVAL);
+            return (NULL);
+        }
+        tmp += len;
+    }
+
+    // FIX: Use nv_calloc to zero-initialize
+    value = nv_calloc(nvp->nvp_nitems, sizeof(*value));
+    if (value == NULL)
+        return (NULL);
+    // ...
+}
+```
+
+#### Visualising the Missing '\0' Problem
+
+```
+CVE-2024-45288
+
+Legend:
+  [..] = allocated bytes for one string element in the nvlist array
+   \0  = null terminator
+   XX  = unrelated memory beyond the allocated buffer (must not be touched)
+
+------------------------------------------------------------------------------
+BEFORE (vulnerable): last string not null-terminated
+------------------------------------------------------------------------------
+
+nvlist data region (simplified):
+
+  +---- element[0] ----+ +---- element[1] ----+ +---- element[2] ----+
+  | 'F' 'r' 'e' 'e' \0 | | 'B' 'S' 'D'   \0  | | 'b' 'u' 'g'  '!'  |XX|XX|XX|...
+  +--------------------+ +--------------------+ +--------------------+--+--+--+
+                                                        ^
+                                                        |
+                                          strnlen(tmp, size-1) walks here,
+                                          never sees '\0', keeps going...
+                                          size -= len is computed as if '\0'
+                                          existed, later code writes past end
+
+Effect:
+  - Readers assume a proper C-string. They continue until a random zero byte in XX.
+  - Writers may copy len bytes including overflow into XX.
+  - Result can be buffer overflow, memory corruption, or kernel panic.
+
+------------------------------------------------------------------------------
+AFTER (fixed): explicit check for null-termination + safer allocation
+------------------------------------------------------------------------------
+
+  +---- element[0] ----+ +---- element[1] ----+ +---- element[2] ----+
+  | 'F' 'r' 'e' 'e' \0 | | 'B' 'S' 'D'   \0  | | 'b' 'u' 'g'  '!' \0|XX|XX|XX|...
+  +--------------------+ +--------------------+ +--------------------+--+--+--+
+                                                        ^
+                                                        |
+                                   check: tmp[len-1] == '\0' ? OK : EINVAL
+
+Changes:
+  - The loop validates the final byte of each element is '\0'.
+  - If not, it fails early with EINVAL. No overflow occurs.
+  - Allocation uses nv_calloc(nitems, sizeof(*value)), memory is zeroed.
+
+Tip for kernel developers:
+  Always check termination when parsing external or untrusted data.
+  Do not rely on strnlen alone. Validate tmp[len-1] == '\0' before use.
+```
+
+#### Root Cause Analysis:
+
+1. **Missing null-termination check**
+   - `strnlen()` was used to find string length.
+   - The code assumed strings ended with `'\0'`.
+   - No verification that `tmp[len-1] == '\0'`.
+2. **Uninitialized memory**
+   - `nv_malloc()` does not clear memory.
+   - Changed to `nv_calloc()` to avoid leaking old memory contents.
+3. **Integer overflow**
+   - In related header checks, nvlh_size could overflow when added to sizeof(nvlhdrp)
+   - Added explicit overflow checks.
+
+#### Impact:
+
+- Buffer overflow in kernel or userland.
+- Privilege escalation is possible.
+- System panic and memory corruption.
+
+### Mini Lab: The Danger of a Missing `'\0'`
+
+To illustrate the subtlety of this class of bug, try the following small program in user space.
+
+```c
+#include <stdio.h>
+
+int main() {
+    // Deliberately forget the null terminator
+    char broken[5] = {'B', 'S', 'D', '!', 'X'};  
+
+    // Print as if it were a string
+    printf("Broken string: %s\n", broken);
+
+    // Now with proper termination
+    char fixed[6] = {'B', 'S', 'D', '!', 'X', '\0'};
+    printf("Fixed string: %s\n", fixed);
+
+    return 0;
+}
+```
+
+**What to do:**
+
+- Compile and run.
+- The first print may show random garbage after `"BSD!X"`, because `printf("%s")` keeps reading memory until it stumbles on a zero byte.
+- The second print works as expected.
+
+**Lesson:** This is the same mistake that caused CVE-2024-45288 in FreeBSD. In user space, you get garbage or a crash. In kernel space, you risk a panic or privilege escalation. Always remember: **no `'\0'`, no string.**
+
+**Note**: This example shows how a **tiny omission, forgetting to check for a `'\0'`, can become a serious vulnerability**. That's why professional FreeBSD driver developers are disciplined when handling arrays and strings: they always track buffer sizes, always validate string termination, and always use safe allocation and copy functions. The security and stability of the system depend on it.
+
+### Real Example from FreeBSD 14.3 Source Code
+
+FreeBSD stores its kernel environment as an **array of C strings**, each of the form `"name=value"`. This is a perfect real-world example of arrays and strings in action.
+
+The array itself is declared in `sys/kern/kern_environment.c`:
+
+```c
+// sys/kern/kern_environment.c, line 83
+char **kenvp;    // Array of pointers to strings like "name=value"
+```
+
+Each `kenvp[i]` points to a null-terminated string. For example:
+
+```c
+kenvp[0] → "kern.ostype=FreeBSD"
+kenvp[1] → "hw.model=Intel(R) Core(TM) i7"
+...
+```
+
+To look up a variable by name, FreeBSD uses the helper `_getenv_dynamic_locked()`:
+
+```c
+// sys/kern/kern_environment.c, lines 495-511
+static char *
+_getenv_dynamic_locked(const char *name, int *idx)
+{
+    char *cp;   // Pointer to the current "name=value" string
+    int len, i;
+
+    len = strlen(name);  // Get the length of the variable name
+
+    // Walk through each string in kenvp[]
+    for (cp = kenvp[0], i = 0; cp != NULL; cp = kenvp[++i]) {
+        // Compare prefix: does "cp" start with "name"?
+        if ((strncmp(cp, name, len) == 0) &&
+            (cp[len] == '=')) {   // Ensure it's exactly "name="
+            
+            if (idx != NULL)
+                *idx = i;   // Optionally return the index
+
+            // Return pointer to the value part (after '=')
+            return (cp + len + 1);
+        }
+    }
+
+    // Not found
+    return (NULL);
+}
+```
+
+**Step by step explanation:**
+
+1. The function receives a variable name, such as `"kern.ostype"`.
+2. It measures its length.
+3. It loops through the array `kenvp[]`. Each entry is a string like `"name=value"`.
+4. It compares the prefix of each entry with the requested name.
+5. If it matches and is followed by `'='`, it returns a pointer **just past the '='**, so the caller gets only the value.
+   - For `"kern.ostype=FreeBSD"`, the return value points to `"FreeBSD"`.
+6. If no entry matches, it returns `NULL`.
+
+The public interface `kern_getenv()` wraps this logic with safe copying and locking:
+
+```c
+// sys/kern/kern_environment.c, lines 561-582
+char *
+kern_getenv(const char *name)
+{
+    char *cp, *ret;
+    int len;
+
+    if (dynamic_kenv) {
+        // Compute maximum safe size for a "name=value" string
+        len = KENV_MNAMELEN + 1 + kenv_mvallen + 1;
+
+        // Allocate a buffer (zeroed) for the result
+        ret = uma_zalloc(kenv_zone, M_WAITOK | M_ZERO);
+
+        mtx_lock(&kenv_lock);
+        cp = _getenv_dynamic(name, NULL);   // Look up variable
+        if (cp != NULL)
+            strlcpy(ret, cp, len);          // Safe copy into buffer
+        mtx_unlock(&kenv_lock);
+
+        // If not found, free the buffer and return NULL
+        if (cp == NULL) {
+            uma_zfree(kenv_zone, ret);
+            ret = NULL;
+        }
+    } else {
+        // Early boot path: static environment
+        ret = _getenv_static(name);
+    }
+
+    return (ret);
+}
+```
+
+**What to notice:**
+
+- `kenvp` is an **array of strings** used as a lookup table.
+- `_getenv_dynamic_locked()` walks the array, uses `strncmp()` and pointer arithmetic to isolate the value.
+- `kern_getenv()` wraps this in a safe API: it locks access, copies the value with `strlcpy()`, and ensures memory ownership is clear (the caller must later `freeenv()` the result).
+
+This real kernel code ties together almost everything we have discussed so far: **arrays of strings, null-terminated strings, standard string functions, and pointer arithmetic**.
+
+### Common Beginner Pitfalls
+
+Arrays and strings in C look simple, but they hide many traps for beginners. Small mistakes that in user space would only crash your program can, in kernel space, bring down the entire operating system. Here are the most common issues:
+
+- **Off-by-one errors**
+   The most classic mistake is writing outside the valid range of an array. If you declare `int items[5];`, the valid indices are `0` through `4`. Writing to `items[5]` is already one past the end, and you are corrupting memory.
+   *Avoid it:* always think in terms of "zero to size minus one," and double-check loop bounds carefully.
+- **Forgetting the null terminator**
+   A string in C must end with `'\0'`. If you forget it, functions like `printf("%s", ...)` will keep reading memory until they randomly find a zero byte, often printing garbage or causing a crash.
+   *Avoid it:* let the compiler add the terminator by writing `char name[] = "FreeBSD";` instead of manually filling character arrays.
+- **Using unsafe functions**
+   Functions like `strcpy()` and `strcat()` perform no bounds checking. If the destination buffer is too small, they will happily overwrite memory past its end. In kernel code, this can cause panics or even security vulnerabilities.
+   *Avoid it:* use safer alternatives such as `strlcpy()` or `strlcat()`, which require you to pass the size of the buffer.
+- **Assuming arrays know their own length**
+   In higher-level languages, arrays often "know" how big they are. In C, an array is just a pointer to a block of memory; its size is not stored anywhere.
+   *Avoid it:* keep track of the size explicitly, usually in a separate variable, and pass it along with the array whenever you share it between functions.
+- **Mixing up arrays and pointers**
+   Arrays and pointers are closely related in C, but not identical. For example, you cannot reassign an array the way you reassign a pointer, and `sizeof(array)` is not the same as `sizeof(pointer)`. Confusing the two leads to subtle bugs.
+   *Avoid it:* remember: arrays "decay" into pointers when passed to functions, but at the declaration level they are distinct.
+
+In user programs, these mistakes usually stop at a segmentation fault. In kernel drivers, they can overwrite scheduler data, corrupt I/O buffers, or break synchronization structures, leading to crashes or exploitable vulnerabilities. This is why FreeBSD developers are disciplined when working with arrays and strings: every buffer has a known size, every string has a checked terminator, and safe functions are preferred by default.
+
+### Hands-On Lab 1: Arrays in Practice
+
+In this first lab you will practice the mechanics of arrays: declaring, initializing, looping over them, and modifying elements.
+
+```c
+#include <stdio.h>
+
+int main() {
+    // Declare and initialize an array of 5 integers
+    int values[5] = {10, 20, 30, 40, 50};
+
+    printf("Initial array contents:\n");
+    for (int i = 0; i < 5; i++) {
+        printf("values[%d] = %d\n", i, values[i]);
+    }
+
+    // Modify one element
+    values[2] = 99;
+
+    printf("\nAfter modification:\n");
+    for (int i = 0; i < 5; i++) {
+        printf("values[%d] = %d\n", i, values[i]);
+    }
+
+    return 0;
+}
+```
+
+**What to Try Next**
+
+1. Change the array size to 10 but only initialize the first 3 elements. Print all 10 and notice that uninitialized ones default to zero (in this case, because the array was initialized with braces).
+2. Move the `values[2] = 99;` line into the loop and try modifying every element. This is the same pattern drivers use when filling buffers with new data from hardware.
+3. (Optional curiosity) Try printing `values[5]`. This is one step past the last valid element. On your system you might see garbage or nothing unusual, but in the kernel it could overwrite sensitive memory and crash the OS. Treat it as forbidden.
+
+### Hands-On Lab 2: Strings and the Null Terminator
+
+This lab focuses on strings. You will see what happens when you forget the terminating `'\0'`, and then you'll practice comparing strings in a way that mirrors how FreeBSD drivers search configuration options.
+
+**Incorrect version (missing `'\0'`):**
+
+```c
+#include <stdio.h>
+
+int main() {
+    char word[5] = {'H', 'e', 'l', 'l', 'o'};
+    printf("Broken string: %s\n", word);
+    return 0;
+}
+```
+
+**Correct version:**
+
+```c
+#include <stdio.h>
+
+int main() {
+    char word[6] = {'H', 'e', 'l', 'l', 'o', '\0'};
+    printf("Fixed string: %s\n", word);
+    return 0;
+}
+```
+
+**What to Try Next**
+
+1. Replace `"Hello"` with a longer word but keep the array size the same. See what happens when the word does not fit.
+2. Declare `char msg[] = "FreeBSD";` without specifying a size and print it. Notice how the compiler automatically adds the null terminator for you.
+
+**Kernel-Flavoured Bonus Challenge**
+
+In the kernel, environment variables are stored as strings of the form `"name=value"`. Drivers often need to compare names to find the right variable. Let's simulate that:
+
+```c
+#include <stdio.h>
+#include <string.h>
+
+int main() {
+    // Simulated environment variables (like entries in kenvp[])
+    char *env[] = {
+        "kern.ostype=FreeBSD",
+        "hw.model=Intel(R) Core(TM)",
+        "kern.version=14.3-RELEASE",
+        NULL
+    };
+
+    // Target to search
+    const char *name = "kern.ostype";
+    int len = strlen(name);
+
+    for (int i = 0; env[i] != NULL; i++) {
+        // Compare prefix
+        if (strncmp(env[i], name, len) == 0 && env[i][len] == '=') {
+            printf("Found %s, value = %s\n", name, env[i] + len + 1);
+            break;
+        }
+    }
+
+    return 0;
+}
+```
+
+Run it, and you will see:
+
+```
+Found kern.ostype, value = FreeBSD
+```
+
+This is almost exactly what `_getenv_dynamic_locked()` does inside the FreeBSD kernel: it compares names and, if they match, returns a pointer to the value after the `'='`.
+
+### Wrapping Up
+
+In this section, you explored arrays and strings from both the C language perspective and the FreeBSD kernel perspective. You saw how arrays give you fixed-size storage, how strings depend on the null terminator, and how these simple constructs underpin core driver mechanisms such as device names, sysctl parameters, and kernel environment variables.
+
+You also discovered how subtle mistakes,  like writing past an array boundary or forgetting a terminator, can escalate into severe bugs or vulnerabilities, as illustrated by real FreeBSD CVEs.
+
+### Recap Quiz - Arrays and Strings
+
+**Instructions:** answer without running code first, then verify on your system. Keep answers short and specific.
+
+1. In C, what makes a character array a "string"? Explain what happens if that element is missing.
+2. Given `int a[5];`, list the valid indices and say what is undefined behavior for indexing.
+3. Why is `strcpy(dest, src)` risky in kernel code, and what should you prefer instead? Briefly explain why.
+4. Look at this snippet and say exactly what the return value points to if it matches:
+
+```c
+int len = strlen(name);
+if (strncmp(cp, name, len) == 0 && cp[len] == '=')
+    return (cp + len + 1);
+```
+
+1. In `sys/kern/kern_environment.c`, what is the type and role of `kenvp`, and how does `_getenv_dynamic_locked()` use it at a high level?
+
+### Challenge Exercises
+
+If you feel confident, try these challenges. They are designed to push your skills a bit further and prepare you for real driver work.
+
+1. **Array Rotation:** Write a program that rotates the contents of an integer array by one position. For example, `{1, 2, 3, 4}` becomes `{2, 3, 4, 1}`.
+2. **String Trimmer:** Write a function that removes the newline character (`'\n'`) from the end of a string if present. Test it with input from `fgets()`.
+3. **Environment Lookup Simulation:** Extend the kernel-flavoured lab from this section. Add a function `char *lookup(char *env[], const char *name)` that takes an array of `"name=value"` strings and returns the value part. Handle the case where the name is not found by returning `NULL`.
+4. **Buffer Size Check:** Write a function that safely copies one string into another buffer and explicitly reports an error if the destination is too small. Compare your implementation with `strlcpy()`.
+
+### Looking Ahead
+
+In the next section, we will connect arrays and strings to the deeper concept of **pointers and memory**. You will learn how arrays decay into pointers, how memory addresses are manipulated, and how the FreeBSD kernel allocates and frees memory safely. This is where you begin to see how data structures and memory management form the backbone of every device driver.
+
+## 4.10 Pointers and Memory
 
 Welcome to one of the most mysterious and magical topics in your C journey: **pointers**.
 
@@ -5176,13 +5706,13 @@ By now you can clearly see the difference between an array of pointers and a poi
 
 With this foundation in place, we are ready to take the next step: moving from fixed arrays to dynamically allocated memory. In the following section on **Dynamic Memory Allocation**, you will learn how to use functions such as `malloc`, `calloc`, `realloc`, and `free` to create arrays at runtime. We will connect this to pointers by showing how to allocate each element separately, how to request one contiguous block when you need a pointer to an array, and how to clean up properly if something goes wrong. This transition from static to dynamic memory is essential for real systems programming and will prepare you for the way memory is managed inside the FreeBSD kernel.
 
-### Dynamic Memory Allocation
+## 4.11 Dynamic Memory Allocation
 
 So far, most of the memory we used in examples was **fixed-size**: arrays with a known length or structures allocated on the stack. But when writing system-level code like FreeBSD device drivers, you often don't know in advance how much memory you'll need. Maybe a device reports the number of buffers only after probing, or the amount of data depends on user input. That's when **dynamic memory allocation** comes into play.
 
 Dynamic allocation allows your code to **ask the system for memory while it's running**, and to give it back when it's no longer needed. This flexibility is essential for drivers, where hardware and workload conditions can change at runtime.
 
-#### User Space vs Kernel Space
+### User Space vs Kernel Space
 
 In user space, you've probably seen functions like:
 
@@ -5220,7 +5750,7 @@ In user space, memory comes from the **heap**, managed by the C runtime and the 
 
 But inside the **FreeBSD kernel**, we cannot use `<stdlib.h>`'s `malloc()` or `free()`. The kernel has its own allocator, designed with stricter rules and better tracking. The kernel API is documented in `malloc(9)`.
 
-#### Visualising Memory in User Space
+### Visualising Memory in User Space
 
 ```
 +-----------------------------------------------------------+
@@ -5247,7 +5777,7 @@ But inside the **FreeBSD kernel**, we cannot use `<stdlib.h>`'s `malloc()` or `f
 
 **Note:** Stack and heap grow toward each other at runtime. Fixed-size data lives on the stack or in the data segment, while dynamic allocations come from the heap.
 
-#### Kernel-Space Allocation with malloc(9)
+### Kernel-Space Allocation with malloc(9)
 
 To allocate memory in the FreeBSD kernel you use:
 
@@ -5274,7 +5804,7 @@ free(buf, M_TEMP);
 - `M_ZERO` → ensure the block is zeroed.
 - `free(buf, M_TEMP)` → release the memory.
 
-#### Kernel malloc(9) Workflow
+### Kernel malloc(9) Workflow
 
 ```
 ┌──────────────────────────┐
@@ -5314,7 +5844,7 @@ free(buf, M_TEMP);
 
 **Note:** In the kernel, every allocation is **typed** and controlled by flags. Pair every `malloc(9)` with a `free(9)` on all code paths, including errors.
 
-#### Memory Types and Flags
+### Memory Types and Flags
 
 One unique aspect of FreeBSD's kernel allocator is the **type system**: every allocation must be tagged. This makes debugging and leak tracking easier.
 
@@ -5332,7 +5862,7 @@ Common flags:
 
 This explicit style encourages safe, predictable memory usage in critical kernel code.
 
-#### Hands-On Lab 1: Allocating and Freeing a Buffer
+### Hands-On Lab 1: Allocating and Freeing a Buffer
 
 In this exercise, we'll create a simple kernel module that allocates memory when loaded and frees it when unloaded.
 
@@ -5392,7 +5922,7 @@ You'll see how memory is reserved and later freed.
 
 When you load and unload the module, you will see the allocation and freeing in action.
 
-#### Hands-On Lab 2: Allocating an Array of Structures
+### Hands-On Lab 2: Allocating an Array of Structures
 
 Now let's extend the idea by creating an array of structs dynamically.
 
@@ -5420,7 +5950,7 @@ On unload:
 
 This exercise mirrors what real drivers do when they keep track of device states, DMA buffers, or I/O queues.
 
-#### Real FreeBSD Example: Building the corefile path in `coredump_vnode.c`
+### Real FreeBSD Example: Building the corefile path in `coredump_vnode.c`
 
 Let's look at a real example from FreeBSD's source code: `sys/kern/coredump_vnode.c`. This function builds the path for a process core dump. It allocates a temporary buffer, uses it to assemble the path string, and later frees it. I've added additional comments to the example code below to make it easier for you to understand what happens at each step:
 
@@ -5561,7 +6091,7 @@ he choice between `M_WAITOK` and `M_NOWAIT` also depends on context: in code pat
 
 The handling of the short-lived `freepath` buffer is a clear demonstration of this principle in practice.
 
-#### Why This Matters in FreeBSD Device Drivers
+### Why This Matters in FreeBSD Device Drivers
 
 In real-world drivers, memory needs are rarely predictable. A network card might advertise the number of receive descriptors only after you probe it. A storage controller could require buffers sized according to device-specific registers. Some devices maintain tables that grow or shrink depending on the workload, such as pending I/O requests or active sessions. All of these cases require **dynamic memory allocation**.
 
@@ -5571,7 +6101,7 @@ However, this flexibility comes with responsibility. Unlike in user space, memor
 
 This is why learning to allocate, use, and release memory correctly is one of the foundational skills for FreeBSD driver developers. Getting this right ensures that your driver not only works under normal conditions but also behaves safely under stress, making the system reliable as a whole.
 
-##### Real Driver Scenarios
+#### Real Driver Scenarios
 
 Here are some practical cases where dynamic memory allocation is essential in FreeBSD device drivers:
 
@@ -5582,7 +6112,7 @@ Here are some practical cases where dynamic memory allocation is essential in Fr
 
 These examples show that dynamic allocation is not just an academic exercise: it is a daily requirement for making real drivers interact safely and efficiently with hardware.
 
-#### Common Beginner Pitfalls
+### Common Beginner Pitfalls
 
 Dynamic allocation in kernel code introduces some traps that are easy to overlook:
 
@@ -5602,7 +6132,7 @@ Dynamic allocation in kernel code introduces some traps that are easy to overloo
  Using `M_WAITOK` in contexts that cannot sleep (like interrupt handlers) can deadlock the kernel. Using `M_NOWAIT` when sleeping is safe may force needless failure handling.
  *Tip:* Understand the context of your allocation and pick the correct flag.
 
-#### Challenge Questions
+### Challenge Questions
 
 1. In a driver's `detach()` routine, what can happen if you forget to free dynamically allocated buffers?
 2. Why is it important that the type passed to `free(9)` matches the one used in `malloc(9)`?
@@ -5610,7 +6140,7 @@ Dynamic allocation in kernel code introduces some traps that are easy to overloo
 4. Why is checking every error path after a successful allocation just as important as freeing on the success path?
 5. If you use `M_WAITOK` inside an interrupt filter, what dangerous condition might arise?
 
-#### Wrapping Up
+### Wrapping Up
 
 You have now seen how C's dynamic memory allocation works in user space and how FreeBSD extends this idea with its own `malloc(9)` and `free(9)` for the kernel. You learned why allocations must always be paired with cleanups, how memory types and flags guide safe allocation, and how real FreeBSD code uses these patterns every day.
 
@@ -5618,7 +6148,7 @@ Dynamic allocation gives your driver the flexibility to adapt to hardware and wo
 
 In the next section, we will build directly on this foundation by looking at **memory safety in kernel code**. There, you will learn techniques to protect against leaks, overflows, and use-after-free errors, making your driver not only functional but also reliable and secure.
 
-### Memory Safety in Kernel Code
+## 4.12 Memory Safety in Kernel Code
 
 When writing kernel code, especially device drivers, we are working in a privileged and unforgiving environment. There is no safety net. In user-space programming, a crash usually terminates only your process. In kernel-space, a single bug can panic or reboot the entire operating system. That is why memory safety is not optional. It is the foundation of stable and secure FreeBSD driver development.
 
@@ -5626,7 +6156,7 @@ You must constantly remember that the kernel is persistent and long-running. A m
 
 This section introduces the most common mistakes, shows you how to avoid them, and gives you practice through real experiments, both in user space and inside a small kernel module.
 
-#### What Can Go Wrong?
+### What Can Go Wrong?
 
 Most kernel bugs caused by beginners can be traced to unsafe memory handling. Let's list the most frequent and dangerous ones:
 
@@ -5638,7 +6168,7 @@ Most kernel bugs caused by beginners can be traced to unsafe memory handling. Le
 
 Unlike user space, where tools like `valgrind` can sometimes save you, in kernel programming these errors can lead to instant crashes or subtle corruption that is very difficult to debug.
 
-#### Best Practices for Safer Kernel Code
+### Best Practices for Safer Kernel Code
 
 FreeBSD provides mechanisms and conventions to help developers write robust code. Follow these guidelines:
 
@@ -5685,7 +6215,7 @@ FreeBSD provides mechanisms and conventions to help developers write robust code
    - `M_WAITOK` is used when allocation can safely sleep until memory becomes available.
    - `M_NOWAIT` must be used in interrupt handlers or any context where sleeping is forbidden.
 
-#### A Real Example from FreeBSD 14.3
+### A Real Example from FreeBSD 14.3
 
 In the FreeBSD source tree, memory is often managed through pre-allocated buffers rather than frequent dynamic allocations. Here is a snippet from `sys/kern/tty_info.c`, it's located at line 303:
 
@@ -5702,7 +6232,7 @@ What happens here?
 
 This pattern demonstrates a safe kernel strategy: memory is allocated once during subsystem initialisation and carefully reused, rather than repeatedly allocated and freed. It reduces fragmentation, avoids allocation failures at runtime, and keeps memory usage predictable.
 
-#### Dangerous Code to Avoid
+### Dangerous Code to Avoid
 
 The following snippet is **wrong** because it uses a pointer that was never given a valid address:
 
@@ -5714,7 +6244,7 @@ ptr->id = 5;            // Crash risk: dereferencing an uninitialised pointer
 
 `ptr` does not point anywhere valid. When you try to access `ptr->id`, the kernel will likely panic because you are touching memory you do not own. In user space, this would usually be a segmentation fault. In kernel space, it can crash the whole system.
 
-#### The Correct Pattern
+### The Correct Pattern
 
 Below is a safe version that allocates memory, checks that the allocation worked, uses the memory, and then releases it. The comments explain each step and why it matters in kernel code.
 
@@ -5781,7 +6311,7 @@ void example(void)
 }
 ```
 
-#### Why this pattern matters
+### Why this pattern matters
 
 1. **Initialise pointers**: starting with `NULL` makes accidental use obvious during reviews and easier to catch in tests.
 2. **Size safely**: `sizeof(*ptr)` follows the pointer's type automatically, reducing the chance of wrong sizes when refactoring.
@@ -5792,7 +6322,7 @@ void example(void)
 5. **Always free**: every `malloc()` must be paired with `free()` using the same tag. This is non-negotiable in kernel code.
 6. **Set to NULL after free**: it reduces the risk of use-after-free bugs if the pointer is referenced later by mistake.
 
-#### If your context do not allow sleep
+### If your context do not allow sleep
 
 Sometimes you are in a context where sleeping is forbidden, such as an interrupt handler. In that case use `M_NOWAIT`, check immediately for failure, and defer work if needed:
 
@@ -5806,11 +6336,11 @@ if (ptr == NULL) {
 
 Keeping these habits from the beginning will save you from many of the most painful kernel crashes and midnight debugging sessions.
 
-#### Hands-On Lab 1: Crashing with an Uninitialized Pointer
+### Hands-On Lab 1: Crashing with an Uninitialized Pointer
 
 This exercise demonstrates why you must never use a pointer before giving it a valid address. We will first write a broken program that uses an uninitialised pointer, then fix it with `malloc()`.
 
-##### Broken Version: `lab1_crash.c`
+#### Broken Version: `lab1_crash.c`
 
 ```c
 #include <stdio.h>
@@ -5832,14 +6362,14 @@ int main(void) {
 }
 ```
 
-##### What to Expect
+#### What to Expect
 
 - This program compiles without warnings.
 - When you run it, it will almost certainly crash with a segmentation fault.
 - The crash happens because `ptr` does not point to valid memory, yet we try to write to `ptr->value`.
 - In the kernel, this same mistake would likely panic the entire system.
 
-##### What is wrong here?
+#### What is wrong here?
 
 ```
 STACK (main)
@@ -5859,7 +6389,7 @@ Result:
   You are dereferencing a garbage address. Crash.
 ```
 
-##### Fixed Version: `lab1_fixed.c`
+#### Fixed Version: `lab1_fixed.c`
 
 ```c
 #include <stdio.h>
@@ -5891,14 +6421,14 @@ int main(void) {
 }
 ```
 
-##### What Changed
+#### What Changed
 
 - We used `malloc()` to allocate enough space for one `struct data`.
 - We checked that the result was not `NULL`.
 - We safely wrote into the struct's field.
 - We freed the memory before exiting, preventing a leak.
 
-##### Why this works
+#### Why this works
 
 ```
 STACK (main)
@@ -5921,11 +6451,11 @@ Result:
   No crash. No leak.
 ```
 
-#### Hands-On Lab 2: Memory Leak and the Forgotten Free
+### Hands-On Lab 2: Memory Leak and the Forgotten Free
 
 This exercise shows what happens when you forget to release allocated memory. In user space, leaks disappear when your program exits. In the kernel, leaks accumulate for the system's entire uptime, which is why this habit must be fixed early.
 
-##### Leaky Version: `lab2_leak.c`
+#### Leaky Version: `lab2_leak.c`
 
 ```c
 #include <stdio.h>
@@ -5947,13 +6477,13 @@ int main(void) {
 }
 ```
 
-##### What to Expect
+#### What to Expect
 
 - The program prints the string normally.
 - You may not notice the problem right away because the OS reclaims process memory when the program exits.
 - In the kernel this would be serious. The memory would remain allocated across operations and only a reboot clears it.
 
-##### Leak vs program exit
+#### Leak vs program exit
 
 ```
 Before exit:
@@ -5979,7 +6509,7 @@ Consequence in kernel space:
   The block remains allocated across operations and accumulates.
 ```
 
-##### Fixed Version: `lab2_fixed.c`
+#### Fixed Version: `lab2_fixed.c`
 
 ```c
 #include <stdio.h>
@@ -6000,12 +6530,12 @@ int main(void) {
 }
 ```
 
-##### What Changed
+#### What Changed
 
 - We added `free(buffer);`.
 - This single line ensures that all memory is returned to the system. Make this a habit.
 
-##### Proper lifecycle
+#### Proper lifecycle
 
 ```
 1) Allocation
@@ -6020,7 +6550,7 @@ int main(void) {
    buffer (optional) -> set to NULL to avoid accidental reuse
 ```
 
-#### Detecting Memory Leaks with AddressSanitizer
+### Detecting Memory Leaks with AddressSanitizer
 
 On FreeBSD, when compiling user-space programs with Clang, you can detect leaks automatically using AddressSanitizer:
 
@@ -6031,7 +6561,7 @@ On FreeBSD, when compiling user-space programs with Clang, you can detect leaks 
 
 You will see a report indicating memory was allocated and never freed. Although AddressSanitizer does not apply to kernel code, the lesson is identical. Always release what you allocate.
 
-#### Mini-Lab 3: Memory Allocation in a Kernel Module
+### Mini-Lab 3: Memory Allocation in a Kernel Module
 
 Now let's try a FreeBSD kernel experiment. Create `memlab.c`:
 
@@ -6102,7 +6632,7 @@ Unload with:
 % sudo kldunload memlab
 ```
 
-##### Detecting Leaks
+#### Detecting Leaks
 
 Comment out the `free()` line, recompile, and load/unload several times. Now inspect memory:
 
@@ -6118,7 +6648,7 @@ memlab        128   4   4   0   0   1
 
 indicating four allocations of 128 bytes are still "in use" because they were never freed. With the fix in place, the line disappears after unload.
 
-##### Optional: DTrace View
+#### Optional: DTrace View
 
 To see allocations live:
 
@@ -6128,7 +6658,7 @@ To see allocations live:
 
 When you load the module, you will see the `128` bytes being allocated.
 
-##### Challenge: Prove the Leak
+#### Challenge: Prove the Leak
 
 It is one thing to read that kernel leaks accumulate, but another to **see it with your own eyes**. This short experiment will let you prove it on your own system.
 
@@ -6165,7 +6695,7 @@ It is one thing to read that kernel leaks accumulate, but another to **see it wi
 
 This simple test demonstrates a critical fact: in user space, leaks usually vanish when your process exits. In kernel space, leaks **survive across module reloads** and continue to accumulate. In production systems, such mistakes are not just messy; they are fatal. Over time, leaks can exhaust all available kernel memory and cause the system to crash.
 
-#### Common Beginner Pitfalls
+### Common Beginner Pitfalls
 
 Memory safety is one of the hardest lessons for new C programmers, and in kernel space the consequences are much harsher. Let's highlight a few traps that beginners often fall into, and how you can avoid them:
 
@@ -6180,7 +6710,7 @@ Memory safety is one of the hardest lessons for new C programmers, and in kernel
 
 By keeping these pitfalls in mind and practising the good habits shown earlier, you will dramatically reduce the risk of introducing memory bugs into your drivers. These lessons might feel repetitive now, but in real kernel development they are the difference between a stable driver and one that crashes production systems.
 
-#### Golden Rules for Kernel Memory
+### Golden Rules for Kernel Memory
 
 ```
 1. Every malloc() must have a matching free().
@@ -6190,7 +6720,7 @@ By keeping these pitfalls in mind and practising the good habits shown earlier, 
 
 Keep these three rules in mind whenever you write kernel code. They may look simple, but following them consistently is what separates a stable FreeBSD driver from a crash-prone one.
 
-#### Pointers Recap: The Lifecycle of Memory in C
+### Pointers Recap: The Lifecycle of Memory in C
 
 ```
 Step 1: Declare a pointer
@@ -6247,7 +6777,7 @@ ptr = NULL;
 - Always check your allocations.
 - Free what you allocate, and set pointers to `NULL` after freeing.
 
-#### Pointers Recap Quiz
+### Pointers Recap Quiz
 
 Test yourself with these quick questions before moving on. Answers are at the end of this chapter.
 
@@ -6257,7 +6787,7 @@ Test yourself with these quick questions before moving on. Answers are at the en
 4. After calling `free(ptr, M_TAG);`, why is it a good habit to set `ptr = NULL;`?
 5. In which contexts must you use `M_NOWAIT` instead of `M_WAITOK` when allocating memory in kernel code?
 
-#### Wrapping Up
+### Wrapping Up
 
 With this section, we have reached the end of our journey through **pointers in C**. Along the way you learned what pointers are, how they relate to arrays and structures, and why they are so powerful but also so dangerous. We concluded with one of the most important lessons: **memory safety**.
 
@@ -6265,6 +6795,6 @@ Every pointer must be treated with care. Every allocation must be checked. Every
 
 By following FreeBSD's allocation patterns, checking results, freeing memory diligently, and using debugging tools like `vmstat -m` and DTrace, you will be on the path to writing drivers that are both stable and reliable.
 
-In the next section, we begin our study of **arrays and strings** in C. Arrays are the natural companion to pointers, and strings are nothing more than arrays of characters. They are central to nearly every C program and appear constantly in kernel code. Understanding how they are stored, manipulated, and protected from overflows will prepare you for the next steps in FreeBSD device driver development.
+In the next section, we'll cover **structures** and **typedefs** in C. Structures allow you to group related data, making your code more organized and expressive. Typedefs will enable you to assign meaningful names to complex types, improving readability. Together, they form the basis of almost every real kernel subsystem and are a natural step after mastering pointers.
 
 *continue soon...*
