@@ -2,7 +2,7 @@
 title: "A First Look at the C Programming Language"
 description: "This chapter introduces the C programming language for complete beginners."
 author: "Edson Brandi"
-date: "2025-08-26"
+date: "2025-08-28"
 status: "draft"
 part: 1
 chapter: 4
@@ -6796,5 +6796,672 @@ Every pointer must be treated with care. Every allocation must be checked. Every
 By following FreeBSD's allocation patterns, checking results, freeing memory diligently, and using debugging tools like `vmstat -m` and DTrace, you will be on the path to writing drivers that are both stable and reliable.
 
 In the next section, we'll cover **structures** and **typedefs** in C. Structures allow you to group related data, making your code more organized and expressive. Typedefs will enable you to assign meaningful names to complex types, improving readability. Together, they form the basis of almost every real kernel subsystem and are a natural step after mastering pointers.
+
+## 4.13 Structures and typedef in C
+
+So far, you have worked with single variables, arrays, and pointers. These are helpful tools, but real programs and especially operating system kernels need a way to organize related pieces of information together. Imagine trying to keep track of a device's name, its state, and its configuration using separate variables scattered everywhere. The result would be messy and hard to maintain.
+
+C solves this problem with **structures**. A structure allows you to group related data under one roof, giving it a clear and logical shape. And once you have that structure, the `typedef` keyword can make your code shorter and easier to read by giving that structure a simpler name.
+
+You will quickly discover that FreeBSD code is built on this foundation. Almost every kernel subsystem is defined as a set of structures. Once you understand them, the FreeBSD source tree starts looking far less intimidating.
+
+### What is a struct?
+
+Up until now, you have stored data in single variables (`int`, `char`, etc.) or in arrays of the same type. But in real programming, we often need to keep *different* pieces of information together. For example, if we want to represent a **point in two-dimensional space**, we need both an `x` coordinate and a `y` coordinate. Keeping them in separate variables quickly becomes messy.
+
+This is where a **structure** (or **struct**) comes in. A struct is a *user-defined type* that allows you to group several variables under a single name. Each variable inside the struct is referred to as a **member** or a **field**.
+
+A useful way to imagine a struct is to think of it as a **folder**. A folder can hold different types of documents, a text file, an image, and a spreadsheet, but they are all kept together because they belong to the same project. A struct works the same way in C: it keeps related data together so you can handle it as one logical unit.
+
+Here's a diagram of how a `struct Point` looks conceptually:
+
+```yaml
+struct Point (like a folder)
+ ├── x  (an integer)
+ └── y  (an integer)
+```
+
+Now let's see how this looks in C code:
+
+```c
+#include <stdio.h>
+
+// Define a structure to represent a point in 2D space
+struct Point {
+    int x;   // The X coordinate
+    int y;   // The Y coordinate
+};
+
+int main() {
+    // Declare a variable of type struct Point
+    struct Point p1;
+
+    // Assign values to its fields
+    p1.x = 10;   // Set the X coordinate
+    p1.y = 20;   // Set the Y coordinate
+
+    // Print the values
+    printf("Point p1 is at (%d, %d)\n", p1.x, p1.y);
+
+    return 0;
+}
+```
+
+Let's break down what happens here:
+
+1. We define a new **blueprint** called `struct Point` that describes what every "Point" should contain: two integers, one called `x` and one called `y`.
+2. In `main()`, we create a real variable `p1` that follows this blueprint.
+3. We fill in its fields by assigning values to `p1.x` and `p1.y`.
+4. We print the values, treating `p1` as one object with two related pieces of data.
+
+This way, instead of juggling separate `int x` and `int y` variables, we now have a single object `p1` that neatly contains both.
+
+In FreeBSD drivers, you will often find the same pattern, just with more complex fields: a device struct might keep its ID, its name, a pointer to its memory buffer, and its current state all in one place.
+
+### Accessing Structure Members
+
+Once you define a structure, you need a way to reach its individual fields. C gives you two operators for this:
+
+- The **dot operator (`.`)** is used when you have a **structure variable**.
+- The **arrow operator (`->`)** is used when you have a **pointer to a structure**.
+
+A good way to remember this is: **dot for direct**, **arrow for indirect**.
+
+Let's see both in action:
+
+```c
+#include <stdio.h>
+
+// Define a structure to represent a device
+struct Device {
+    char name[20];
+    int id;
+};
+
+int main() {
+    // Create a structure variable
+    struct Device dev = {"uart0", 1};
+
+    // Create a pointer to that structure
+    struct Device *ptr = &dev;
+
+    // Access using the dot operator (direct access)
+    printf("Device name: %s\n", dev.name);
+
+    // Access using the arrow operator (indirect access via pointer)
+    printf("Device ID: %d\n", ptr->id);
+
+    return 0;
+}
+```
+
+Here's what is happening step by step:
+
+1. We create a structure variable `dev` that represents a device with a name and an ID.
+2. We then create a pointer `ptr` that points to `dev`.
+3. When we write `dev.name`, we are directly accessing the `name` field of the struct variable.
+4. When we write `ptr->id`, we are saying *"follow the pointer `ptr` to the struct it points to, then access the `id` field."*
+
+The arrow operator is essentially shorthand for writing:
+
+```c
+(*ptr).id
+```
+
+But because this looks clumsy, C provides `ptr->id` instead.
+
+This distinction is fundamental in kernel programming. In FreeBSD, most kernel APIs will not give you a structure directly; they give you a **pointer to a structure**. For example, when working with processes, you will often get a `struct proc *p`, not a plain `struct proc`. That means you will spend most of your time using the arrow operator when writing drivers.
+
+### Making Code Cleaner with typedef
+
+When we define a struct, we usually have to write the word `struct` every time we declare a variable. For small programs that is fine, but in large projects like FreeBSD this quickly becomes repetitive and makes the code harder to read.
+
+The **`typedef` keyword** allows us to create a **shorter alias** for a type. It does not invent a new type; it simply gives an existing type a new name. This alias typically makes the code easier to read and clarifies the programmer's intent.
+
+Here's an example that makes our `struct Point` easier to work with:
+
+```c
+#include <stdio.h>
+
+// Define a structure and immediately create a typedef for it
+typedef struct {
+    int x;   // X coordinate
+    int y;   // Y coordinate
+} Point;     // "Point" is now an alias for this struct
+
+int main() {
+    // We can now declare a Point without writing "struct Point"
+    Point p = {1, 2};
+
+    printf("Point is at (%d, %d)\n", p.x, p.y);
+
+    return 0;
+}
+```
+
+Without `typedef`, we would have to write:
+
+```c
+struct Point p;
+```
+
+With `typedef`, we can simply write:
+
+```c
+Point p;
+```
+
+This may look like a slight difference, but in real FreeBSD code, where structs can be very large and complex, using typedef keeps the source much cleaner.
+
+### Typedefs in FreeBSD
+
+FreeBSD uses typedef extensively to:
+
+1. **Give clearer names to primitive types**
+    For example, in `/usr/include/sys/types` you will find lines like the lines below. Be aware that these lines presented below are spread across the file:
+
+   ```c
+   typedef __pid_t     pid_t;      /* process id */
+   typedef __uid_t     uid_t;      /* user id */
+   typedef __gid_t     gid_t;      /* group id */
+   typedef __dev_t     dev_t;      /* device number or struct cdev */
+   typedef __off_t     off_t;      /* file offset */
+   typedef __size_t    size_t;     /* object size */
+   ```
+
+   Instead of scattering "int" or "long" everywhere in kernel code, FreeBSD developers use these typedefs. The code then speaks the language of the operating system: `pid_t` for process IDs, `uid_t` for user IDs, `size_t` for sizes, and so on.
+
+2. **Hide system-dependent details**
+    On some architectures, `pid_t` might be a 32-bit integer, while on others, it might be a 64-bit integer. The code that uses `pid_t` doesn't care; the typedef handles that detail.
+
+3. **Simplify complex declarations**
+    FreeBSD also uses typedef to simplify long or pointer-heavy declarations. For example:
+
+   ```c
+   typedef struct _device  *device_t;
+   typedef struct vm_page  *vm_page_t;
+   ```
+
+   Instead of always writing `struct _device *` throughout the kernel, developers can simply write `device_t`. This makes the code shorter and easier to read.
+
+### Why this matters in driver development
+
+When you start writing drivers, you'll constantly encounter types like `device_t`, `vm_page_t`, or `bus_space_tag_t`. They are all typedefs hiding more complex structures or pointers. Understanding that typedef is just an **alias** helps you avoid confusion and allows you to read FreeBSD code more fluently.
+
+### Real Example from FreeBSD 14.3: Creating a USB Character Device
+
+Now that you've seen how structures and `typedef` work in isolation, let's step into real FreeBSD kernel code. This example comes from the USB subsystem, specifically the function `usb_make_dev` in `sys/dev/usb/usb_device.c` (between lines 2119-2157). This function is responsible for creating a character device node under `/dev` for a USB endpoint, allowing user programs to interact with it.
+
+As you read the code, pay attention to two things:
+
+1. How FreeBSD uses **structures** (`struct usb_fs_privdata` and `struct make_dev_args`) to bundle together all the information needed.
+2. How it relies on **typedefs** like `uid_t` and `gid_t` to give clearer meaning to simple integers.
+
+Here's the relevant code, with additional comments to help you connect it to the concepts we just studied:
+
+File: `sys/dev/usb/usb_device.c`
+
+```c
+[...]
+struct usb_fs_privdata *
+usb_make_dev(struct usb_device *udev, const char *devname, int ep,
+    int fi, int rwmode, uid_t uid, gid_t gid, int mode)
+{
+    struct usb_fs_privdata* pd;
+    struct make_dev_args args;
+    char buffer[32];
+
+    /* Allocate and initialise a private data structure for this device */
+    pd = malloc(sizeof(struct usb_fs_privdata), M_USBDEV,
+        M_WAITOK | M_ZERO);
+
+    /* Fill in identifying fields */
+    pd->bus_index  = device_get_unit(udev->bus->bdev);
+    pd->dev_index  = udev->device_index;
+    pd->ep_addr    = ep;
+    pd->fifo_index = fi;
+    pd->mode       = rwmode;
+
+    /* Build the device name string if none was provided */
+    if (devname == NULL) {
+        devname = buffer;
+        snprintf(buffer, sizeof(buffer), USB_DEVICE_DIR "/%u.%u.%u",
+            pd->bus_index, pd->dev_index, pd->ep_addr);
+    }
+
+    /* Initialise and populate the make_dev_args structure */
+    make_dev_args_init(&args);
+    args.mda_devsw   = &usb_devsw;  // Which device switch to use
+    args.mda_uid     = uid;         // Owner user ID (typedef uid_t)
+    args.mda_gid     = gid;         // Owner group ID (typedef gid_t)
+    args.mda_mode    = mode;        // Permission bits
+    args.mda_si_drv1 = pd;          // Attach our private data
+
+    /* Create the device node */
+    if (make_dev_s(&args, &pd->cdev, "%s", devname) != 0) {
+        DPRINTFN(0, "Failed to create device %s\n", devname);
+        free(pd, M_USBDEV);
+        return (NULL);
+    }
+    return (pd);
+}
+[...]
+```
+
+### Why this example matters
+
+This short function highlights several key lessons about structs and typedefs in real kernel work:
+
+- **Grouping related data:** Instead of passing a dozen parameters around, FreeBSD collects them into `struct make_dev_args`. This makes it easier to extend the API later and keeps function calls readable.
+- **Dot vs arrow:** Notice `args.mda_uid = uid;` uses the **dot** operator, because `args` is a direct struct variable. But `pd->dev_index = udev->device_index;` uses the **arrow**, because `pd` and `udev` are pointers. This is exactly the pattern you'll use constantly in your own drivers.
+- **Initialisation:** The call to `make_dev_args_init(&args)` ensures `args` starts from a clean state, avoiding the uninitialised-field bug we discussed earlier.
+- **Typedefs for clarity:** Instead of raw integers, the function signature uses `uid_t`, `gid_t`, and `mode`. These typedefs tell you exactly what kind of value is expected: a user ID, a group ID, and a permission mode. This is both safer and more self-documenting.
+
+### Takeaways
+
+This example demonstrates how the building blocks you're learning (structures, pointers, and typedefs) are not academic curiosities, but the everyday language of FreeBSD drivers. Whenever a driver needs to configure a device, pass state between layers, or expose a new node in `/dev`, you'll find structs collecting the data and typedefs making it readable.
+
+As you continue, remember this pattern:
+
+1. Bundle related fields into a struct.
+2. Use pointers with `->` when passing around instances.
+3. Use typedefs where they make the code more expressive.
+
+### Hands-On Lab 1: Building a TTY Device Struct
+
+In this exercise, you will define a **structure** to represent a simple TTY (teletypewriter) device. FreeBSD uses similar structures internally to keep track of terminals like `ttyv0` (the first virtual console).
+
+```c
+#include <stdio.h>
+#include <string.h>
+
+// Step 1: Define the structure
+struct tty_device {
+    char name[16];        // Device name, e.g., "ttyv0"
+    int minor_number;     // Device minor number
+    int enabled;          // 1 = enabled, 0 = disabled
+};
+
+int main() {
+    // Step 2: Declare a variable of the struct
+    struct tty_device dev;
+
+    // Step 3: Assign values to the fields
+    strcpy(dev.name, "ttyv0");  // Copy string into 'name'
+    dev.minor_number = 0;       // Minor number = 0 for ttyv0
+    dev.enabled = 1;            // Enabled (1 = yes, 0 = no)
+
+    // Step 4: Print the values
+    printf("Device: %s\n", dev.name);
+    printf("Minor number: %d\n", dev.minor_number);
+    printf("Enabled: %s\n", dev.enabled ? "Yes" : "No");
+
+    return 0;
+}
+```
+
+**Compile and run it:**
+
+```sh
+% cc -o tty_device tty_device.c
+% ./tty_device
+```
+
+**Expected output:**
+
+```yaml
+Device: ttyv0
+Minor number: 0
+Enabled: Yes
+```
+
+What you learned: A struct groups related data into one logical unit. This mirrors how FreeBSD kernel code groups device metadata in `struct tty`.
+
+### Hands-On Lab 2: Using typedef for Cleaner Code
+
+Now let's simplify the same program using **`typedef`**, which allows us to create a shorter alias for the **struct**. This makes code easier to read and avoids writing `struct` every time.
+
+```c
+#include <stdio.h>
+#include <string.h>
+
+// Step 1: Define the struct and typedef it to TTYDevice
+typedef struct {
+    char name[16];        // Device name
+    int minor_number;     // Minor number
+    int enabled;          // Enabled flag (1 = enabled, 0 = disabled)
+} TTYDevice;
+
+int main() {
+    // Step 2: Declare a variable of the new type
+    TTYDevice dev;
+
+    // Step 3: Fill in its fields
+    strcpy(dev.name, "ttyu0");  // Another device example
+    dev.minor_number = 1;       // Minor = 1 for ttyu0
+    dev.enabled = 0;            // Disabled
+
+    // Step 4: Print the values
+    printf("Device: %s\n", dev.name);
+    printf("Minor number: %d\n", dev.minor_number);
+    printf("Enabled: %s\n", dev.enabled ? "Yes" : "No");
+
+    return 0;
+}
+```
+
+**Compile and run:**
+
+```sh
+% cc -o tty_typedef tty_typedef.c
+% ./tty_typedef
+```
+
+**Expected output:**
+
+```yaml
+Device: ttyu0
+Minor number: 1
+Enabled: No
+```
+
+**Challenge Yourself**
+
+To make the struct more realistic (closer to FreeBSD's real `struct tty`), try these variations:
+
+1. **Add a baud rate:**
+
+   ```c
+   int baud_rate;
+   ```
+
+   Set it to `9600` or `115200` and print it.
+
+2. **Add a driver name:**
+
+   ```c
+   char driver[32];
+   ```
+
+   Assign `"console"` or `"uart"` to it.
+
+3. **Simulate multiple devices:**
+    Create an **array of structs** and initialise two or three devices, then print them all in a loop.
+
+### Extra Hands-On Lab: Managing Multiple TTY Devices
+
+So far, you have created a single TTY device at a time. But in real drivers, you often manage **many devices at once**. FreeBSD keeps tables of devices, updating them as hardware is discovered, configured, or removed.
+
+In this lab, you will build a small program that manages an **array of TTY devices**, searches for them by name, toggles their state, and even sorts them. This mirrors what real drivers do when working with multiple terminals, USB endpoints, or network interfaces.
+
+```c
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>   // for qsort
+
+// Define a TTY device structure with typedef
+typedef struct {
+    char name[16];        // e.g., "ttyv0", "ttyu0"
+    int  minor_number;    // minor device number
+    int  enabled;         // 1 = enabled, 0 = disabled
+    int  baud_rate;       // communication speed, e.g., 9600 or 115200
+    char driver[32];      // driver name, e.g., "console", "uart"
+} TTYDevice;
+
+// Print a single device (note: const pointer = read-only access)
+void print_device(const TTYDevice *d) {
+    printf("Device %-6s  minor=%d  enabled=%s  baud=%d  driver=%s\n",
+           d->name, d->minor_number, d->enabled ? "Yes" : "No",
+           d->baud_rate, d->driver);
+}
+
+// Print all devices in the array
+void print_all(const TTYDevice *arr, size_t n) {
+    for (size_t i = 0; i < n; i++)
+        print_device(&arr[i]);
+}
+
+// Find a device by name. Returns a pointer or NULL if not found.
+TTYDevice *find_by_name(TTYDevice *arr, size_t n, const char *name) {
+    for (size_t i = 0; i < n; i++) {
+        if (strcmp(arr[i].name, name) == 0)
+            return &arr[i];
+    }
+    return NULL;
+}
+
+// Comparator for qsort: sort by minor number ascending
+int cmp_by_minor(const void *a, const void *b) {
+    const TTYDevice *A = (const TTYDevice *)a;
+    const TTYDevice *B = (const TTYDevice *)b;
+    return (A->minor_number - B->minor_number);
+}
+
+int main(void) {
+    // 1) Create an array of devices using initialisers
+    TTYDevice table[] = {
+        { "ttyv0", 0, 1, 115200, "console" },
+        { "ttyu0", 1, 0,  9600,  "uart"    },
+        { "ttyu1", 2, 1,  9600,  "uart"    },
+    };
+    size_t N = sizeof(table) / sizeof(table[0]);
+
+    printf("Initial device table:\n");
+    print_all(table, N);
+    printf("\n");
+
+    // 2) Disable ttyv0 and enable ttyu0 using find_by_name()
+    TTYDevice *p = find_by_name(table, N, "ttyv0");
+    if (p != NULL) p->enabled = 0;
+
+    p = find_by_name(table, N, "ttyu0");
+    if (p != NULL) p->enabled = 1;
+
+    printf("After toggling enabled flags:\n");
+    print_all(table, N);
+    printf("\n");
+
+    // 3) Sort the devices by minor number (already sorted, but shows the pattern)
+    qsort(table, N, sizeof(table[0]), cmp_by_minor);
+
+    printf("After sorting by minor number:\n");
+    print_all(table, N);
+    printf("\n");
+
+    // 4) Update all devices: set baud_rate to 115200
+    for (size_t i = 0; i < N; i++)
+        table[i].baud_rate = 115200;
+
+    printf("After setting all baud rates to 115200:\n");
+    print_all(table, N);
+
+    return 0;
+}
+```
+
+**Compile and run:**
+
+```sh
+% cc -o tty_table tty_table.c
+% ./tty_table
+```
+
+**Expected output:**
+
+```yaml
+Initial device table:
+Device ttyv0   minor=0  enabled=Yes  baud=115200  driver=console
+Device ttyu0   minor=1  enabled=No   baud=9600    driver=uart
+Device ttyu1   minor=2  enabled=Yes  baud=9600    driver=uart
+
+After toggling enabled flags:
+Device ttyv0   minor=0  enabled=No   baud=115200  driver=console
+Device ttyu0   minor=1  enabled=Yes  baud=9600    driver=uart
+Device ttyu1   minor=2  enabled=Yes  baud=9600    driver=uart
+
+After sorting by minor number:
+Device ttyv0   minor=0  enabled=No   baud=115200  driver=console
+Device ttyu0   minor=1  enabled=Yes  baud=9600    driver=uart
+Device ttyu1   minor=2  enabled=Yes  baud=9600    driver=uart
+
+After setting all baud rates to 115200:
+Device ttyv0   minor=0  enabled=No   baud=115200  driver=console
+Device ttyu0   minor=1  enabled=Yes  baud=115200  driver=uart
+Device ttyu1   minor=2  enabled=Yes  baud=115200  driver=uart
+```
+
+**Challenge Yourself!**
+
+Try extending this program:
+
+1. **Filter enabled devices only**
+    Write a function that prints only devices where `enabled == 1`.
+2. **Find by minor number**
+    Add a helper `find_by_minor(TTYDevice *arr, size_t n, int minor)`.
+3. **Sort by name**
+    Replace the comparator to sort alphabetically by `name`.
+4. **Safer strings**
+    Replace `strcpy` with `snprintf` to avoid buffer overflows.
+5. **New field**
+    Add a boolean field `is_console` and print `[CONSOLE]` next to those devices.
+
+### **What did you learn in these labs?**
+
+The three labs you just completed began with the basics of defining a single struct, progressed to simplifying code with `typedef`, and concluded with managing an array of devices that could easily be part of a real driver. Along the way, you learned how C structures can group related fields into one logical unit, how typedef can make code more readable, and how arrays and pointers extend these ideas to represent and manage multiple devices at once.
+
+You also practiced searching for a device by name and updating its fields, which reinforced the difference between dot and arrow access. You saw how pointers to structs (`p->enabled`) are the natural way to work with objects that are passed around in kernel code. You explored how to sort devices using `qsort()` and a comparator function, a pattern you will find in kernel subsystems that need to keep lists ordered. Finally, you learned how to apply changes to all devices in one sweep with a simple loop, a technique that reflects how drivers often update state across a whole set of devices when an event occurs.
+
+By completing these labs, you have moved closer to the way FreeBSD drivers are really written: maintaining tables of devices, searching them efficiently, updating their state as hardware events happen, and relying on well-defined structs and typedefs to keep the code both safe and understandable.
+
+### Common Beginner Pitfalls with Structs and typedefs
+
+Working with structs in C is straightforward once you get the hang of it, but beginners often trip over the same mistakes. In kernel programming, these mistakes are more than academic; they can lead to corrupted state, unexpected panics, or unreadable code.
+
+**1. Forgetting to initialise fields**
+ Declaring a struct does not automatically clear its memory. The fields contain whatever random values were left behind.
+
+```c
+struct tty_device dev;            // uninitialised fields contain garbage
+printf("%d\n", dev.minor_number); // undefined value
+```
+
+**Safe practice:** Always initialise structs. You can:
+
+- Use designated initialisers:
+
+  ```c
+  struct tty_device dev = {.minor_number = 0, .enabled = 1};
+  ```
+
+- Or clear everything:
+
+  ```c
+  struct tty_device dev = {0};  // all fields zeroed
+  ```
+
+- Or, in kernel code, call an init helper (like `make_dev_args_init(&args)` in FreeBSD).
+
+**2. Mixing up dot and arrow**
+ The **dot (`.`)** is used with struct variables. The **arrow (`->`)** is used with pointers to structs. Beginners often use the wrong one.
+
+```c
+struct tty_device dev;
+struct tty_device *p = &dev;
+
+dev.minor_number = 1;   // correct (variable)
+p->minor_number = 2;    // correct (pointer)
+
+p.minor_number = 3;     // wrong since p is a pointer
+```
+
+**Safe practice:** remember **dot (`.`)** for direct, **arrow (`->`)** for indirect.
+
+**3. Assuming copying structs = copying everything safely**
+ In C, assigning one struct to another copies all its fields **by value**. This can be dangerous if the struct contains pointers, because both structs will then point to the same memory.
+
+```c
+struct buffer {
+    char *data;
+    int len;
+};
+
+struct buffer a, b;
+a.data = malloc(100);
+a.len = 100;
+
+b = a;           // shallow copy: b.data points to the same memory as a.data
+free(a.data);    // now b.data is a dangling pointer
+```
+
+**Safe practice:** If your struct holds pointers, be explicit about ownership. In kernel code, be clear about who allocates and frees memory. Sometimes you need to write a custom "copy" function.
+
+**4. Misunderstanding padding and alignment**
+ The compiler may insert padding between struct fields to meet alignment requirements. This can surprise beginners who assume the struct's size is just the sum of its fields.
+
+```c
+struct example {
+    char a;
+    int b;
+};  
+printf("%zu\n", sizeof(struct example));  // Often 8, not 5
+```
+
+**Safe practice:** Don't assume layout. If you need tight packing for hardware structures, use fixed-size types (`uint32_t`) and consult `sys/param.h`. In FreeBSD, bus structures often rely on precise layouts.
+
+**5. Overusing typedef**
+ `typedef` makes code shorter, but using it everywhere can hide meaning.
+
+```c
+typedef struct {
+    int x, y, z;
+} Foo;   // "Foo" tells us nothing
+```
+
+**Safe practice:** Reserve typedef for:
+
+- Very common or standardised types (`pid_t`, `uid_t`, `device_t`).
+- Hiding architecture details (`uintptr_t`, `vm_offset_t`).
+- Complex or pointer-heavy types (`typedef struct _device *device_t;`).
+
+Avoid typedefs for one-off structs where `struct` makes intent clearer.
+
+### Recap Quiz: Structs and typedef Pitfalls
+
+Before moving on, take a moment to test yourself. The following quick quiz revisits the most common pitfalls we discussed with structs and typedefs.
+
+These questions are not about memorizing syntax, but about checking whether you understand the reasoning behind safe practices. If you can answer them confidently, you are well prepared to recognise and avoid these mistakes when you start writing real FreeBSD driver code. 
+
+Let's try?
+
+1. What happens if you declare a struct without initialising it?
+
+   - a) It is filled with zeroes.
+   - b) It contains leftover garbage values.
+   - c) The compiler raises an error.
+
+2. You have this code:
+
+   ```
+   struct device dev;
+   struct device *p = &dev;
+   ```
+
+   Which are correct ways to set a field?
+
+   - a) `dev.id = 1;`
+   - b) `p->id = 1;`
+   - c) `p.id = 1;`
+
+3. Why is assigning one struct to another (`b = a;`) dangerous if the struct contains pointers?
+
+4. Why might `sizeof(struct example)` be larger than the sum of its fields?
+
+5. When is it appropriate to use `typedef` with a struct, and when should you avoid it?
+
+### Wrapping Up
+
+You have now learned how to define and use structures, how to make code cleaner with typedef, and how to recognize real patterns inside the FreeBSD kernel. Structures are the backbone of kernel programming. Almost every subsystem is represented as a struct, and device drivers rely on them to maintain state, configuration, and runtime data.
+
+In the next section we will take this one step further by looking at **header files and modular code in C**. This will show you how structs and typedefs are shared across multiple source files, which is precisely how large projects like FreeBSD stay organized and maintainable.
 
 *continue soon...*
