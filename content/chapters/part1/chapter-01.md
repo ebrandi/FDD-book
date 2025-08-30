@@ -15,7 +15,7 @@ estimatedReadTime: 30
 
 *"What begins as curiosity becomes skill, and what becomes skill empowers the next generation."* - Edson Brandi
 
-# Chapter 1: Introduction - From Curiosity to Contribution
+# Introduction - From Curiosity to Contribution
 
 ## My Journey: From Curiosity to Career
 

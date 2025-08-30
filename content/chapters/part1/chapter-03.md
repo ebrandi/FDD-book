@@ -11,7 +11,7 @@ translator: "TBD"
 estimatedReadTime: 120
 ---
 
-# Chapter 3: A Gentle Introduction to UNIX
+# A Gentle Introduction to UNIX
 
 Now that your FreeBSD system is installed and running, it's time to get comfortable living inside it. FreeBSD isn't just an operating system, it's part of a long tradition that started with UNIX more than fifty years ago.
 
@@ -31,7 +31,7 @@ This chapter is not just something to skim, it's designed to be both a **referen
 
 Recommendation: Don't try to do everything in one sitting. Break the chapter into sections, and after each one, run the lab before moving on. Save the challenges for when you feel confident and want to test your mastery.
 
-## 3.1 Introduction: Why UNIX Matters
+## Introduction: Why UNIX Matters
 
 Before we start writing device drivers for FreeBSD, we need to pause and talk about the foundation they stand on: **UNIX**.
 
@@ -77,7 +77,7 @@ In this opening section, we looked at why UNIX matters for anyone who wants to w
 
 With that motivation in mind, it's time to ask the natural next question: **what exactly is UNIX?** To move forward, we'll take a closer look at its history, its guiding principles, and the key concepts that still shape FreeBSD today.
 
-## 3.2 What Is UNIX?
+## What Is UNIX?
 
 Before you can get comfortable using FreeBSD, it helps to understand what UNIX is and why it matters. UNIX isn't just a piece of software, it's a family of operating systems, a set of design choices, and even a philosophy that has shaped computing for more than fifty years. FreeBSD is one of its most important modern descendants, so learning UNIX is like studying the family tree to see where FreeBSD fits.
 
@@ -221,7 +221,7 @@ In this section, you learned that UNIX is not just an operating system but a fam
 
 But knowing what UNIX is only gets us halfway. To really use FreeBSD, you need a way to **interact with it**. That's where the shell comes in, the command interpreter that lets you speak the system's language. In the next section, we'll start using the shell to run commands, explore the filesystem, and get hands-on experience with the tools that every FreeBSD developer depends on daily.
 
-## 3.3 The Shell: Your Window Into FreeBSD
+## The Shell: Your Window Into FreeBSD
 
 Now that you know what UNIX is and why it matters, it's time to start **talking to the system**. The way you do that in FreeBSD (and other UNIX-like systems) is through the **shell**.
 
@@ -488,7 +488,7 @@ Once you get comfortable typing commands, you'll quickly discover that the shell
 - The more minimal **`/bin/sh`** shell is excellent for scripting and system use, but it does not provide conveniences like tab completion or arrow-key history out of the box.
 - So if some shortcuts below don't seem to work, check which shell you are using (`echo $SHELL`).
 
-#### **Tab completion (tcsh)**
+#### Tab completion (tcsh)
 
  Start typing a command or filename and press `Tab`. The shell will try to complete it for you.
 
@@ -505,7 +505,7 @@ Becomes:
 If there's more than one match, press `Tab` twice to see a list of possibilities.
 This feature is not available in `/bin/sh`.
 
-#### **Command history (tcsh)**
+#### Command history (tcsh)
 
  Press the **Up arrow** to recall the last command, and keep pressing it to walk further back in time. Press the **Down arrow** to move forward again.
 
@@ -516,7 +516,7 @@ This feature is not available in `/bin/sh`.
 You don't have to retype it, just hit the Up arrow and press Enter.
 In `/bin/sh`, you don't get arrow-key navigation (but you can still run commands again with `!!`).
 
-#### **Wildcards (globbing)**
+#### Wildcards (globbing)
 
  Works in *all* shells, including `/bin/sh`.
 
@@ -532,7 +532,7 @@ Lists all files that start with `host` and end with `.conf`.
 
 Matches files like `host1.conf`, `hostA.conf`, but not `hosts.conf`.
 
-#### **Editing on the command line (tcsh)**
+#### Editing on the command line (tcsh)
 
  In `tcsh` you can move the cursor left and right with arrow keys, or use shortcuts:
 
@@ -612,7 +612,7 @@ The shell is your **gateway into FreeBSD**. Every interaction with the system, w
 
 Next, we'll explore **how FreeBSD organizes its filesystem**. Understanding the layout of directories like `/etc`, `/usr`, and `/dev` will give you a mental map of the system, which is especially important when we start dealing with device drivers that live under `/dev`.
 
-## 3.4 The FreeBSD Filesystem Layout
+## The FreeBSD Filesystem Layout
 
 In Windows, you may be used to drives like `C:\` and `D:\`. In UNIX and FreeBSD, there are no drive letters. Instead, everything lives in a **single tree of directories** that starts at the root `/`.
 
@@ -776,7 +776,7 @@ In this section, you've learned that FreeBSD uses a **single, hierarchical files
 
 But files and directories aren't just about structure; they're also about **who can access them**. UNIX is a multi-user system, and every file has an owner, a group, and permission bits that control what can be done with it. In the next section, we'll explore **users, groups, and permissions**, and you'll learn how FreeBSD keeps the system both secure and flexible.
 
-## 3.5 Users, Groups, and Permissions
+## Users, Groups, and Permissions
 
 One of the biggest differences between UNIX and systems like early Windows is that UNIX was designed from the beginning as a **multi-user operating system**. That means it assumes multiple people (or services) can use the same machine at once, and it enforces rules about who can do what.
 
@@ -992,7 +992,7 @@ These rules may seem simple, but they are the backbone of FreeBSD's security mod
 
 Next, we'll look at **processes**, the running programs that make the system alive. You'll learn how to see what's running, how to manage processes, and how FreeBSD keeps everything organized behind the scenes.
 
-## 3.6 Processes and System Monitoring
+## Processes and System Monitoring
 
 So far, you've learned how to navigate the filesystem and manage files. But an operating system isn't just about files on disk; it's about **programs running in memory**. These running programs are called **processes**, and understanding them is essential for both daily use and driver development.
 
@@ -1085,9 +1085,9 @@ The `top` screen shows:
 - **Memory and swap usage**.
 - **A list of processes**, sorted by CPU usage, so you can see which programs are working hardest.
 
-##### Example of `top` Output (simplified):
+**Example of `top` Output (simplified):**  .
 
-```yaml
+```text
 last pid:  3124;  load averages:  0.06,  0.12,  0.14                                            up 0+20:43:11  11:45:09
 17 processes:  1 running, 16 sleeping
 CPU:  0.0% user,  0.0% nice,  0.0% system,  0.0% interrupt,  100% idle
@@ -1306,7 +1306,7 @@ Processes are essential because they make the system alive, and as a driver deve
 
 But monitoring processes is only part of the story. To do real work, you'll need more tools than those included in the base system. FreeBSD provides a clean and powerful way to install and manage extra software, from simple utilities like `nano` to large applications like web servers. In the next section, we'll dive into the **FreeBSD package system and the Ports Collection**, so you can extend your system with the software you need.
 
-## 3.7 Installing and Managing Software
+## Installing and Managing Software
 
 FreeBSD is designed as a lean and reliable operating system. Out of the box, you get a rock-solid **base system**, the kernel, system libraries, essential tools, and configuration files. Everything beyond that, editors, compilers, servers, monitoring tools, and even desktop environments, is considered **third-party software**, and FreeBSD provides two excellent ways to install it:
 
@@ -1388,8 +1388,6 @@ The Ports Collection lives under `/usr/ports`, but on a fresh FreeBSD system thi
 ```
 
 If you see categories such as `archivers`, `editors`, `net`, `security`, `sysutils`, and `www`, then Ports is installed. If the directory is missing, you'll need to fetch the Ports tree yourself.
-
-------
 
 #### Installing the Ports Collection with Git
 
@@ -1587,7 +1585,7 @@ Understanding this ecosystem is key to FreeBSD culture. Many administrators inst
 
 But applications are only part of the story. The FreeBSD **base system**, the kernel and core utilities also need regular updates to stay secure and reliable. In the next section, we'll learn how to use `freebsd-update` to keep the operating system itself current, so you always have a solid foundation to build on.
 
-## 3.8 Keeping FreeBSD Up to Date
+## Keeping FreeBSD Up to Date
 
 One of the most important habits you can develop as a FreeBSD user is keeping your system up to date. Updates fix security issues, squash bugs, and sometimes add support for new hardware. Unlike the command `pkg update && pkg upgrade`, which update your applications, **`freebsd-update` command is used to update the base operating system itself**, including the kernel and core utilities.
 
@@ -1776,7 +1774,7 @@ Later, when we begin working on the kernel and writing drivers, we'll also learn
 
 And since checking for updates is something you may want to do regularly, wouldn't it be nice if the system could take care of some of these chores for you automatically? That's exactly what we'll look at next: **scheduling and automation** with tools like `cron`, `at`, and `periodic`.
 
-## 3.9 Scheduling and Automation
+## Scheduling and Automation
 
 One of UNIX's greatest strengths is that it was designed to let the computer handle repetitive tasks for you. Instead of waiting until midnight to run a backup or logging in every morning to start a monitoring script, you can tell FreeBSD:
 
@@ -2148,7 +2146,7 @@ You practiced creating jobs, checked their output, and learned how FreeBSD itsel
 
 Automation is powerful, but sometimes you need to go beyond fixed schedules. You might want to chain commands together, use loops, or add logic to decide what happens. That's where **shell scripting** comes in. In the next section, we'll write your first scripts and see how to create custom automation tailored to your needs.
 
-## 3.10 Introduction to Shell Scripting
+## Introduction to Shell Scripting
 
 You have learned to run commands one by one. Shell scripting lets you **save those commands into a reusable program**. On FreeBSD, the native and recommended shell for scripting is **`/bin/sh`**. This shell follows the POSIX standard and is available on every FreeBSD system.
 
@@ -2344,8 +2342,6 @@ case "$action" in
     ;;
 esac
 ```
-
-------
 
 ### 7) Functions to organize your script
 
@@ -2586,7 +2582,7 @@ But remember: you don't need to memorize every construct or command option. Part
 
 That's exactly what we'll cover next. In the following section, you'll learn how to use FreeBSD's built-in documentation, the famous FreeBSD Handbook, and the community around the project. These resources will become your companions as you continue your journey into device driver development.
 
-## 3.11 Seeking Help and Documentation in FreeBSD
+## Seeking Help and Documentation in FreeBSD
 
 No one, not even the most experienced developer, remembers every command, option, or system call. The real strength of a UNIX system like FreeBSD is that it ships with **excellent documentation** and has a supportive community that can help when you get stuck.
 
@@ -2673,8 +2669,6 @@ man -k disk | less
 ```
 
 This will show you tools, drivers, and system calls related to disks.
-
-------
 
 ### The FreeBSD Handbook
 
@@ -2802,7 +2796,7 @@ Later, as you write drivers, you'll rely heavily on man pages (especially sectio
 
 Next, we will look inside the system to **peek at kernel messages and tunables**. Tools like `dmesg` and `sysctl` let you see what the kernel is doing and will become essential when you start loading and testing your own device drivers.
 
-## 3.12 Peeking into the Kernel and System State
+## Peeking into the Kernel and System State
 
 At this point, you know how to move around in FreeBSD, manage files, control processes, and even write scripts. That makes you a capable user. But writing drivers means stepping into the **mind of the kernel**. You'll need to see what FreeBSD itself sees:
 
@@ -3087,7 +3081,7 @@ These aren't just abstract tools; they're exactly how you'll see your **own driv
 
 Before we move on to the next chapter and start learning about C programming, let's pause to consolidate everything you've learned in this chapter. In the next section, we'll review the key ideas and give you a set of challenges to practice, exercises that will help lock in these new skills and prepare you for the journey ahead.
 
-## 3.13 Putting It All Together: Your FreeBSD Journey So Far
+## Putting It All Together: Your FreeBSD Journey So Far
 
 Congratulations! You've just taken your **first deep dive into UNIX and FreeBSD**. What started as abstract ideas is now becoming practical skills. You can move around the system, manage files, edit and install software, control processes, automate tasks, and even peek into the kernel's inner workings.
 

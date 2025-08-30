@@ -11,7 +11,7 @@ translator: "TBD"
 estimatedReadTime: 60
 ---
 
-# Chapter 2: Setting Up Your Lab
+# Setting Up Your Lab
 
 Before we can begin writing code or exploring FreeBSD's internals, we need a place where it's safe to experiment, make mistakes, and learn. That place is your **lab environment**. In this chapter, we'll create the foundation you'll use throughout the rest of the book: a FreeBSD system configured for driver development.
 
@@ -39,7 +39,7 @@ Above all, remember: mistakes here are not failures, they are part of the proces
 
 **Estimated time to complete this chapter:** 1-2 hours, depending on your choice of virtual machine or bare-metal installation, and whether you already have experience installing operating systems.
 
-## 2.1 Why a Lab Environment Matters
+## Why a Lab Environment Matters
 
 Before we start typing commands and writing our first pieces of code, we need to pause for a moment and think about *where* we are going to do all this work. Kernel programming and device driver development are not like writing a simple script or a web page. When you experiment with the kernel, you are experimenting with the **heart of the operating system**. A small mistake in your code can cause your machine to freeze, reboot unexpectedly, or even corrupt data if you're not careful.
 
@@ -93,7 +93,7 @@ We've introduced the idea of your **lab environment** and why it's so important 
 
 In the next section, we'll dive deeper into the **pros and cons of virtual machines versus bare metal setups**. By the end of that section, you'll know exactly which setup makes sense for you to begin your FreeBSD journey.
 
-## 2.2 Choosing Your Setup: Virtual Machine or Bare Metal
+## Choosing Your Setup: Virtual Machine or Bare Metal
 
 Now that you understand why a dedicated lab environment is important, the next question is: **where should you build it?** FreeBSD can run in two main ways for your experiments:
 
@@ -178,7 +178,7 @@ We've compared virtual machines and bare metal setups and seen the strengths and
 
 In the next section, we'll roll up our sleeves and perform the actual **FreeBSD 14.3 installation**,  first in a VM, and then we'll cover the key points for bare-metal installs. This is where your lab truly begins to take shape.
 
-## 2.3 Installing FreeBSD (VM and Bare Metal)
+## Installing FreeBSD (VM and Bare Metal)
 
 At this point, you've chosen whether to set up FreeBSD in a **virtual machine** or on **bare metal**. Now it's time to actually install the operating system that will serve as the foundation for all our experiments. We'll focus on **FreeBSD 14.3**, the latest stable release at the time of writing, so that everything you do matches the examples in this book.
 
@@ -442,7 +442,7 @@ You've just completed one of the most important milestones: installing FreeBSD 1
 
 In the next section, we'll walk through the **initial configuration** you should do right after installation: setting up networking, enabling essential services, and preparing the system for development work.
 
-## 2.4 First Boot and Initial Configuration
+## First Boot and Initial Configuration
 
 When your FreeBSD system finishes its first reboot after installation, you're greeted with something that feels very different from Windows or macOS. There's no flashy desktop, no icons, no "getting started" wizard. Instead, you're dropped at a **login prompt**.
 
@@ -675,7 +675,7 @@ Your FreeBSD system is no longer a bare skeleton, it now has a hostname, working
 
 In the next section, we'll install the **development tools** needed for driver programming, including compilers, debuggers, editors, and the FreeBSD source tree itself. This is where your lab transforms from a blank canvas into a real development workstation.
 
-## 2.5 Preparing the System for Development
+## Preparing the System for Development
 
 Now that your FreeBSD lab is installed, updated, and lightly hardened, it's time to turn it into a proper **driver development environment**. Think of this step as stocking your workshop with the right tools; compiler, debugger, version control, and the FreeBSD source tree. Without these, you won't be able to build or test the code we'll write in later chapters.
 
@@ -801,7 +801,7 @@ Verify with:
 
 You should see directories like `dev`, `kern`, `net`, and `vm`. These are where the FreeBSD kernel lives.
 
-#### **Warning: Match your headers to your running kernel.** 
+#### Warning: Match your headers to your running kernel. 
 
 FreeBSD is very strict about building loadable kernel modules against the exact header set that matches the kernel you are running. If your kernel was built from 14.3-RELEASE but `/usr/src` points to a different branch or version, you can hit confusing compile or load errors. To avoid trouble in the exercises presented in this book, please make sure you have the **FreeBSD 14.3** source tree installed in `/usr/src` and that it matches your running kernel. A quick check is `freebsd-version -k` which should print `14.3-RELEASE`, and your `/usr/src` should be on the `releng/14.3` branch as instructed above.
 
@@ -938,7 +938,7 @@ You've now stocked your FreeBSD workshop with the essential tools: compiler, deb
 
 In the next section, we'll look at **using snapshots and backups** so that you can experiment freely without fear of losing your progress. This will give you the confidence to take bigger risks and recover quickly when things break.
 
-## 2.6 Using Snapshots and Backups
+## Using Snapshots and Backups
 
 One of the biggest advantages of setting up a **lab environment** is that you can experiment without fear. When you're writing kernel code, mistakes are inevitable: a wrong pointer, an infinite loop, or a bad unload routine can crash the entire operating system. Instead of worrying, you can treat crashes as part of the learning process, *if* you have a way to recover quickly.
 
@@ -1065,7 +1065,7 @@ By learning to use **snapshots and backups**, you've added one of the most impor
 
 In the next section, we'll set up **version control with Git** so you can track your progress, manage your experiments, and share your drivers.
 
-## 2.7 Setting Up Version Control
+## Setting Up Version Control
 
 Up to now, you've prepared your FreeBSD lab, installed the tools, and even built your first kernel module. But imagine this: you make a change to your driver, test it, and suddenly nothing works. You wish you could go back to the last working version. Or maybe you want to keep two different experiments without mixing them up.
 
@@ -1209,7 +1209,7 @@ You've now taken the first steps with Git, one of the most important tools in yo
 
 In the next section, we'll discuss **documenting your work** another key habit of professional developers. A well-written README or commit message can be the difference between code you understand a year later and code you have to rewrite from scratch.
 
-## 2.8 Documenting Your Work
+## Documenting Your Work
 
 Software development isn't just about writing code it's also about making sure that *you* (and sometimes others) can understand that code later. When working on FreeBSD drivers, you'll often come back to a project weeks or months later and ask yourself: *"Why did I write this? What was I testing? What did I change?"*
 
@@ -1323,7 +1323,7 @@ You've now learned how to document your FreeBSD driver experiments so that you n
 
 In the next section, we'll wrap up this chapter, reviewing everything you've built: a safe FreeBSD lab with the right tools, backups, version control, and documentation, all ready for the deeper journey into FreeBSD itself in Chapter 3.
 
-### 2.9 Bringing It All Together
+### Bringing It All Together
 
 Congratulations! You've built your FreeBSD lab!
 

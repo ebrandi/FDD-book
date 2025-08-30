@@ -40,7 +40,7 @@ This chapter is not just a quick read; it is both a **reference** and a **hands-
 
 This chapter is deliberately long because **C is the foundation** for everything else you'll do in FreeBSD device driver programming. Treat it as your **toolbox**. Once you master it, the material in later chapters will click into place much more naturally.
 
-## 4.1 Introduction
+## Introduction
 
 Let's start at the beginning: what is C, and why is it important to us?
 
@@ -85,7 +85,7 @@ Here's a quick preview of what's coming up:
 
 Are you ready? Let's jump into the next section and get your environment set up so you can run your first C program on FreeBSD.
 
-## 4.2 Setting Up Your Environment
+## Setting Up Your Environment
 
 Before we can start writing C code, we need to set up a working development environment. The good news? If you're running FreeBSD, **you already have most of what you need**.
 
@@ -254,7 +254,7 @@ Here's what you've accomplished:
 
 These tools are all you need to start learning C, and later, to build your own kernel modules and drivers. In the next section, we'll look at what makes up a typical C program and how it's structured.
 
-## 4.3 Anatomy of a C Program
+## Anatomy of a C Program
 
 Now that you've compiled your first "Hello, World!" program, let's take a closer look at what's actually going on inside that code. In this section, we'll break down the basic structure of a C program and explain what each part does, step by step.
 
@@ -540,7 +540,7 @@ In this section, you've learned:
 
 The more C code you read, both your own and from FreeBSD, the more these patterns will become second nature.
 
-## 4.4 Variables and Data Types
+## Variables and Data Types
 
 In any programming language, variables are how you store and manipulate data. In C, variables are a little more "manual" than in higher-level languages, but they give you the control you need to write fast, efficient programs, and that's precisely what operating systems like FreeBSD require.
 
@@ -715,7 +715,7 @@ In this section, you've learned:
 
 You now have the tools to store and work with data in C, and you've already seen how FreeBSD uses the same concepts in production-quality kernel code.
 
-## 4.5 Operators and Expressions
+## Operators and Expressions
 
 So far, we've learned how to declare and initialise variables. Now it's time to make them do something! In this section, we'll dive into operators and expressions, the mechanisms in C that allow you to compute values, compare them, and control program logic.
 
@@ -935,7 +935,7 @@ In this section, you've learned:
 
 This section builds the foundation for conditional execution and looping, which we'll explore next.
 
-## 4.6 Control Flow
+## Control Flow
 
 So far, we've learned how to declare variables and write expressions. But programs need to do more than compute values; they need to **make decisions** and **repeat actions**. This is where **control flow comes** in.
 
@@ -1629,7 +1629,7 @@ In this section, you've learned:
 
 You now have the tools to control the logic and flow of your programs, which is the core of programming itself.
 
-## 4.7 Functions
+## Functions
 
 In C, a **function** is like a dedicated workshop in a large factory; it is a self-contained area where a specific task is carried out, start to finish, without disturbing the rest of the production line. When you need that task done, you simply send the work there, and the function delivers the result.
 
@@ -3344,7 +3344,7 @@ You now understand **scope**, **storage duration**, and **linkage**, the three p
 
 Next, we'll see what happens when you pass those variables into a function. In C, function parameters are copies of the original values, so changes inside the function won't affect the originals unless you pass their addresses. Understanding this behaviour is key to writing driver code that updates state intentionally, avoids subtle bugs, and communicates data effectively between functions.
 
-## 4.8 Parameters Are Copies
+## Parameters Are Copies
 
 When you call a function in C, the values you pass to it are **copied** into the function's parameters. The function then works with those copies, not the originals. This is known as **call by value**, and it means that any changes made to the parameter inside the function are lost when the function returns; the caller's variables remain untouched.
 
@@ -3497,7 +3497,7 @@ You've now seen that parameters in C work by **value**: every function receives 
 
 Next, we'll shift focus from individual variables to collections of data that C programmers (and FreeBSD drivers) use constantly: **arrays and strings**.
 
-## 4.9 Arrays and Strings in C
+## Arrays and Strings in C
 
 In the previous section, you learned that function parameters are passed by value. That lesson sets the stage for working with **arrays and strings**, two of the most common structures in C. Arrays give you a way to handle collections of elements in contiguous memory. In contrast, strings are simply arrays of characters with a special terminator.
 
@@ -3550,7 +3550,7 @@ name[0] = 'A';  // Now the string reads "Adson"
 
 If the terminating `'\0'` is missing, functions that expect a string will continue reading memory until they hit a zero byte somewhere else. This often results in garbage output, memory corruption, or kernel crashes.
 
-### 4.9.3 Common String Functions (`<string.h>`)
+### Common String Functions (`<string.h>`)
 
 The C standard library provides helper functions for strings. Although you cannot use the full standard library within the FreeBSD kernel, many equivalents are available. It is important to know the standard ones first:
 
@@ -4027,7 +4027,7 @@ If you feel confident, try these challenges. They are designed to push your skil
 
 In the next section, we will connect arrays and strings to the deeper concept of **pointers and memory**. You will learn how arrays decay into pointers, how memory addresses are manipulated, and how the FreeBSD kernel allocates and frees memory safely. This is where you begin to see how data structures and memory management form the backbone of every device driver.
 
-## 4.10 Pointers and Memory
+## Pointers and Memory
 
 Welcome to one of the most mysterious and magical topics in your C journey: **pointers**.
 
@@ -5797,7 +5797,7 @@ By now you can clearly see the difference between an array of pointers and a poi
 
 With this foundation in place, we are ready to take the next step: moving from fixed arrays to dynamically allocated memory. In the following section on **Dynamic Memory Allocation**, you will learn how to use functions such as `malloc`, `calloc`, `realloc`, and `free` to create arrays at runtime. We will connect this to pointers by showing how to allocate each element separately, how to request one contiguous block when you need a pointer to an array, and how to clean up properly if something goes wrong. This transition from static to dynamic memory is essential for real systems programming and will prepare you for the way memory is managed inside the FreeBSD kernel.
 
-## 4.11 Dynamic Memory Allocation
+## Dynamic Memory Allocation
 
 So far, most of the memory we used in examples was **fixed-size**: arrays with a known length or structures allocated on the stack. But when writing system-level code like FreeBSD device drivers, you often don't know in advance how much memory you'll need. Maybe a device reports the number of buffers only after probing, or the amount of data depends on user input. That's when **dynamic memory allocation** comes into play.
 
@@ -6239,7 +6239,7 @@ Dynamic allocation gives your driver the flexibility to adapt to hardware and wo
 
 In the next section, we will build directly on this foundation by looking at **memory safety in kernel code**. There, you will learn techniques to protect against leaks, overflows, and use-after-free errors, making your driver not only functional but also reliable and secure.
 
-## 4.12 Memory Safety in Kernel Code
+## Memory Safety in Kernel Code
 
 When writing kernel code, especially device drivers, we are working in a privileged and unforgiving environment. There is no safety net. In user-space programming, a crash usually terminates only your process. In kernel-space, a single bug can panic or reboot the entire operating system. That is why memory safety is not optional. It is the foundation of stable and secure FreeBSD driver development.
 
@@ -6888,7 +6888,7 @@ By following FreeBSD's allocation patterns, checking results, freeing memory dil
 
 In the next section, we'll cover **structures** and **typedefs** in C. Structures allow you to group related data, making your code more organized and expressive. Typedefs will enable you to assign meaningful names to complex types, improving readability. Together, they form the basis of almost every real kernel subsystem and are a natural step after mastering pointers.
 
-## 4.13 Structures and typedef in C
+## Structures and typedef in C
 
 So far, you have worked with single variables, arrays, and pointers. These are helpful tools, but real programs and especially operating system kernels need a way to organize related pieces of information together. Imagine trying to keep track of a device's name, its state, and its configuration using separate variables scattered everywhere. The result would be messy and hard to maintain.
 
@@ -7416,7 +7416,7 @@ Try extending this program:
 5. **New field**
     Add a boolean field `is_console` and print `[CONSOLE]` next to those devices.
 
-### **What did you learn in these labs?**
+### What did you learn in these labs?
 
 The three labs you just completed began with the basics of defining a single struct, progressed to simplifying code with `typedef`, and concluded with managing an array of devices that could easily be part of a real driver. Along the way, you learned how C structures can group related fields into one logical unit, how typedef can make code more readable, and how arrays and pointers extend these ideas to represent and manage multiple devices at once.
 
@@ -7555,7 +7555,7 @@ You have now learned how to define and use structures, how to make code cleaner 
 
 In the next section we will take this one step further by looking at **header files and modular code in C**. This will show you how structs and typedefs are shared across multiple source files, which is precisely how large projects like FreeBSD stay organized and maintainable.
 
-## 4.14 Header Files and Modular Code
+## Header Files and Modular Code
 
 So far, all of our programs have lived in a **single `.c` file**. That's fine for small examples, but real software quickly outgrows this model. The FreeBSD kernel itself is made up of thousands of small files, each with a clear responsibility. To manage this complexity, C provides a way to build **modular code**: splitting definitions into `.c` files and declarations into `.h` files.
 
@@ -8263,7 +8263,7 @@ By now, you've:
 
 In the next section, we'll see how the compiler and linker combine all these separate `.c` and `.h` files into a single program and how debugging tools help when things go wrong. This is where your modular code truly comes to life.
 
-## 4.15 Compiling, Linking, and Debugging C Programs
+## Compiling, Linking, and Debugging C Programs
 
 Up to this point you have written short C programs and even split them into more than one file. Now it is time to understand what really happens between writing your code and running it on FreeBSD. This is the step where your text file becomes a living program. It is also the step where you first learn to read the compiler's messages and start using a debugger when things go wrong. These skills are the difference between "just typing code" and truly programming with confidence.
 
@@ -9219,7 +9219,7 @@ In this section, you moved beyond the one-line `cc hello.c` and began thinking l
 
 With these foundations in place, you are ready to explore the **C Preprocessor**, the very first stage of the pipeline. This is where `#include`, `#define`, and conditional compilation reshape your source before the compiler ever sees it. Understanding this stage will explain why almost every FreeBSD kernel header begins with a dense block of preprocessor directives, and it will prepare you to read and write them with confidence.
 
-## 4.16 The C Preprocessor: Directives Before Compilation
+## The C Preprocessor: Directives Before Compilation
 
 Before your C code is compiled, it makes a stop at an earlier stage called **preprocessing**. You can think of this as the **pre-flight checklist for your program**: it prepares the source, pulls in external declarations, expands macros, removes comments, and decides which parts of the code will even reach the compiler. In practice, this means the compiler never works directly on the file you wrote. Instead, it sees a transformed version that has already been “cleaned up” and adapted by the preprocessor.
 
@@ -9694,7 +9694,7 @@ You have seen how the preprocessor sets the stage before the compiler arrives. I
 
 In the next section, **Good Practices for C Programming**, we will shift from mechanisms to habits. You will learn how to choose between macros and `inline`, how to name and document flags, how to structure includes in kernel code, and how to keep your driver readable for future contributors. We will also connect these practices with FreeBSD’s coding style so your code feels at home in the tree.
 
-## 4.17 Good Practices for C Programming
+## Good Practices for C Programming
 
 By now you know the basic building blocks of the C language and how they fit together. But writing code that simply compiles and runs is not the same as writing code that others can read, maintain, and trust inside an operating system kernel. In FreeBSD, style and clarity are not cosmetic details; they are part of what keeps the system stable and maintainable over decades.
 
@@ -11367,7 +11367,7 @@ Target function/file: `___________________________________________`
 3. Immediately transform one of your own functions using the items in Section 9.
 4. Keep the before/after diff with this worksheet, it’s proof of learning and a handy reference when you start writing real drivers.
 
-## 4.18 Final Practice Labs
+## Final Practice Labs
 
 You have now met the essential C tools you will use over and over again when writing FreeBSD device drivers: operators and expressions, the preprocessor, arrays and strings, function pointers and typedefs, and pointer arithmetic. 
 
@@ -11987,7 +11987,7 @@ Each of these small programs mirrors a real kernel pattern. The logging system e
 
 By now, you should not only understand these C concepts in the abstract but also have typed them out, compiled them, and watched them work. That muscle memory will be critical when you are deep in kernel space and bugs are subtle.
 
-## 4.19 Final Knowledge Check
+## Final Knowledge Check
 
 You have now walked through a vast landscape: from your very first `printf()` all the way to FreeBSD-flavoured details like error codes, Makefiles, pointers, and kernel coding standards. Before we move on, it is time to pause and assess how much of this knowledge has been absorbed.
 
