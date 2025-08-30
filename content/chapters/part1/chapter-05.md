@@ -1,5 +1,6 @@
 ---
 title: Understanding C for FreeBSD Kernel Programming
+description: "This chapter teaches you the dialect of C spoken inside the FreeBSD kernel"
 author: Edson Brandi
 date: 2025-08-30
 status: draft
