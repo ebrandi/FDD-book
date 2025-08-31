@@ -1,0 +1,155 @@
+---
+# =============================================================================
+# FreeBSD Device Drivers Book - Metadata Configuration
+# =============================================================================
+# This file contains all the configuration settings for the Eisvogel pandoc 
+# LaTeX template. It controls the appearance, formatting, and behavior of
+# the generated PDF document.
+#
+# For detailed documentation, see: https://github.com/Wandmalfarbe/pandoc-latex-template
+# =============================================================================
+
+# =============================================================================
+# BASIC DOCUMENT INFORMATION
+# =============================================================================
+# Core document metadata that appears in the title page and document properties
+#title: "FreeBSD Device Drivers"
+subtitle: "From First Steps to Kernel Mastery"
+#author: "Edson Brandi"
+#date: "DRAFT Version 1.0 - August, 30th 2025"
+
+# =============================================================================
+# DOCUMENT CLASSIFICATION AND METADATA
+# =============================================================================
+# Subject and keywords for document classification and searchability
+subject: "FreeBSD Device Drivers"
+keywords: [FreeBSD, Device Drivers, Kernel Programming, C Programming, Operating Systems]
+
+# =============================================================================
+# DOCUMENT STRUCTURE SETTINGS
+# =============================================================================
+# Configure the document as a book with proper chapter and section numbering
+book: true                    # Enable book document class
+classoption: [oneside]        # Single-sided pages (no blank pages between chapters)
+papersize: a4                # US Letter paper size (8.5" x 11")
+lang: en-US                   # English (US) language for hyphenation and formatting
+
+# =============================================================================
+# TITLE PAGE CONFIGURATION
+# =============================================================================
+# Control the appearance and behavior of the title page
+titlepage: true               # Generate a dedicated title page
+cover-image: "public/images/book-cover.jpg"  # Path to book cover image
+
+# Title page color scheme (hex color codes)
+titlepage-color: "AA2B28"     # Dark blue background
+titlepage-text-color: "FFFFFF" # White text
+titlepage-rule-color: "000000" # Red accent rule
+titlepage-rule-height: 4      # Height of the accent rule in points
+logo-width: 35mm              # Width of logo/cover image on title page
+
+# =============================================================================
+# TABLE OF CONTENTS SETTINGS
+# =============================================================================
+# Control the generation and appearance of the table of contents
+#toc: true                     # Generate table of contents
+#toc-own-page: true            # Start TOC on a new page
+#toc-depth: 2                  # Include headings up to level 3 (###)
+
+# =============================================================================
+# CODE BLOCK AND LISTING CONFIGURATION
+# =============================================================================
+# Settings for code blocks, syntax highlighting, and program listings
+listings: true                # Enable LaTeX listings package for code blocks
+listings-disable-line-numbers: true    # Show line numbers in code blocks
+listings-no-page-break: true # Allow code blocks to break across pages if needed
+code-block-font-size: "\\footnotesize"  # Smaller font size for code blocks to fit more content
+
+# Code block appearance and formatting
+code-block-font: "Liberation Mono"      # Font for code blocks
+verbatim-font: "Liberation Mono"        # Font for verbatim text
+listings-font: "Liberation Mono"        # Font for listings
+code-font: "Liberation Mono"            # Font for inline code
+listing-font: "Liberation Mono"         # Font for program listings
+monospace-font: "Liberation Mono"       # General monospace font
+
+# Syntax highlighting style for code blocks
+highlight-style: tango         # Use Kate highlighting theme (good for C/C++)
+
+# =============================================================================
+# FONT AND TYPOGRAPHY SETTINGS
+# =============================================================================
+# Configure fonts for different text elements
+mainfont: "Times New Roman"   # Main body text font (serif)
+sansfont: "Arial"             # Sans-serif font for headings
+monofont: "Liberation Mono"   # Monospace font for code
+mathfont: "Latin Modern Math" # Font for mathematical expressions
+
+# Font scaling options (adjust size relative to base font size)
+mainfontoptions: "Scale=1.0"  # Main font at normal size
+sansfontoptions: "Scale=0.9"  # Sans-serif font slightly smaller
+monofontoptions: "Scale=0.85" # Monospace font smaller for code
+
+# Typography and spacing
+fontsize: 11pt                # Base font size for the document
+linestretch: 1.15             # Line spacing multiplier (1.15 = 15% more space)
+
+# =============================================================================
+# IMAGE HANDLING AND PLACEMENT
+# =============================================================================
+# Control how images are displayed and positioned in the document
+graphics: true                # Enable Eisvogel's built-in image scaling
+figure-placement: "H"         # Force figures to stay in place (H = Here)
+float-placement-figure: "H"   # Alternative setting for figure placement
+
+# =============================================================================
+# PAGE LAYOUT AND GEOMETRY
+# =============================================================================
+# Control page margins and layout
+geometry: margin=2cm          # Set all page margins to 1 inch
+
+# =============================================================================
+# SECTION NUMBERING AND LINKS
+# =============================================================================
+# Control section numbering and link appearance
+numbersections: true          # Enable automatic section numbering
+colorlinks: true              # Make links appear in color
+linkcolor: blue               # Color for internal links
+urlcolor: blue                # Color for external URLs
+
+
+output:
+  pdf_document:
+    latex_engine: xelatex
+    keep_tex: true
+
+# =============================================================================
+# ADVANCED LATEX CONFIGURATION
+# =============================================================================
+# Custom LaTeX packages and commands injected into the document header
+# The following LaTeX commands are injected directly into the document header:
+# - \usepackage{graphicx}: Enables image inclusion and manipulation
+# - \setkeys{Gin}{width=0.85\linewidth,keepaspectratio}: Sets default image width to 85% of line width
+# - \usepackage{fontspec}: Enables advanced font selection and management
+# - \usepackage{unicode-math}: Provides enhanced mathematical typesetting
+# - \setmonofont[Scale=0.85]{Liberation Mono}: Sets monospace font with 85% scaling
+# - \usepackage{listings}: Provides advanced code listing capabilities
+# - \lstset{...}: Configures code block appearance (small font, line breaks, frames)
+header-includes: |
+  \usepackage{graphicx}
+  \setkeys{Gin}{width=0.85\linewidth,keepaspectratio}
+  \usepackage{fontspec}
+  \usepackage{unicode-math}
+  \setmonofont[Scale=0.85]{Liberation Mono}
+  \usepackage{listings}
+  \usepackage{fvextra}
+  \fvset{breaklines=true,breakanywhere=true}
+  \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
+  \lstset{
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    columns=flexible,
+    keepspaces=true,
+    frame=single
+  }
+---

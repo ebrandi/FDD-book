@@ -5613,7 +5613,7 @@ We will first look at arrays of pointers, then at pointers to arrays, and then c
 An array of pointers is simply an array where each element is itself a pointer. Instead of holding values directly, the array holds addresses pointing to values stored elsewhere.
 
 ##### Example: Array of Strings
-
+.
 ```c
 #include <stdio.h>
 
@@ -5669,7 +5669,7 @@ This is another array of string pointers, terminated by `NULL`. The SNMP client 
 A pointer to an array is very different from an array of pointers. Instead of pointing to scattered objects, it points to one single, contiguous array block. The syntax can look intimidating, but the underlying idea is simple: the pointer represents the entire array as a unit.
 
 ##### Example: Pointer to an Array of Integers
-
+.
 ```c
 #include <stdio.h>
 
@@ -5692,7 +5692,7 @@ Breaking it down:
 - `(*p)[2]` first dereferences the pointer (giving us the array) and then indexes into it.
 
 ##### Another Example with Structures
-
+.
 ```c
 #include <stdio.h>
 
@@ -9182,7 +9182,7 @@ But don't touch `util.c`. Recompile only `main.c`:
 
 Now `./demo` may run incorrectly, or crash, depending on calling conventions.
 
-👉 Lesson: Partial rebuilds can leave object files out of sync with headers, creating *phantom bugs*. This is why we use `make`.
+Lesson: Partial rebuilds can leave object files out of sync with headers, creating *phantom bugs*. This is why we use `make`.
 
 #### Recap Quiz: Common Pitfalls
 
