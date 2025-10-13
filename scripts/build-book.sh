@@ -55,7 +55,7 @@ cd "$ROOT_DIR"
 # Book information
 BOOK_TITLE="FreeBSD Device Drivers"
 BOOK_AUTHOR="Edson Brandi"
-BOOK_DATE="DRAFT Version 1.0 - August, 30th 2025"
+BOOK_DATE="DRAFT Version 1.1 - October, 13th 2025"
 
 # File paths
 TITLE_FILE="$SCRIPT_DIR/title.md"
