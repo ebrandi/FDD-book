@@ -956,7 +956,7 @@ Each allocation step is followed by an immediate check. If something fails, exec
 
 These conventions make FreeBSD's kernel code easy to audit and prevent subtle memory or resource leaks.
 
-## **Assertions and Diagnostics in the Kernel**
+## Assertions and Diagnostics in the Kernel
 
 Kernel developers rely on lightweight diagnostic tools built directly into C macros. These don't replace debuggers; they complement them.
 
