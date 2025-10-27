@@ -107,6 +107,7 @@ if (file_size > 1000000) {
 This works fine until you encounter a file larger than 2GB on a 32-bit system, where `int` is typically 32 bits and can only hold values up to about 2.1 billion. Suddenly, a 3GB file appears to have a negative size due to integer overflow.
 
 In the kernel, this kind of problem is amplified because:
+
 - Your code must work across different architectures (32-bit, 64-bit)
 - Data corruption can affect the entire system
 - Performance-critical code paths can't afford to check for overflow at runtime
@@ -397,6 +398,7 @@ uintptr_t addr = (uintptr_t)pointer;
 ### Summary
 
 Kernel-specific data types aren't just about being precise, they're about writing code that:
+
 - Works correctly across different architectures
 - Clearly expresses its intentions
 - Avoids subtle bugs that can crash the system
@@ -860,6 +862,7 @@ Compiling and loading the kernel will print your message, proving a safe bounded
 ### Summary
 
 Kernel memory management requires discipline and understanding:
+
 - Use appropriate allocation flags (`M_WAITOK` vs `M_NOWAIT`)
 - Always specify a memory type for tracking
 - Check return values, even with `M_WAITOK`
@@ -1036,11 +1039,13 @@ strcpy(buffer, user_input);  /* Dangerous! */
 ```
 
 This code is problematic because:
+
 - `strcpy()` doesn't check buffer boundaries
 - If `user_input` is longer than 255 characters, memory corruption occurs
 - In the kernel, this could overwrite critical data structures
 
 The kernel needs functions that:
+
 - Always respect buffer boundaries
 - Handle partially-filled buffers gracefully  
 - Work efficiently with both kernel and user data
@@ -1424,6 +1429,7 @@ size_t total_len = len1 + len2;
 ### Summary
 
 Kernel string handling requires constant vigilance:
+
 - Use safe functions that respect buffer boundaries
 - Always validate lengths and check for truncation
 - Handle user data with `copyin()`/`copyout()`
@@ -1912,6 +1918,7 @@ MODULE_VERSION(function_demo, 1);
 ### Summary
 
 Kernel function design is about predictability and safety:
+
 - Follow consistent naming and parameter ordering conventions
 - Use the standard error return pattern (0 for success)
 - Validate parameters and handle all error conditions
@@ -2043,12 +2050,14 @@ namei(struct nameidata *ndp)
 Understanding when your code can and cannot **sleep** (voluntarily give up the CPU) is critical for kernel programming.
 
 **Atomic context** (cannot sleep):
+
 - Interrupt handlers
 - Code holding spinlocks
 - Code in critical sections
 - Some callback functions
 
 **Preemptible context** (can sleep):
+
 - System call handlers
 - Kernel threads
 - Most driver probe/attach functions
@@ -2368,6 +2377,7 @@ MODULE_VERSION(restrictions_demo, 1);
 ### Summary
 
 Kernel programming restrictions exist for good reasons:
+
 - No floating-point prevents corruption of user process state
 - Limited stack size forces efficient algorithms and prevents overflow
 - Sleep restrictions ensure system responsiveness and prevent deadlocks
@@ -2394,6 +2404,7 @@ void increment_counter(void)
 ```
 
 On a multiprocessor system, `global_counter++` actually involves multiple steps:
+
 1. Load the current value from memory
 2. Increment the value in a register
 3. Store the new value back to memory
@@ -2601,12 +2612,14 @@ vm_page_wire(vm_page_t m)
 ### When to Use Inline Functions
 
 **Use inline for**:
+
 - Small, frequently called functions (< 10 lines typically)
 - Functions in critical performance paths
 - Simple accessor functions
 - Functions that wrap complex macros to add type safety
 
 **Don't inline**:
+
 - Large functions (increases code size)
 - Functions with complex control flow
 - Functions that are rarely called
@@ -2783,6 +2796,7 @@ MODULE_VERSION(atomic_demo, 1);
 ### Summary
 
 Atomic operations and inline functions are essential tools for high-performance, correct kernel programming:
+
 - Atomic operations ensure data consistency in multiprocessor systems
 - Memory barriers control operation ordering when needed
 - Compare-and-swap enables sophisticated lock-free algorithms
@@ -3403,6 +3417,7 @@ MODULE_VERSION(style_demo, 1);
 ### Summary
 
 FreeBSD's coding idioms aren't arbitrary rules; they're distilled wisdom from decades of kernel development. Following these patterns makes your code:
+
 - Easier for other developers to read and understand
 - Less likely to contain subtle bugs
 - More consistent with the existing kernel codebase
@@ -3499,6 +3514,7 @@ cleanup:
 ### Input Validation: Trust No One
 
 Never trust data that comes from outside your immediate control. This includes:
+
 - User-space programs (via system calls)
 - Hardware devices (via device registers)
 - Network packets
@@ -5235,6 +5251,7 @@ These aren't just academic examples; this is production code that handles millio
 ### Summary
 
 Real FreeBSD kernel code demonstrates how all the concepts we've covered work together:
+
 - Kernel-specific data types provide portability and clarity
 - Defensive programming prevents subtle bugs
 - Consistent error handling makes systems reliable  
@@ -5471,6 +5488,7 @@ Memory Lab: Module unloaded safely
 ```
 
 **Key Learning Points**:
+
 - Kernel C requires explicit memory type definitions (`MALLOC_DEFINE`)
 - Every `malloc()` must be paired with exactly one `free()`
 - Module unload handlers must clean up ALL allocated resources
@@ -5737,6 +5755,7 @@ Echo: 'Hello from user space!' (received 23 bytes at ticks 45678)
 ```
 
 **Key Learning Points**:
+
 - Kernel C cannot directly access user space pointers
 - `uiomove()` safely transfers data across the user-kernel boundary
 - Always validate buffer sizes and handle partial transfers
@@ -6038,6 +6057,7 @@ Log Lab: ========================================
 ```
 
 **Key Learning Points**:
+
 - Different printf() variants serve different purposes in kernel code
 - Device context provides better diagnostics than generic messages
 - Timer callbacks require careful consideration of logging frequency
@@ -6519,6 +6539,7 @@ Error Lab: Final statistics:
 ```
 
 **Key Learning Points**:
+
 - Always use standard errno.h error codes for consistent behavior
 - Every resource allocation needs a corresponding cleanup path
 - Error injection helps test failure paths that are hard to trigger naturally
@@ -6557,6 +6578,7 @@ This is the **mindset shift** that makes someone a kernel programmer. You now th
 **Next Steps**:
 
 The patterns you've learned in these labs appear everywhere in the FreeBSD kernel:
+
 - Device drivers use these same memory management patterns
 - Network protocols use these same error handling strategies  
 - File systems use these same user-kernel communication techniques
@@ -6644,8 +6666,8 @@ Take your time. Each challenge can be completed with the same lab environment yo
 
 ### Challenge 1: Trace the Data Type Origins
 Open `/usr/src/sys/sys/types.h` and locate at least **five typedefs** that appear in this chapter
-(e.g., `vm_offset_t`, `bus_size_t`, `sbintime_t`).  
-For each:
+(e.g., `vm_offset_t`, `bus_size_t`, `sbintime_t`).  For each:
+
 - Identify what underlying C type it maps to on your architecture.  
 - Explain in a comment *why* the kernel uses a typedef instead of a primitive type.
 
@@ -6653,12 +6675,13 @@ Goal: see how portability and readability are built into FreeBSD's type system.
 
 ### Challenge 2: Memory Allocation Scenarios
 Create a short kernel module that allocates memory three different ways:
+
 1. `malloc()` with `M_WAITOK`
 2. `malloc()` with `M_NOWAIT`
 3. A UMA zone allocation (`uma_zalloc()`)
 
-Log the pointer addresses and note what happens if you try to load the module when memory pressure is high.
-Then answer in comments:
+Log the pointer addresses and note what happens if you try to load the module when memory pressure is high. Then answer in comments:
+
 - Why is `M_WAITOK` unsafe in interrupt context?
 - What would be the correct pattern for emergency allocations?
 
@@ -6690,10 +6713,11 @@ Goal: learn when to use **assertions vs. recoverable errors**.
 ### What You'll Gain
 
 By completing these challenges, you'll reinforce:
-- Precision with kernel data types  
-- Conscious memory-allocation decisions  
-- Structured error handling and cleanup  
-- Respect for stack limits and context safety  
+
+- Precision with kernel data types
+- Conscious memory-allocation decisions
+- Structured error handling and cleanup
+- Respect for stack limits and context safety
 - The discipline that distinguishes **user-space coding** from **kernel engineering**
 
 You're now ready to approach Chapter 6, where we start assembling these pieces into the real structure of a FreeBSD driver.
