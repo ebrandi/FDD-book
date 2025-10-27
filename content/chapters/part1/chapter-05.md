@@ -1047,7 +1047,7 @@ This code is problematic because:
 The kernel needs functions that:
 
 - Always respect buffer boundaries
-- Handle partially-filled buffers gracefully  
+- Handle partially-filled buffers gracefully
 - Work efficiently with both kernel and user data
 - Provide clear error indication
 
@@ -1086,7 +1086,7 @@ jail_set_hostname(struct jail *j, const char *hostname, size_t len)
 Key advantages of `strlcpy()`:
 
 - **Always null-terminates** the destination buffer
-- **Never overflows** the destination buffer  
+- **Never overflows** the destination buffer
 - **Returns the length** of the source string (useful for detecting truncation)
 - **Works correctly** even if source and destination overlap
 
@@ -3436,7 +3436,7 @@ Defensive kernel programming isn't just about avoiding bugs; it's about building
 The first step in defensive programming is developing the right attitude: **assume the worst will happen**. This means:
 
 - **Every pointer might be NULL**
-- **Every buffer might be too small**  
+- **Every buffer might be too small**
 - **Every allocation might fail**
 - **Every system call might be interrupted**
 - **Every hardware operation might time out**
@@ -5254,7 +5254,7 @@ Real FreeBSD kernel code demonstrates how all the concepts we've covered work to
 
 - Kernel-specific data types provide portability and clarity
 - Defensive programming prevents subtle bugs
-- Consistent error handling makes systems reliable  
+- Consistent error handling makes systems reliable
 - Proper resource management prevents leaks and corruption
 - Synchronization primitives enable safe multiprocessor operation
 - Coding idioms make code readable and maintainable
@@ -6566,10 +6566,8 @@ These labs have shown you concretely what we meant by "kernel C is a dialect of 
 
 - **User-space C**: "Allocate memory, use it, and hopefully remember to free it"
 - **Kernel C**: "Allocate memory with explicit type tracking, validate all inputs, handle allocation failure gracefully, and guarantee cleanup on every code path"
-
 - **User-space C**: "Print error messages to stderr"  
 - **Kernel C**: "Log with appropriate context, consider interrupt safety, avoid spamming the kernel log, and include diagnostic information for system administrators"
-
 - **User-space C**: "Pass pointers freely between functions"
 - **Kernel C**: "Use copyin/copyout for user space, validate all pointers, and never trust data that crosses protection boundaries"
 
@@ -6580,7 +6578,7 @@ This is the **mindset shift** that makes someone a kernel programmer. You now th
 The patterns you've learned in these labs appear everywhere in the FreeBSD kernel:
 
 - Device drivers use these same memory management patterns
-- Network protocols use these same error handling strategies  
+- Network protocols use these same error handling strategies
 - File systems use these same user-kernel communication techniques
 - System calls use these same defensive programming practices
 
@@ -6668,7 +6666,7 @@ Take your time. Each challenge can be completed with the same lab environment yo
 Open `/usr/src/sys/sys/types.h` and locate at least **five typedefs** that appear in this chapter
 (e.g., `vm_offset_t`, `bus_size_t`, `sbintime_t`).  For each:
 
-- Identify what underlying C type it maps to on your architecture.  
+- Identify what underlying C type it maps to on your architecture.
 - Explain in a comment *why* the kernel uses a typedef instead of a primitive type.
 
 Goal: see how portability and readability are built into FreeBSD's type system.
