@@ -55,7 +55,7 @@ cd "$ROOT_DIR"
 # Book information
 BOOK_TITLE="FreeBSD Device Drivers"
 BOOK_AUTHOR="Edson Brandi"
-BOOK_DATE="DRAFT Version 1.1 - October, 13th 2025"
+BOOK_DATE="DRAFT Version 1.2 - November 1, 2025"
 
 # File paths
 TITLE_FILE="$SCRIPT_DIR/title.md"
@@ -298,7 +298,7 @@ build_pdf() {
         --pdf-engine=xelatex \
         --from markdown+fenced_code_blocks \
         --toc \
-        --toc-depth=2 \
+        --toc-depth=3 \
         --number-sections \
         --metadata title="$BOOK_TITLE" \
         --metadata author="$BOOK_AUTHOR" \
