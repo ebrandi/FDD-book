@@ -1886,19 +1886,25 @@ This way, you always know what your cron jobs did, even if you don't check syste
 
 Sometimes you don't want a recurring job, you just want something to run later, once. That's where **at** comes in. 
 
-The usage is pretty simple, let's see some examples:
+Before a user can use the **at** the superuser must first append the user's username to the file `/var/at/at.allow`.
+
+```sh 
+# echo "dev" >> /var/at/at.allow
+```
+
+Now the user can execute the `at` command. The usage is pretty simple, let's see some examples:
 
 - Run a command 10 minutes from now:
 
 ```sh
-  echo "echo Hello FreeBSD > /home/dev/hello.txt" | at now + 10 minutes
+% echo "echo Hello FreeBSD > /home/dev/hello.txt" | at now + 10 minutes
 ```
 
 - Run a command tomorrow at 9 AM:
 
-  ```sh
-  echo "/usr/local/bin/htop" | at 9am tomorrow
-  ```
+```sh
+  % echo "/usr/local/bin/htop" | at 9am tomorrow
+```
 
 Jobs scheduled with `at` are queued and run exactly once. You can list them with `atq` and remove them with `atrm`.
 
