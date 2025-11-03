@@ -695,7 +695,7 @@ If you see a version string like the above, you're ready to compile C code.
 Still, you'll need some additional tools:
 
 ```
-# pkg install git gmake gdb
+# pkg install git gmake gdb bash
 ```
 
 - `git`: version control system.

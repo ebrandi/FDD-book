@@ -2484,7 +2484,7 @@ Example:
 #!/bin/sh
 # debug_demo.sh   show simple tracing
 
-# set -x comment to disable verbose trace:
+# set -x comment to enable verbose trace:
 set -x
 
 echo "Step 1"
@@ -2494,9 +2494,189 @@ echo "Step 2"
 date
 ```
 
-### 11) Putting it together: organize downloads by type
+### 11) Edge cases and script compatibility
 
-This small utility sorts files in `~/Downloads` into subfolders by extension. It demonstrates loops, case, tests and safety checks.
+On occasion you may encounter edge cases that can make scripting more difficult. For example strange file names. UNIX allows for a filename to be made of any ascii characters except for the forward slash `/` which is used to demarcate directories and subdirectors, and the null terminator `\0` (more on the null terminator in Chapter 04). This means that unexpected characters can such as the new line character `\n` can be found in filenames. Let's create one now and experiment with our scripts.
+
+In your home directory create a file with a filename containing a newline character
+
+```sh
+% touch $'first_line\nsecond_line.txt'
+```
+
+If we run the `ls` command after creating the file we will see that it has a strange name:
+
+```sh
+% ls
+first_line?second_line.txt
+```
+
+Why does the filename have a question mark in the middle? Because the file's name is actually saved as two lines thanks to the `\n` character we added when creating the file:
+
+```
+first_line
+second_line.txt
+```
+
+The question mark appears in the name because the 'ls' command tries to output all file names onto a single line. It substitutes the new line character for a question mark.
+
+Let's see how this effects our scripts. This small script will go through our home directory and state whenever it finds a file.
+
+```sh
+#!/bin/sh
+# list.sh - list the files in the user's home directory
+#
+# Usage:
+#   ./list.sh
+# A simple script that lists and counts the number of files inside of the user's home directory
+
+set -eu
+
+cd "${HOME}"
+
+find . -maxdepth 1 -type f ! -name ".*" -print |
+{
+  count=0
+  while IFS= read -r f; do
+    # String the leading "./" from path
+    fname=${f#./}
+    echo "File found: '$fname'"
+    count=$((count + 1))
+  done
+  echo "Total files found: $count"
+}
+```
+
+Running the script, we will see that it gets confused by the name:
+
+```sh
+% ./list.sh
+File found: 'first_line'
+File found: 'second_line.txt'
+Total files found: 2
+```
+
+What is going on? The -print flag in the `find` expression is outputs one path per line. Because this strange file has a newline character in its name -print gives two outputs. As a result our script thinks that the file's strange name is actually two files. To try to solve this we can instead use the -print0 flag which will pipe the names whenever it encounters a null terminator.
+
+```sh
+#!/bin/sh
+# list2.sh - list the files in the user's home directory
+#
+# Usage:
+#   ./list2.sh
+# A simple script that lists and counts the number of files inside of the user's home directory, outputting the file names with a null terminator
+
+set -eu
+
+cd "${HOME}"
+
+find . -maxdepth 1 -type f ! -name ".*" -print0 |
+{
+  count=0
+  while IFS= read -r f; do
+    # String the leading "./" from path
+    fname=${f#./}
+    echo "File found: '$fname'"
+    count=$((count + 1))
+  done
+  echo "Total files found: $count"
+}
+```
+
+However, when we run this we will encounter a different problem
+
+```sh
+% ./list2.sh
+File found: 'first_line'
+Total files found: 1
+```
+
+The script is correctly counting the number of files in the home directory, but it is not correctly reading the name. In the find expression the -print0 flag now gives a single output whenever it encounters a null terminator instead of a new line character (remember, UNIX names cannot contain a null terminator). This gives a single output for the file name, but this single output is not being read correctly by the script. Inside of our while loop we use the expression `IFS= read -r` which tells the loop to run when the Internal Field Separator variable reads in a new line. Our revised find expression provides a single output demarcated by a null terminator, but the read command will read until the end of a line. We will need to update our while loop to change the demarcation to a null terminator.
+
+```sh
+#!/bin/sh
+# list3.sh - list the files in the user's home directory
+#
+# Usage:
+#   ./list3.sh
+# A simple script that lists and counts the number of files inside of the user's home directory, outputting the file names with a null terminator and reading with a null terminator demarcation.
+
+set -eu
+
+cd "${HOME}"
+
+find . -maxdepth 1 -type f ! -name ".*" -print0 |
+{
+  count=0
+  # -d '' tells read to demarcate when it encounters a null character
+  while IFS= read -r -d '' f; do
+    # String the leading "./" from path
+    fname=${f#./}
+    echo "File found: '$fname'"
+    count=$((count + 1))
+  done
+  echo "Total files found: $count"
+}
+```
+
+Running our newest revision we encounter a different error and our script does not function at all
+
+```sh
+% ./list3.sh
+read: Illegal option -d
+Total files found: 0
+```
+
+What is happening? It is saying that -d is an illegal operation and that our new code to demarcate at '' is not allowed. If we search online we can see many scripts that have the flags -r -d for the `read` command. What is happening is that many of these scripts are using a different shell which can have different shell builtin commands. The command `read` used in our script is not an executable binary the same way some of our other commands like `ls` are. Instead `read` is a command built into the shell itself. As a result, different shells can have different builtin commands with different flags. The -d flag is not apart of the traditional **sh** shell, but is instead a part of the **bash** version of `read`.
+
+The Bourne Again Shell or **bash** is commonly used on many unix-like systems and is installed as the default on many, but not all, Linux distributions. Its scripting language is a superset of that of the classic Bourne shell meaning that most if not all scripts written for the **sh** shell will run on the **bash** shell, but as **bash** builds upon **sh** it means that it is not backwards compatible. There are many commands and flags included in **bash** that do not work on on the the **sh** shell. Lets update our script one more time changing the shebang to use bash.
+
+If you have not already done so, you can install **bash** with `pkg install bash`.
+
+Now we can update the shebang to use the _bash_ binary. Note that as it is not a part of the base system it will live under a different location in the filesystem.
+
+```sh
+#!/usr/local/bin/sh
+# list4.sh - list the files in the user's home directory
+#
+# Usage:
+#   ./list4.sh
+# A simple script that lists and counts the number of files inside of the user's home directory, outputting the file names with a null terminator and reading with a null terminator demarcation. Updated to use the bash shell
+
+set -eu
+
+cd "${HOME}"
+
+find . -maxdepth 1 -type f ! -name ".*" -print0 |
+{
+  count=0
+  # -d '' tells read to demarcate when it encounters a null character
+  while IFS= read -r -d '' f; do
+    # String the leading "./" from path
+    fname=${f#./}
+    echo "File found: '$fname'"
+    count=$((count + 1))
+  done
+  echo "Total files found: $count"
+}
+```
+
+Running the script with the updated shebang will let us use the features of **bash** not included in **sh**.
+
+```sh
+% ./list4.sh
+File found: 'first_line
+second_line.txt'
+Total files found: 1
+```
+
+The script now outputs the correct number of files found and with the correct file name, including the line break we inserted when creating the file.
+
+Because of the popularity of **bash** it is common to find documentation for commands and flags that will run on **bash** but not **sh**. It is not unusual for developers to write scripts developed for _bash_ rather than for the traditional **sh**. However, this results in a dependency and requires a shell that may not be installed on the system by default. This is also the cause when writing scripts for other popular shells such as **zsh**, **ksh**, and **dash** that expand beyond the POSIX standards set by the traditional Bourne shell. For maximum POSIX compatibility it is best to write and run scripts on `/bin/sh`.
+
+### 12) Putting it together: organize downloads by type
+
+This small utility sorts files in `~/Downloads` into subfolders by extension. It demonstrates loops, case, tests and safety checks. Like the previous script, it requires that we use the **bash** shell.
 
 ```sh
 #!/bin/sh
@@ -2509,6 +2689,10 @@ This small utility sorts files in `~/Downloads` into subfolders by extension. It
 # and moves matched files into them safely.
 
 set -eu
+
+# Bash command to allow pipeline commands to run in current shell process
+# and allow pipeline commands to update values of variable
+shopt -s lastpipe
 
 downloads="${HOME}/Downloads"
 
