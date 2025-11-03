@@ -695,12 +695,13 @@ If you see a version string like the above, you're ready to compile C code.
 Still, you'll need some additional tools:
 
 ```
-# pkg install git gmake gdb
+# pkg install git gmake gdb bash
 ```
 
 - `git`: version control system.
 - `gmake`: GNU make (some projects require it in addition to FreeBSD's own `make`).
 - `gdb`: the GNU debugger.
+- `bash`: the Bourne Again Shell,a more advanced version of `/bin/sh`
 
 ### Choosing an Editor
 
