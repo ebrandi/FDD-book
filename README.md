@@ -105,7 +105,7 @@ We welcome contributions! Please see our [Contributing Guide](https://freebsd.ed
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/your-feature`
 3. Make your changes
-4. Test your changes: `npm run build`
+4. Test your changes, use the scripts/build-book.sh to generate the PDF/EPUB
 5. Commit your changes: `git commit -m "Add your feature"`
 6. Push to your fork: `git push origin feature/your-feature`
 7. Create a Pull Request
