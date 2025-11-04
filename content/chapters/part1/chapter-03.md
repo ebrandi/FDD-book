@@ -2591,7 +2591,15 @@ All scripts should start with `#!/bin/sh`, contain comments explaining each step
 - **Hardcoding temporary file names.** Use `mktemp` and `trap` to clean up.
 - **Spaces around `=` in assignments.** `name=value` is correct. `name = value` is not.
 
-### Shell Portability: Handling Edge Cases and bash vs sh
+### Wrapping up
+
+In this section you learned the **native FreeBSD way** to automate work with portable scripts that run on any clean FreeBSD install. You can now write small programs with `/bin/sh`, handle arguments, test conditions, loop through files, define functions, use temporary files safely, and debug issues with simple tools. In your driver journey, scripts will help you repeat tests, gather logs, and package builds reliably.
+
+But remember: you don't need to memorize every construct or command option. Part of being productive in UNIX is knowing where to **find the right information at the right time**. Every developer, from beginner to expert, constantly looks up man pages, handbooks, and online resources.
+
+That's exactly what we'll cover next. In the following section, you'll learn how to use FreeBSD's built-in documentation, the famous FreeBSD Handbook, and the community around the project. These resources will become your companions as you continue your journey into device driver development.
+
+## Shell Portability: Handling Edge Cases and bash vs sh
 
 So far, we've written scripts using FreeBSD's native `/bin/sh` shell, which follows the POSIX standard. This makes our scripts portable across different UNIX systems. But as you explore shell scripting examples online or receive contributions from other developers, you'll encounter scripts written for **bash** that use features not available in POSIX sh.
 
@@ -2789,14 +2797,6 @@ When writing shell scripts:
 The organize_downloads.sh script we wrote earlier uses the POSIX-compliant temporary file approach. It handles the vast majority of real-world filenames correctly while remaining portable across any FreeBSD system.
 
 Remember: **the best script is one that works reliably in your target environment**. Don't add bash as a dependency for edge cases you'll never hit, but don't torture yourself with POSIX constraints if you're writing personal tools on a system where bash is already installed.
-
-### Wrapping up
-
-In this section you learned the **native FreeBSD way** to automate work with portable scripts that run on any clean FreeBSD install. You can now write small programs with `/bin/sh`, handle arguments, test conditions, loop through files, define functions, use temporary files safely, and debug issues with simple tools. In your driver journey, scripts will help you repeat tests, gather logs, and package builds reliably.
-
-But remember: you don't need to memorize every construct or command option. Part of being productive in UNIX is knowing where to **find the right information at the right time**. Every developer, from beginner to expert, constantly looks up man pages, handbooks, and online resources.
-
-That's exactly what we'll cover next. In the following section, you'll learn how to use FreeBSD's built-in documentation, the famous FreeBSD Handbook, and the community around the project. These resources will become your companions as you continue your journey into device driver development.
 
 ## Seeking Help and Documentation in FreeBSD
 
@@ -3409,3 +3409,4 @@ These exercises are the **muscle memory** you'll need when we start programming.
 The next chapter will introduce the **C programming language**, the language of the FreeBSD kernel. This is the tool you'll use to create device drivers. Don't worry if you've never programmed before, we'll build your understanding step by step, just as we did with UNIX in this chapter.
 
 By combining your new UNIX literacy with C programming skills, you'll be ready to begin shaping the FreeBSD kernel itself.
+
