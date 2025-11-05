@@ -2593,11 +2593,11 @@ All scripts should start with `#!/bin/sh`, contain comments explaining each step
 
 ### Wrapping up
 
-In this section you learned the **native FreeBSD way** to automate work with portable scripts that run on any clean FreeBSD install. You can now write small programs with `/bin/sh`, handle arguments, test conditions, loop through files, define functions, use temporary files safely, and debug issues with simple tools. In your driver journey, scripts will help you repeat tests, gather logs, and package builds reliably.
+In this section, you learned the **native FreeBSD way** to automate work with portable scripts that run on any clean FreeBSD install. You can now write small programs with `/bin/sh`, handle arguments, test conditions, loop through files, define functions, use temporary files safely, and debug issues with simple tools. In your driver journey, scripts will help you repeat tests, gather logs, and package builds reliably.
 
-But remember: you don't need to memorize every construct or command option. Part of being productive in UNIX is knowing where to **find the right information at the right time**. Every developer, from beginner to expert, constantly looks up man pages, handbooks, and online resources.
+Before we move on, a reminder: you do not need to memorise every construct or command option. Part of being productive in UNIX is knowing where to **find the right information at the right time**.
 
-That's exactly what we'll cover next. In the following section, you'll learn how to use FreeBSD's built-in documentation, the famous FreeBSD Handbook, and the community around the project. These resources will become your companions as you continue your journey into device driver development.
+In the next section, we will tighten the screws on **portability** itself, looking at subtle differences between shells, the habits that keep scripts robust across systems, and how to choose features that will not surprise you later.
 
 ## Shell Portability: Handling Edge Cases and bash vs sh
 
@@ -2605,11 +2605,12 @@ So far, we've written scripts using FreeBSD's native `/bin/sh` shell, which foll
 
 Understanding the differences between bash and sh, and knowing how to handle edge cases like unusual filenames, will help you write robust scripts and decide when portability matters more than convenience.
 
-#### The Problem: Filenames with Special Characters
+### The Problem: Filenames with Special Characters
 
 UNIX allows filenames to contain almost any character except forward slash `/` (which separates directories) and the null character `\0`. This means a filename can legally contain spaces, newlines, tabs, or other surprising characters.
 
 Let's create a file with a newline in its name to see how this affects our scripts:
+
 ```sh
 % cd ~
 % touch $'file_with\nnewline.txt'
@@ -2618,6 +2619,7 @@ file_with?newline.txt
 ```
 
 The `?` appears because `ls` substitutes unprintable characters when displaying filenames. The actual filename contains:
+
 ```
 file_with
 newline.txt
@@ -2625,9 +2627,10 @@ newline.txt
 
 Now let's see what happens when a script tries to process this file.
 
-#### A Naive Approach That Breaks
+### A Naive Approach That Breaks
 
 Here's a simple script that lists files in your home directory:
+
 ```sh
 #!/bin/sh
 # list_files.sh - count files in home directory
@@ -2647,6 +2650,7 @@ echo "Total files found: $count"
 ```
 
 Running this script with our unusual filename produces incorrect results:
+
 ```sh
 % ./list_files.sh
 File found: 'file_with'
@@ -2656,9 +2660,10 @@ Total files found: 2
 
 The script thinks one file is actually two files because `find -print` outputs one path per line, and our filename contains a newline character. The script breaks on a perfectly valid UNIX filename.
 
-#### The bash Solution: Using Null Delimiters
+### The bash Solution: Using Null Delimiters
 
 One way to fix this is to use null characters (`\0`) as delimiters instead of newlines. Bash supports this with the `-d` option to the `read` command:
+
 ```sh
 #!/usr/local/bin/bash
 # list_files_bash.sh - correctly handle unusual filenames with bash
@@ -2684,6 +2689,7 @@ Notice two changes:
 3. **read option**: Added `-d ''` to tell `read` to use null as the delimiter
 
 This version works correctly:
+
 ```sh
 % ./list_files_bash.sh
 File found: 'file_with
@@ -2693,9 +2699,10 @@ Total files found: 1
 
 The downside? **This script now requires bash**, which is not part of the FreeBSD base system. It creates a dependency.
 
-#### The POSIX-Compliant Alternative
+### The POSIX-Compliant Alternative
 
 If portability matters more than handling every possible edge case, we can write a POSIX-compliant version that avoids bash-specific features:
+
 ```sh
 #!/bin/sh
 # list_files_posix.sh - POSIX-compliant file listing
@@ -2723,12 +2730,14 @@ echo "Total files found: $count"
 ```
 
 This version:
+
 - Works on any POSIX-compliant shell (no bash required)
 - Uses a temporary file instead of a pipe to avoid subshell variable issues
 - Cleans up automatically with `trap`
 - Handles filenames with spaces and most special characters
 
 The limitation? It still can't handle filenames with newlines correctly, because POSIX sh's `read` command has no way to use a different delimiter. For this version:
+
 ```sh
 % ./list_files_posix.sh
 File found: 'file_with'
@@ -2736,7 +2745,7 @@ File found: 'newline.txt'
 Total files found: 2
 ```
 
-#### Understanding the Trade-Off
+### Understanding the Trade-Off
 
 This reveals an important decision point in shell scripting:
 
@@ -2750,23 +2759,26 @@ This reveals an important decision point in shell scripting:
 
 For most real-world scripting, the POSIX approach is sufficient. Filenames with newlines are extremely rare outside of contrived examples or security exploits. Files with spaces, unicode characters, and other printable characters work fine with the POSIX version.
 
-#### When to Choose bash
+### When to Choose bash
 
 Use bash when:
+
 - You're writing personal tools where bash is guaranteed to be available
 - You genuinely need to handle filenames with newlines (very rare)
 - You need bash-specific features like arrays, extended regex, or advanced string manipulation
 - The script is part of a project that already depends on bash
 
 Use POSIX sh when:
+
 - Writing system administration scripts that need to run on any FreeBSD system
 - Contributing to FreeBSD base system scripts
 - Maximum portability is required
 - The script might run in rescue mode or minimal environments
 
-#### A Third Option: find -exec
+### A Third Option: find -exec
 
 For completeness, here's a POSIX-compliant approach that handles all filenames correctly without requiring bash:
+
 ```sh
 #!/bin/sh
 # list_files_exec.sh - handle all filenames using find -exec
@@ -2784,7 +2796,7 @@ find . -maxdepth 1 -type f ! -name ".*" -exec sh -c '
 
 This works because `find -exec` passes filenames as arguments, not through pipes or line-based reading. It's POSIX-compliant and handles every edge case, but the syntax is less intuitive for beginners.
 
-#### Practical Advice
+### Practical Advice
 
 When writing shell scripts:
 
@@ -2797,6 +2809,12 @@ When writing shell scripts:
 The organize_downloads.sh script we wrote earlier uses the POSIX-compliant temporary file approach. It handles the vast majority of real-world filenames correctly while remaining portable across any FreeBSD system.
 
 Remember: **the best script is one that works reliably in your target environment**. Don't add bash as a dependency for edge cases you'll never hit, but don't torture yourself with POSIX constraints if you're writing personal tools on a system where bash is already installed.
+
+### Wrapping Up
+
+You have now seen why portability is a design choice, not an afterthought. You learned to favour POSIX `/bin/sh` for scripts that must run everywhere on FreeBSD, to avoid bash-only features, to use `printf` over a loose `echo`, to quote variables by default, to check exit codes, and to pick a clear shebang so the right interpreter runs your code. Along the way, we revisited the building blocks you already know: arguments, conditionals, loops, functions, and safe temporary files and tuned them for predictable behaviour across systems.
+
+No one keeps all the details in their head, and you do not need to. The next section shows you where to **look things up the FreeBSD way**: manual pages, `apropos`, built-in help, the FreeBSD Handbook, and community resources. These will become your day-to-day companions as you go deeper into device driver development.
 
 ## Seeking Help and Documentation in FreeBSD
 
