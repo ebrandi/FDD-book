@@ -2639,12 +2639,13 @@ set -eu
 cd "${HOME}"
 
 count=0
-find . -maxdepth 1 -type f ! -name ".*" -print |
 while IFS= read -r f; do
   fname=${f#./}
   echo "File found: '$fname'"
   count=$((count + 1))
-done
+done << EOF
+$(find . -maxdepth 1 -type f ! -name ".*" -print)
+EOF
 
 echo "Total files found: $count"
 ```
@@ -2672,12 +2673,11 @@ set -eu
 cd "${HOME}"
 
 count=0
-find . -maxdepth 1 -type f ! -name ".*" -print0 |
 while IFS= read -r -d '' f; do
   fname=${f#./}
   echo "File found: '$fname'"
   count=$((count + 1))
-done
+done < <(find . -maxdepth 1 -type f ! -name ".*" -print0)
 
 echo "Total files found: $count"
 ```
