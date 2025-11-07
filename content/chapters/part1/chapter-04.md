@@ -5368,6 +5368,9 @@ Create a file `lab_struct_pointer_pitfalls_nomalloc.c`:
  *
  * Classic pitfalls with pointers to structs, rewritten to avoid malloc.
  * Build and run each case and read the console output as you go.
+ *
+ * NOTE: This file intentionally contains ONE warning for make_device_bad()
+ *       to demonstrate what the compiler catches. This is expected!
  */
 
 #include <stdio.h>
@@ -8840,6 +8843,7 @@ File: `hello.c`
 #include <sys/param.h>
 #include <sys/module.h>
 #include <sys/kernel.h>
+#include <sys/systm.h>
 
 static int
 hello_modevent(module_t mod __unused, int event, void *arg __unused)
@@ -9167,22 +9171,37 @@ Compile:
 
 Output: `5` 
 
-Now **change `util.h`** to:
+Now change `util.h` to:
 
 ```c
 int add(int a, int b, int c);   // prototype changed
 ```
 
-But don't touch `util.c`. Recompile only `main.c`:
+And also update main.c to match:
 
-```sh
-% cc -Wall -c main.c
-% cc -o demo main.o util.o
+```c
+#include <stdio.h>
+#include "util.h"
+
+int main(void) {
+    printf("%d\n", add(2, 3, 4));  // now passing 3 arguments
+    return 0;
+}
 ```
 
-Now `./demo` may run incorrectly, or crash, depending on calling conventions.
+But don't touch util.c (it still only accepts two parameters). Now recompile only the changed files:
 
-Lesson: Partial rebuilds can leave object files out of sync with headers, creating *phantom bugs*. This is why we use `make`.
+```sh
+% cc -Wall -c main.c       # recompiles fine - header matches the call
+% cc -o demo main.o util.o   # links without error!
+% ./demo
+```
+
+**Result:** Now `./demo` may run incorrectly, print garbage, crash, or appear to work by accident, because main.c thinks add() takes three parameters, but util.o was compiled with a function that only takes two.
+
+**Lesson:** Partial rebuilds can leave object files out of sync with headers, creating phantom bugs. The linker doesn't verify that function signatures match between compilation units, only that the symbol exists. This is why we use make with proper dependency tracking.
+
+
 
 #### Recap Quiz: Common Pitfalls
 
