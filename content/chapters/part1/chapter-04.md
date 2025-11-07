@@ -3730,8 +3730,13 @@ To illustrate the subtlety of this class of bug, try the following small program
 
 ```c
 #include <stdio.h>
+#include <string.h>
 
 int main() {
+    // Fill stack with non-zero garbage
+    char garbage[100];
+    memset(garbage, 'Z', sizeof(garbage));
+
     // Deliberately forget the null terminator
     char broken[5] = {'B', 'S', 'D', '!', 'X'};  
 
