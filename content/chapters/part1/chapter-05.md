@@ -1,11 +1,12 @@
 ---
 title: "Understanding C for FreeBSD Kernel Programming"
 description: "This chapter teaches you the dialect of C spoken inside the FreeBSD kernel"
-author: "Edson Brandi"
-date: "2025-10-13"
-status: "complete"
-part: 1
+partNumber: 1
+partName: "Foundations: FreeBSD, C, and the Kernel"
 chapter: 5
+lastUpdated: "2026-04-20"
+status: "complete"
+author: "Edson Brandi"
 reviewer: "TBD"
 translator: "TBD"
 estimatedReadTime: 720
@@ -15,11 +16,9 @@ estimatedReadTime: 720
 
 In the last chapter, you learned the **language of C**, including its vocabulary of variables and operators, its grammar of control flow and functions, and its tools such as arrays, pointers, and structures. With practice, you can now write and understand complete C programs. That was a huge milestone; you can *speak C*.
 
-But the kernel is not an ordinary place. Inside FreeBSD, C is spoken with its own **dialect**: the same words, but with special rules, idioms, and constraints. A user-space program may call `malloc()`, `printf()`, or use floating-point numbers without a second thought. In kernel space, those choices are either unavailable or dangerous. Instead, you'll see `malloc(9)` with flags like `M_WAITOK`, kernel-specific string functions like `strlcpy()`, and strict rules against recursion or floating point.
+The FreeBSD kernel, however, speaks C with its own **dialect**: the same words, but with special rules, idioms, and constraints. A user-space program may call `malloc()`, `printf()`, or use floating-point numbers without a second thought. In kernel space, those choices are either unavailable or dangerous. Instead, you'll see `malloc(9)` with flags like `M_WAITOK`, kernel-specific string functions like `strlcpy()`, and strict rules against recursion or floating point. Chapter 4 taught you the language; this chapter teaches you the dialect, so that your code will be understood, and accepted, inside the kernel.
 
-Think of it like this: **Chapter 4 taught you the language; Chapter 5 teaches you the dialect spoken inside the FreeBSD kernel.** You already know how to form sentences; now you'll learn how to be understood in a community with its own culture and expectations.
-
-This chapter is about making that shift. You'll see how kernel code adapts C to work under different conditions: no runtime library, limited stack space, and absolute demands for performance and safety. You'll discover the types, functions, and coding practices that every FreeBSD driver relies on, and you'll learn how to avoid the mistakes that even experienced C programmers make when they first step into kernel space.
+This chapter is about making that shift. You'll see how kernel code adapts C to work under different conditions: no runtime library, limited stack space, and absolute demands for performance and safety. You'll discover the types, functions, and coding practices that every FreeBSD driver relies on, and you'll learn how to avoid the mistakes that even experienced C programmers make when they first step into kernel space. For a compact reference to the kernel C idioms and macros you will meet along the way, you can also consult **Appendix A**, which collects them in one place for quick lookup while you read.
 
 By the end of this chapter, you won't just know C, you'll know how to **think in C the way the FreeBSD kernel thinks in C**, a mindset that will carry you through the rest of this book and into your own driver projects.
 
@@ -42,7 +41,7 @@ The time you'll spend here depends on how deeply you engage:
 - **Take breaks and review.** Each section builds on the last. Pace yourself as you internalise the kernel's logic.  
 - **Treat defensive programming as a habit, not an option.** In kernel space, correctness is survival.
 
-This chapter is your **field guide to kernel C**, a dense, hands-on, and essential preparation for the structural journey that begins in Chapter 6.
+This chapter is your **field guide to kernel C**, a dense, hands-on, and essential preparation for the structural work that begins in Chapter 6.
 
 
 ## Introduction
@@ -56,7 +55,7 @@ In user space, you have luxuries you might not even realize: a vast standard lib
 The kernel lives in a fundamentally different world:
 
 - **No standard library**: Functions like `printf()`, `malloc()`, and `strcpy()` either don't exist or work completely differently.
-- **Limited stack space**: Where user programs might have megabytes of stack, kernel stacks are typically just a few kilobytes.
+- **Limited stack space**: Where user programs might have megabytes of stack, kernel stacks are typically only 16 KB per thread on FreeBSD 14.3 for amd64 and arm64. That is four 4 KB pages, corresponding to the default `KSTACK_PAGES=4` set in `/usr/src/sys/amd64/include/param.h` and `/usr/src/sys/arm64/include/param.h`; kernels built with `KASAN` or `KMSAN` raise `KSTACK_PAGES` to six, or roughly 24 KB.
 - **No floating point**: The kernel can't use floating-point operations without special handling, because it would interfere with user processes.
 - **Atomic context**: Much of your code runs in contexts where it cannot sleep or be interrupted.
 - **Shared state**: Everything you do affects the entire system, not just your program.
@@ -127,23 +126,21 @@ uint32_t  ip_address;   // Always 32 bits
 uint64_t  file_offset;  // Always 64 bits
 ```
 
-Here's a real example from `sys/netinet/ip.h` in the FreeBSD source:
+Here is an illustrative layout that uses explicit-width types, the shape you'll see in many kernel headers for protocol structures:
 
 ```c
-struct ip {
-    u_int8_t  ip_vhl;     /* version and header length */
-    u_int8_t  ip_tos;     /* type of service */
-    u_int16_t ip_len;     /* total length */
-    u_int16_t ip_id;      /* identification */
-    u_int16_t ip_off;     /* fragment offset field */
-    u_int8_t  ip_ttl;     /* time to live */
-    u_int8_t  ip_p;       /* protocol */
-    u_int16_t ip_sum;     /* checksum */
-    struct in_addr ip_src, ip_dst; /* source and destination address */
+struct my_packet_header {
+    uint8_t  version;     /* protocol version, always 1 byte */
+    uint8_t  flags;       /* feature flags, always 1 byte */
+    uint16_t length;      /* total length, always 2 bytes */
+    uint32_t sequence;    /* sequence number, always 4 bytes */
+    uint64_t timestamp;   /* timestamp, always 8 bytes */
 };
 ```
 
-Notice how every field uses an explicit-width type. This ensures that an IP packet header is exactly the same size whether you compile on a 32-bit or 64-bit system.
+Notice how every field uses an explicit-width type. This ensures the structure is exactly the same size whether you compile on a 32-bit or 64-bit system, or on little-endian and big-endian machines.
+
+The real `struct ip` in `/usr/src/sys/netinet/ip.h` is shaped a little differently for historical reasons: it uses `u_char`, `u_short`, and bitfields (because IP predates `<stdint.h>`), but the goal is the same, every field has a fixed, portable width. Open that file and take a look when you're curious.
 
 ### System-Specific Size Types
 
@@ -155,29 +152,23 @@ ssize_t   bytes_read;     // Signed size, can indicate errors
 off_t     file_position;  // File offsets, can be very large
 ```
 
-Here's an example from `sys/kern/vfs_bio.c`:
+Consider this illustrative loop:
 
 ```c
 static int
-flushbufqueues(struct vnode *lvp, struct bufdomain *bd, int target,
-    int flushdeps)
+flush_until(struct my_queue *q, int target)
 {
-    struct buf *bp;
-    int hasdeps;
-    int flushed;
-    int queue;
-    
-    flushed = 0;
-    queue = QUEUE_SENTINEL;
-    hasdeps = 1;
-    while (flushed != target && hasdeps) {
-        /* Buffer flushing logic */
+    int flushed = 0;
+
+    while (flushed < target && !my_queue_empty(q)) {
+        my_queue_flush_one(q);
+        flushed++;
     }
     return (flushed);
 }
 ```
 
-The function returns `int` for the count of flushed buffers, but if it dealt with memory sizes directly, it would use `size_t`.
+The function returns `int` for the count of flushed items. If it dealt with memory sizes directly, it would use `size_t` instead so the value couldn't silently truncate on systems with very large buffers. You can see the same `int` convention in functions like `flushbufqueues()` in `/usr/src/sys/kern/vfs_bio.c`, which returns the number of buffers it actually flushed.
 
 ### Pointer and Address Types
 
@@ -189,24 +180,19 @@ vm_paddr_t    physical_addr;  // Physical memory address
 uintptr_t     addr_as_int;    // Address stored as integer
 ```
 
-From `sys/vm/vm_page.c`, here's how FreeBSD handles physical memory addresses:
+From `/usr/src/sys/vm/vm_page.c`, here's how FreeBSD looks up a page within a VM object:
 
 ```c
 vm_page_t
 vm_page_lookup(vm_object_t object, vm_pindex_t pindex)
 {
-    vm_page_t m;
 
     VM_OBJECT_ASSERT_LOCKED(object);
-    
-    m = vm_radix_lookup(&object->rtree, pindex);
-    KASSERT(m == NULL || vm_page_xbusied(m) || vm_page_locked(m),
-        ("unlocked page %p", m));
-    return (m);
+    return (vm_radix_lookup(&object->rtree, pindex));
 }
 ```
 
-The `vm_pindex_t` type represents a page index in a virtual memory object, and `vm_page_t` is a pointer to a page structure. These types make the code's intent clear and ensure portability across different memory architectures.
+The `vm_pindex_t` type represents a page index in a virtual memory object, and `vm_page_t` is a pointer to a page structure. These typedefs make the code's intent clear and ensure portability across different memory architectures.
 
 ### Time and Timing Types
 
@@ -218,25 +204,18 @@ time_t        unix_time;      // Standard Unix timestamp
 int           ticks;          // System timer ticks since boot
 ```
 
-Here's an example from `sys/kern/kern_time.c`:
+From `/usr/src/sys/kern/kern_tc.c`, the kernel exposes several helpers that return the current time in different precisions:
 
 ```c
 void
 getnanotime(struct timespec *tsp)
 {
-    struct timehands *th;
-    u_int gen;
 
-    do {
-        th = timehands;
-        gen = atomic_load_acq_int(&th->th_generation);
-        *tsp = th->th_nanotime;
-        atomic_thread_fence_acq();
-    } while (gen == 0 || gen != th->th_generation);
+    GETTHMEMBER(tsp, th_nanotime);
 }
 ```
 
-This function safely reads the system time, even in the presence of concurrent updates, using atomic operations and memory barriers, concepts we'll explore later in this chapter.
+The `GETTHMEMBER` macro expands to a small loop that reads the current "timehands" structure with the proper atomic and memory-barrier discipline, so that `getnanotime()` returns a consistent snapshot of the system clock even while another CPU is updating it. We will look at atomics and memory barriers later in this chapter.
 
 ### Device and Resource Types
 
@@ -253,24 +232,11 @@ bus_size_t    reg_size;      // Size of hardware register region
 The kernel provides clear types for boolean values and operation results:
 
 ```c
-bool          success;       // C99 boolean (true/false)
-int           error_code;    // Error codes (0 = success)
+bool          success;       /* C99 boolean (true/false) */
+int           error_code;    /* errno-style codes; 0 means success */
 ```
 
-From `sys/kern/kern_malloc.c`:
-
-```c
-int
-malloc_last_fail(void)
-{
-    struct malloc_type_internal *mtip;
-    int rv;
-
-    mtip = &kmemstatistics[M_LAST];
-    rv = mtip->mti_failures;
-    return (rv);
-}
-```
+Throughout the kernel you will see `int` used as the universal "success or errno" return type, and `bool` reserved for truly two-valued conditions. The convention is: a function that can fail returns an `int` error code, and a function that simply answers "yes or no" returns `bool`.
 
 ### Hands-On Lab: Exploring Kernel Types
 
@@ -402,7 +368,7 @@ Kernel-specific data types aren't just about being precise, they're about writin
 - Works correctly across different architectures
 - Clearly expresses its intentions
 - Avoids subtle bugs that can crash the system
-- Integrates seamlessly with the rest of the kernel
+- Uses the same interfaces as the rest of the kernel
 
 In the next section, we'll explore how the kernel manages the memory these types live in a world where `malloc()` has flags and every allocation must be carefully planned.
 
@@ -416,7 +382,7 @@ The FreeBSD kernel divides memory into distinct regions, each with its own purpo
 
 **Kernel text**: The kernel's executable code, typically read-only and shared.
 **Kernel data**: Global variables and static data structures.
-**Kernel stack**: Limited space for function calls and local variables (typically 8KB-16KB per thread).
+**Kernel stack**: Limited space for function calls and local variables (typically 16KB per thread on FreeBSD 14.3 for amd64 and arm64; see `KSTACK_PAGES` in `/usr/src/sys/<arch>/include/param.h`).
 **Kernel heap**: Dynamically allocated memory for buffers, data structures, and temporary storage.
 
 Unlike user processes, the kernel can't simply request more memory from the operating system; it *is* the operating system. Every byte must be accounted for, and running out of kernel memory can bring the entire system to its knees.
@@ -430,31 +396,26 @@ void *malloc(size_t size, struct malloc_type *type, int flags);
 void free(void *addr, struct malloc_type *type);
 ```
 
-Let's look at a real example from `sys/kern/vfs_mount.c`:
+A simple illustrative pattern you will recognise all over the kernel looks like this:
 
 ```c
-struct mount *
-vfs_mount_alloc(struct vnode *vp, struct vfsconf *vfsp, const char *fspath,
-    struct ucred *cred)
+struct my_object *
+my_object_alloc(int id)
 {
-    struct mount *mp;
+    struct my_object *obj;
 
-    mp = malloc(sizeof(struct mount), M_MOUNT, M_WAITOK | M_ZERO);
-    TAILQ_INIT(&mp->mnt_nvnodelist);
-    TAILQ_INIT(&mp->mnt_activevnodelist);
-    TAILQ_INIT(&mp->mnt_lazyvnodelist);
-    mp->mnt_nvnodelistsize = 0;
-    mp->mnt_activevnodelistsize = 0;
-    mp->mnt_lazyvnodelistsize = 0;
-    
-    /* Initialize other mount structure fields */
-    mp->mnt_ref = 0;
-    mp->mnt_vfc = vfsp;
-    mp->mnt_op = vfsp->vfc_vfsops;
-    
-    return (mp);
+    /* Allocate and zero the structure in one step. */
+    obj = malloc(sizeof(*obj), M_DEVBUF, M_WAITOK | M_ZERO);
+
+    /* Initialise non-zero fields. */
+    obj->id = id;
+    TAILQ_INIT(&obj->children);
+
+    return (obj);
 }
 ```
+
+The real `vfs_mount_alloc()` in `/usr/src/sys/kern/vfs_mount.c` uses a UMA zone (`uma_zalloc(mount_zone, M_WAITOK)`) instead of `malloc()` because `struct mount` is allocated often enough to justify a dedicated object cache. We will look at UMA zones in a few pages; for now, notice the overall rhythm: allocate, zero, initialise lists and non-zero fields, return.
 
 ### Memory Types: Organizing Allocations
 
@@ -488,29 +449,26 @@ The `flags` parameter controls how the allocation behaves. The most important fl
 
 **`M_USE_RESERVE`**: Use emergency memory reserves. Only for critical system operations.
 
-Here's an example from `sys/net/if.c`:
+Here is the shape of a typical allocation path using `M_WAITOK` and `M_ZERO`:
 
 ```c
-struct ifnet *
-if_alloc(u_char type)
+static struct my_softc *
+my_softc_alloc(u_char type)
 {
-    struct ifnet *ifp;
-    u_short idx;
+    struct my_softc *sc;
 
-    ifp = malloc(sizeof(struct ifnet), M_IFNET, M_WAITOK | M_ZERO);
-    
-    if (ifp == NULL) {
-        /* This should never happen with M_WAITOK, but be safe */
-        return (NULL);
-    }
-    
-    /* Initialize the interface structure */
-    ifp->if_type = type;
-    ifp->if_alloctype = type;
-    
-    return (ifp);
+    sc = malloc(sizeof(*sc), M_DEVBUF, M_WAITOK | M_ZERO);
+    /*
+     * With M_WAITOK the kernel will sleep until memory is available,
+     * so a NULL return is not expected. The defensive NULL check is
+     * still a good habit, and is mandatory with M_NOWAIT.
+     */
+    sc->type = type;
+    return (sc);
 }
 ```
+
+In `/usr/src/sys/net/if.c`, the kernel's `if_alloc(u_char type)` is a thin wrapper over `if_alloc_domain()`, which is where the real allocation happens. The internal helper uses the same `M_WAITOK | M_ZERO` pattern shown above.
 
 ### The Critical Difference: Sleep vs. No-Sleep Contexts
 
@@ -572,35 +530,24 @@ uma_zfree(my_zone, obj);
 uma_zdestroy(my_zone);
 ```
 
-Here's a real example from `sys/kern/kern_proc.c`:
+A condensed pattern showing how a subsystem creates a UMA zone at boot:
 
 ```c
-static uma_zone_t proc_zone;
+static uma_zone_t my_zone;
 
-static int
-proc_init(void *mem, int size, int flags)
+static void
+my_subsystem_init(void)
 {
-    struct proc *p;
-
-    p = (struct proc *)mem;
-    SDT_PROBE1(proc, , , init, p);
-    EVENTHANDLER_DIRECT_INVOKE(process_init, p);
-    return (0);
-}
-
-/* Called during system initialization */
-void
-procinit(void)
-{
-    proc_zone = uma_zcreate("PROC", sched_sizeof_proc(),
-        proc_init, proc_fini, proc_ctor, proc_dtor,
-        UMA_ALIGN_PTR, UMA_ZONE_NOFREE);
+    my_zone = uma_zcreate("MYZONE", sizeof(struct my_object),
+        NULL, NULL, NULL, NULL, UMA_ALIGN_PTR, 0);
 }
 ```
 
+The real `procinit()` in `/usr/src/sys/kern/kern_proc.c` does exactly this for `struct proc`, passing real constructor/destructor/init/finish callbacks (`proc_ctor`, `proc_dtor`, `proc_init`, `proc_fini`) so the kernel can keep preallocated proc structures warm in the zone. The argument order for `uma_zcreate()` is name, size, `ctor`, `dtor`, `init`, `fini`, alignment, flags.
+
 ### Stack Considerations: The Kernel's Precious Resource
 
-User-space programs typically have stack sizes measured in megabytes. Kernel stacks are much smaller typically 8KB to 16KB total, and that includes space for interrupt handling. This means:
+User-space programs typically have stack sizes measured in megabytes. Kernel stacks are much smaller, typically 16KB per thread on FreeBSD 14.3 (four pages on amd64 and arm64; see `KSTACK_PAGES` in `/usr/src/sys/amd64/include/param.h`). This includes space for interrupt handling. The practical consequences:
 
 **Avoid large local arrays**:
 ```c
@@ -647,35 +594,22 @@ atomic_store_rel_int(&status_flag, READY);
 int value = atomic_load_acq_int(&shared_counter);
 ```
 
-From `sys/kern/kern_synch.c`:
+From `/usr/src/sys/kern/kern_synch.c`, the real `wakeup_one()` is pleasantly short:
 
 ```c
 void
-wakeup_one(void *chan)
+wakeup_one(const void *ident)
 {
-    struct sleepqueue *sq;
-    struct thread *td;
-    struct proc *p;
+    int wakeup_swapper;
 
-    sq = sleepq_lookup(chan);
-    if (sq == NULL) {
-        sleepq_release(chan);
-        return;
-    }
-    
-    KASSERT(sq->sq_type == SLEEPQ_SLEEP,
-        ("wakeup_one: sq_type %d", sq->sq_type));
-    
-    if (!TAILQ_EMPTY(&sq->sq_blocked[SLEEPQ_SLEEP])) {
-        td = TAILQ_FIRST(&sq->sq_blocked[SLEEPQ_SLEEP]);
-        TAILQ_REMOVE(&sq->sq_blocked[SLEEPQ_SLEEP], td, td_slpq);
-        sleepq_resume_thread(sq, td, 0);
-    }
-    sleepq_release(chan);
+    sleepq_lock(ident);
+    wakeup_swapper = sleepq_signal(ident, SLEEPQ_SLEEP | SLEEPQ_DROP, 0, 0);
+    if (wakeup_swapper)
+        kick_proc0();
 }
 ```
 
-This function carefully manages thread wakeups with proper synchronization.
+All the detail (finding the sleep queue, picking a thread to wake, dropping the lock) is hidden inside `sleepq_signal()`. This is a recurring pattern: the public function reads like a short declarative sentence, and the interesting work lives in a handful of well-tested helpers.
 
 ### Hands-On Lab: Kernel Memory Management
 
@@ -821,22 +755,24 @@ In user programs you might freely use `strcpy()`, `memcpy()`, or `sprintf()`. In
 | Formatted print    | `sprintf()`     | `snprintf(dest, size, fmt, ...)` | Bounds checking                     |
 | User  <->  Kernel copy | N/A             | `copyin()`, `copyout()`          | Transfer data across address spaces |
 
-Example from `sys/dev/usb/usb_quirk.c`:
+A typical "clear and copy" pattern you'll see throughout the kernel:
 
 ```c
-bzero(&uq, sizeof(uq));
-strlcpy(uq.quirkname, quirkname, sizeof(uq.quirkname));
+struct my_record mr;
+
+bzero(&mr, sizeof(mr));
+strlcpy(mr.name, src, sizeof(mr.name));
 ```
 
-And from a driver handling user requests:
+And a driver handling user requests through an ioctl-style path:
 
 ```c
 error = copyin(uap->data, &local, sizeof(local));
-if (error)
-    return (EFAULT);
+if (error != 0)
+    return (error);
 ```
 
-`copyin()` safely copies data from user memory to kernel memory, validating access rights in the process. Its sibling `copyout()` performs the reverse.
+`copyin()` safely copies data from user memory to kernel memory, returning an errno on failure (typically `EFAULT` if the user pointer is bad). Its sibling `copyout()` performs the reverse. These functions validate access rights and handle page faults safely, so they are the only correct way to cross the user-kernel boundary.
 
 #### Best Practices
 
@@ -885,27 +821,27 @@ By long-standing UNIX and FreeBSD convention:
 - `0`   ->  Success
 - Non-zero  ->  Failure (often an errno-style code such as `EIO`, `EINVAL`, `ENOMEM`)
 
-For example, from `sys/kern/kern_linker.c`:
+Consider this illustrative function that follows the same convention you'll see throughout `/usr/src/sys/kern/`:
 
 ```c
 int
-linker_file_unload(struct linker_file *lf)
+my_operation(struct my_object *obj)
 {
     int error;
 
-    if (lf == NULL)
+    if (obj == NULL)
         return (EINVAL);      /* invalid argument */
 
-    error = LINKER_UNLOAD_DEPENDENTS(lf);
+    error = do_dependent_step(obj);
     if (error != 0)
         return (error);       /* propagate cause */
 
-    linker_file_unload_internal(lf);
+    do_final_step(obj);
     return (0);               /* success */
 }
 ```
 
-Here, the function clearly signals failure conditions using standard errno codes.
+The function clearly signals failure conditions using standard errno codes (`EINVAL`, `ENOMEM`, and so on), and forwards unexpected errors from helper functions without reinterpreting them.
 
 **Tip:** Always propagate upstream errors instead of silently ignoring them. It allows higher-level subsystems to decide what to do next.
 
@@ -913,27 +849,32 @@ Here, the function clearly signals failure conditions using standard errno codes
 
 Beginners sometimes fear the `goto` keyword, but in kernel code it is the standard idiom for structured cleanup. It avoids deep nesting and guarantees that every resource is freed exactly once.
 
-Example from `sys/kern/subr_syscall.c` (simplified):
+A pedagogical sketch of the same pattern, inspired by the open path in `/usr/src/sys/kern/vfs_syscalls.c`:
 
 ```c
 int
-sys_openat(struct thread *td, struct openat_args *uap)
+my_setup(struct thread *td, struct my_args *uap)
 {
     struct file *fp = NULL;
+    struct resource *res = NULL;
     int error;
 
-    fp = falloc(td, &error);
-    if (fp == NULL)
-        goto fail;
-
-    error = vn_open(uap->path, fp);
+    error = falloc(td, &fp, NULL, 0);
     if (error != 0)
         goto fail;
 
-    /* Success path */
+    res = acquire_resource(uap->id);
+    if (res == NULL) {
+        error = ENXIO;
+        goto fail;
+    }
+
+    /* Success path: hand ownership over to the caller. */
     return (0);
 
 fail:
+    if (res != NULL)
+        release_resource(res);
     if (fp != NULL)
         fdrop(fp, td);
     return (error);
@@ -977,15 +918,14 @@ Use assertions to verify **things that should never happen** under correct logic
 
 ### `panic()` - The Last Resort
 
-`panic(const char *fmt, ...)` stops the system and dumps state for post-mortem analysis.
- Example from `sys/kern/kern_malloc.c`:
+`panic(const char *fmt, ...)` stops the system and dumps state for post-mortem analysis. A typical use looks like this:
 
 ```c
-if (mp == NULL)
-    panic("malloc: bad malloc type %p", type);
+if (mp->ks_magic != M_MAGIC)
+    panic("my_subsystem: bad magic 0x%x on %p", mp->ks_magic, mp);
 ```
 
-A panic is catastrophic but sometimes necessary to prevent data corruption.
+A panic is catastrophic, but sometimes necessary to prevent data corruption. Use it for impossible states, corrupted invariants, or situations where letting the kernel continue would risk destroying user data.
 
 ### `printf()` and Friends
 
@@ -1000,11 +940,13 @@ For user-facing messages, use:
 - `uprintf()` prints to the terminal of the calling user.
 - `device_printf(dev, ...)` prefixes messages with the device name (used in drivers).
 
-Example from `sys/dev/usb/usb_generic.c`:
+An illustrative attach-time log from a driver:
 
 ```c
-device_printf(dev, "USB device attached, speed: %d Mbps\n", speed);
+device_printf(dev, "attached, speed: %d Mbps\n", speed);
 ```
+
+The output appears in `dmesg` as something like `em0: attached, speed: 1000 Mbps`, which makes it easy to spot in a log full of messages from many different devices.
 
 ### Tracing with `CTRn()` and `SDT_PROBE()`
 
@@ -1060,25 +1002,26 @@ size_t strlcpy(char *dst, const char *src, size_t size);
 size_t strlcat(char *dst, const char *src, size_t size);
 ```
 
-Here's an example from `sys/kern/kern_jail.c`:
+A concise pattern that uses `strlcpy()` the way kernel code typically does:
 
 ```c
+struct my_label {
+    char    name[MAXHOSTNAMELEN];
+};
+
 static int
-jail_set_hostname(struct jail *j, const char *hostname, size_t len)
+my_label_set(struct my_label *lbl, const char *src, size_t srclen)
 {
-    char *newhostname;
-    
-    if (len >= MAXHOSTNAMELEN) {
+
+    if (srclen >= sizeof(lbl->name))
         return (ENAMETOOLONG);
-    }
-    
-    newhostname = malloc(MAXHOSTNAMELEN, M_JAIL, M_WAITOK);
-    strlcpy(newhostname, hostname, MAXHOSTNAMELEN);
-    
-    /* Replace old hostname */
-    free(j->hostname, M_JAIL);
-    j->hostname = newhostname;
-    
+
+    /*
+     * strlcpy always NUL-terminates the destination and never
+     * writes past sizeof(lbl->name) bytes, regardless of how long
+     * src actually is.
+     */
+    strlcpy(lbl->name, src, sizeof(lbl->name));
     return (0);
 }
 ```
@@ -1099,25 +1042,16 @@ size_t strlen(const char *str);
 size_t strnlen(const char *str, size_t maxlen);
 ```
 
-From `sys/kern/vfs_syscalls.c`:
+An illustrative sanity check on the length of a user-supplied path string:
 
 ```c
 static int
-kern_openat(struct thread *td, int fd, const char *path, 
-    enum uio_seg pathseg, int flags, int mode)
+my_validate_path(const char *path)
 {
-    struct nameidata nd;
-    int error;
 
-    if (strnlen(path, PATH_MAX) >= PATH_MAX) {
+    if (strnlen(path, PATH_MAX) >= PATH_MAX)
         return (ENAMETOOLONG);
-    }
-    
-    /* Continue with path processing... */
-    NDINIT_AT(&nd, LOOKUP, FOLLOW, pathseg, path, fd, td);
-    error = vn_open(&nd, &flags, mode, NULL);
-    
-    return (error);
+    return (0);
 }
 ```
 
@@ -1133,26 +1067,26 @@ void *memset(void *ptr, int value, size_t len);
 int memcmp(const void *ptr1, const void *ptr2, size_t len);
 ```
 
-Here's an example from `sys/netinet/ip_input.c`:
+An illustrative sketch that uses the same binary-safe primitives you'll see across network code:
 
 ```c
 static void
-ip_forward(struct mbuf *m, int srcrt, struct in_ifaddr *ia)
+my_forward(struct mbuf *m)
 {
     struct ip *ip = mtod(m, struct ip *);
     struct in_addr dest;
-    uint32_t nextmtu = 0;
-    int error = 0;
-    
-    /* Copy destination for later use */
+
+    /* Copy the destination address into a local buffer. */
     memcpy(&dest, &ip->ip_dst, sizeof(dest));
-    
-    /* Clear any old route information */
+
+    /* Zero a header annotation before we fill it in again. */
     memset(&m->m_pkthdr.PH_loc, 0, sizeof(m->m_pkthdr.PH_loc));
-    
-    /* Forward the packet... */
+
+    /* ... forward the packet ... */
 }
 ```
+
+`memcpy()` and `memset()` take explicit lengths and work on arbitrary binary data, which is exactly what protocol code needs.
 
 ### User Space Data Access: `copyin()` and `copyout()`
 
@@ -1163,50 +1097,30 @@ int copyin(const void *udaddr, void *kaddr, size_t len);
 int copyout(const void *kaddr, void *udaddr, size_t len);
 ```
 
-From `sys/kern/sys_generic.c`:
+From `/usr/src/sys/kern/sys_generic.c`:
 
 ```c
-static int
-dofileread(struct thread *td, int fd, struct file *fp, struct uio *auio,
-    off_t offset, int flags)
-{
-    ssize_t cnt;
-    int error;
-    
-    /* Read data into kernel buffer */
-    error = fo_read(fp, auio, td->td_ucred, flags, td);
-    if (error) {
-        return (error);
-    }
-    
-    cnt = td->td_retval[0];
-    td->td_retval[0] = cnt;
-    
-    return (0);
-}
-
 int
 sys_read(struct thread *td, struct read_args *uap)
 {
     struct uio auio;
     struct iovec aiov;
     int error;
-    
-    /* Set up kernel structures for the read */
-    aiov.iov_base = uap->buf;      /* User buffer pointer */
-    aiov.iov_len = uap->nbytes;    /* Requested length */
+
+    if (uap->nbyte > IOSIZE_MAX)
+        return (EINVAL);
+    aiov.iov_base = uap->buf;
+    aiov.iov_len = uap->nbyte;
     auio.uio_iov = &aiov;
     auio.uio_iovcnt = 1;
-    auio.uio_resid = uap->nbytes;
-    auio.uio_segflg = UIO_USERSPACE; /* Data goes to user space */
-    
-    error = dofileread(td, uap->fd, NULL, &auio, -1, 0);
-    
+    auio.uio_resid = uap->nbyte;
+    auio.uio_segflg = UIO_USERSPACE;
+    error = kern_readv(td, uap->fd, &auio);
     return (error);
 }
 ```
 
-The kernel uses `UIO` (User I/O) structures to safely handle data transfers. The `uio_segflg` field tells the system whether data is moving between kernel space (`UIO_SYSSPACE`) or user space (`UIO_USERSPACE`).
+The kernel uses `struct uio` (User I/O) to safely describe data transfers. The `uio_segflg` field tells the system whether the buffer addresses live in kernel space (`UIO_SYSSPACE`) or user space (`UIO_USERSPACE`), and the `copyin/copyout` machinery invoked deeper in the stack reads that flag to pick the safe copy primitive.
 
 ### String Formatting: `sprintf()` vs `snprintf()`
 
@@ -1217,34 +1131,19 @@ int sprintf(char *str, const char *format, ...);
 int snprintf(char *str, size_t size, const char *format, ...);
 ```
 
-From `sys/kern/kern_proc.c`:
+Illustrative pattern for building a bounded string in a fixed-size buffer:
 
 ```c
-static void
-proc_update_cwd(struct proc *p)
+void
+format_device_label(char *buf, size_t bufsz, const char *name, int unit)
 {
-    struct filedesc *fdp;
-    struct vnode *cdir, *rdir;
-    char *buf, *retbuf;
-    
-    fdp = p->p_fd;
-    cdir = fdp->fd_cdir;
-    rdir = fdp->fd_rdir;
-    
-    buf = malloc(MAXPATHLEN, M_TEMP, M_WAITOK);
-    
-    /* Build the current working directory path */
-    retbuf = getcwd(buf, MAXPATHLEN - 1, p);
-    if (retbuf != NULL) {
-        /* Safely format the path string */
-        snprintf(p->p_comm, sizeof(p->p_comm), "(%s)", basename(retbuf));
-    }
-    
-    free(buf, M_TEMP);
+
+    /* snprintf never writes past buf[bufsz - 1], and always NUL-terminates. */
+    snprintf(buf, bufsz, "%s%d", name, unit);
 }
 ```
 
-Always prefer `snprintf()` over `sprintf()` to avoid buffer overflows.
+Always prefer `snprintf()` over `sprintf()` to avoid buffer overflows, and pass `sizeof(buf)` (or an explicit size argument, as above) so that the function knows the real capacity of the destination.
 
 ### Buffer Management: `mbuf` Chains
 
@@ -1263,42 +1162,31 @@ m->m_len = snprintf(mtod(m, char *), MLEN, "Hello, network!");
 m_freem(m);
 ```
 
-Here's a real example from `sys/netinet/tcp_output.c`:
+An illustrative mbuf lifecycle:
 
 ```c
-static struct mbuf *
-tcp_addoptions(struct tcpopt *to, u_char *optp)
+static int
+my_build_packet(struct mbuf **mp, size_t optlen)
 {
-    u_int mask, optlen = 0;
     struct mbuf *m;
-    
-    /* Calculate total options length */
-    for (mask = 1; mask < TOF_MAXOPT; mask <<= 1) {
-        if ((to->to_flags & mask) != mask)
-            continue;
-        
-        switch (to->to_flags & mask) {
-        case TOF_MSS:
-            optlen += TCPOLEN_MSS;
-            break;
-        case TOF_SCALE:
-            optlen += TCPOLEN_WINDOW;
-            break;
-        /* ... other options ... */
-        }
+
+    m = m_get(M_NOWAIT, MT_DATA);
+    if (m == NULL)
+        return (ENOMEM);
+
+    if (optlen > MLEN) {
+        /* Too big to fit in a single mbuf; caller should chain. */
+        m_freem(m);
+        return (EINVAL);
     }
-    
-    /* Allocate mbuf for options */
-    if (optlen) {
-        m = m_get(M_NOWAIT, MT_DATA);
-        if (m == NULL)
-            return (NULL);
-        m->m_len = optlen;
-    }
-    
-    return (m);
+
+    m->m_len = optlen;
+    *mp = m;
+    return (0);
 }
 ```
+
+Real network code such as `tcp_addoptions()` in `/usr/src/sys/netinet/tcp_output.c` builds TCP option strings into buffers that later end up in an mbuf chain. The detail worth internalising here is the pairing: `m_get()` on acquire, `m_freem()` on release.
 
 ### Hands-On Lab: Safe String Handling
 
@@ -1440,35 +1328,36 @@ The defensive programming mindset extends to every string operation in the kerne
 
 ## Functions and Return Conventions
 
-Function design in the kernel follows patterns that might seem strange if you're coming from user-space programming. These patterns aren't arbitrary; they reflect decades of experience with the constraints and requirements of system-level code. Understanding these conventions will help you write functions that integrate seamlessly with the rest of the FreeBSD kernel and follow the expectations of other kernel developers.
+Function design in the kernel follows patterns that might seem strange if you're coming from user-space programming. These patterns aren't arbitrary; they reflect decades of experience with the constraints and requirements of system-level code. Understanding these conventions will help you write functions that match the kernel's own patterns and meet the expectations of other kernel developers.
 
 ### The Kernel's Function Signature Patterns
 
-Let's examine a typical kernel function from `sys/kern/vfs_vnode.c`:
+Here is a typical kernel function signature and body. The following pseudo-example shows the KNF layout you'll encounter everywhere in `/usr/src/sys/kern/`:
 
 ```c
 int
-vget(struct vnode *vp, int flags, struct thread *td)
+my_acquire(struct my_object *obj, int flags)
 {
     int error;
 
-    MPASS((flags & LK_TYPE_MASK) != 0);
-    
-    error = vn_lock(vp, flags);
+    MPASS((flags & MY_FLAG_MASK) != 0);
+
+    error = my_lock(obj, flags);
     if (error != 0)
         return (error);
-        
-    vref(vp);
-    if ((error = vn_lock(vp, flags | LK_INTERLOCK)) != 0) {
-        vrele(vp);
+
+    my_ref(obj);
+    error = my_lock_upgrade(obj, flags | MY_FLAG_INTERLOCK);
+    if (error != 0) {
+        my_unref(obj);
         return (error);
     }
-    
+
     return (0);
 }
 ```
 
-Notice several important patterns:
+Real examples of this shape include `vget()` in `/usr/src/sys/kern/vfs_subr.c` and countless other subsystem functions. Notice several important patterns:
 
 **Return type comes first**: The `int` return type is on its own line, making functions easy to scan.
 
@@ -1476,7 +1365,7 @@ Notice several important patterns:
 
 **Multiple exit points are acceptable**: Unlike some user-space style guides, kernel functions often have multiple `return` statements for early error exits.
 
-**Resource cleanup on failure**: When the function fails, it cleans up any resources it allocated.
+**Resource cleanup on failure**: When the function fails, it cleans up any resources it allocated before returning the error code.
 
 ### Error Return Conventions
 
@@ -1486,57 +1375,38 @@ FreeBSD kernel functions follow a strict convention for indicating success and f
 - **Return positive errno codes for failure** (like `ENOMEM`, `EINVAL`, `ENODEV`)
 - **Never return negative values** (unlike Linux kernel)
 
-Here's an example from `sys/kern/kern_descrip.c`:
+An illustrative pattern for a function that validates its inputs, takes a lock, does work, and then releases the lock through a single exit label:
 
 ```c
 int
-kern_dup(struct thread *td, u_int mode, int flags, int old, int new)
+my_lookup(struct my_table *tbl, int key, struct my_entry **outp)
 {
-    struct filedesc *fdp;
-    struct filedescent *fde;
-    struct proc *p;
-    struct file *delfp, *oldfp;
-    u_long *ioctls;
-    int error, maxfd;
+    struct my_entry *e;
+    int error = 0;
 
-    p = td->td_proc;
-    fdp = p->p_fd;
-    MPASS((flags & ~(FDDUP_FLAG_CLOEXEC)) == 0);
+    if (tbl == NULL || outp == NULL)
+        return (EINVAL);
+    if (key < 0)
+        return (EINVAL);
 
-    FILEDESC_XLOCK(fdp);
-    
-    if ((oldfp = fget_locked(fdp, old)) == NULL) {
-        FILEDESC_XUNLOCK(fdp);
-        return (EBADF);  /* Bad file descriptor */
+    *outp = NULL;
+
+    MY_TABLE_LOCK(tbl);
+    e = my_table_find(tbl, key);
+    if (e == NULL) {
+        error = ENOENT;
+        goto out;
     }
-    
-    if (mode == FDDUP_NORMAL) {
-        if ((error = fdalloc(td, 0, &new)) != 0) {
-            FILEDESC_XUNLOCK(fdp);
-            return (error);  /* Forward the allocation error */
-        }
-    } else {
-        if (new >= fdp->fd_nfiles) {
-            error = EBADF;
-            goto unlock_and_return;
-        }
-        if (new == old) {
-            td->td_retval[0] = new;
-            error = 0;
-            goto unlock_and_return;
-        }
-    }
-    
-    /* Success path */
-    fdusefd(fdp, new, oldfp, fde);
-    td->td_retval[0] = new;
-    error = 0;
+    my_entry_ref(e);
+    *outp = e;
 
-unlock_and_return:
-    FILEDESC_XUNLOCK(fdp);
+out:
+    MY_TABLE_UNLOCK(tbl);
     return (error);
 }
 ```
+
+Real examples of this shape are easy to find in `/usr/src/sys/kern/kern_descrip.c` (for instance, `kern_dup()`, which duplicates file descriptors), `/usr/src/sys/kern/vfs_lookup.c`, and most other subsystems.
 
 ### Parameter Patterns and Conventions
 
@@ -1548,36 +1418,26 @@ Kernel functions follow predictable patterns for parameter ordering and naming:
 
 **Flags and options last**: Configuration parameters typically come at the end.
 
-Here's an example from `sys/kern/kern_malloc.c`:
+A simplified sketch of the decision `malloc(9)` makes internally:
 
 ```c
 void *
-malloc(size_t size, struct malloc_type *mtp, int flags)
+my_allocator(size_t size, struct malloc_type *mtp, int flags)
 {
-    int indx;
-    struct malloc_type_internal *mtip;
-    caddr_t va;
-    uma_zone_t zone;
+    void *va;
 
-    if (size > kmem_zmax) {
-        /* Large allocation path */
-        va = uma_large_malloc(size, flags);
-        if (va != NULL)
-            malloc_type_allocated(mtp, va ? size : 0);
-        return ((void *) va);
+    if (size > ZONE_MAX_SIZE) {
+        /* Large allocation: bypass the zone cache. */
+        va = large_alloc(size, flags);
+    } else {
+        /* Small allocation: pick a size-bucketed zone. */
+        va = zone_alloc(size_to_zone(size), mtp, flags);
     }
-
-    /* Small allocation path */
-    indx = malloc_type_zone_idx_to_zone[zone_index_of(size)];
-    zone = malloc_type_zone_idx_to_zone[indx];
-    va = uma_zalloc_arg(zone, mtp, flags);
-    if (va != NULL)
-        size = zone_get_size(zone);
-    malloc_type_allocated(mtp, size);
-    
-    return ((void *) va);
+    return (va);
 }
 ```
+
+The real `malloc(9)` in `/usr/src/sys/kern/kern_malloc.c` is quite a bit more intricate than this, but the conceptual split, small allocations flow through a set of size-bucketed UMA zones, and large allocations bypass them entirely, is exactly what it does.
 
 ### Output Parameters and Return Values
 
@@ -1591,48 +1451,37 @@ The kernel uses several patterns for returning data to the caller:
 
 **Complex outputs**: Use a structure to package multiple return values.
 
-Here's an example from `sys/kern/kern_time.c`:
+A simplified version of how `/usr/src/sys/kern/kern_time.c` dispatches on a clock identifier, with the result delivered through an output parameter:
 
 ```c
 int
-kern_clock_gettime(struct thread *td, clockid_t clock_id, struct timespec *ats)
+my_get_time(clockid_t clock_id, struct timespec *ats)
 {
-    struct timespec ats1;
-    int error;
+    int error = 0;
 
-    error = 0;
     switch (clock_id) {
     case CLOCK_REALTIME:
-        nanotime(&ats1);
-        break;
     case CLOCK_REALTIME_PRECISE:
-        getnanotime(&ats1);
+        nanotime(ats);
         break;
     case CLOCK_REALTIME_FAST:
-        getnanouptime(&ats1);
+        getnanotime(ats);
         break;
     case CLOCK_MONOTONIC:
     case CLOCK_MONOTONIC_PRECISE:
     case CLOCK_UPTIME:
     case CLOCK_UPTIME_PRECISE:
-        nanouptime(&ats1);
-        break;
-    case CLOCK_MONOTONIC_FAST:
-    case CLOCK_UPTIME_FAST:
-        getnanouptime(&ats1);
+        nanouptime(ats);
         break;
     default:
         error = EINVAL;
         break;
     }
-    if (error == 0)
-        *ats = ats1;  /* Copy result to output parameter */
-    
     return (error);
 }
 ```
 
-The function returns an error code and uses an output parameter (`ats`) to return the actual time value.
+The function returns an `int` error code and writes the actual value into the caller-supplied `ats` pointer. The real `kern_clock_gettime()` adds a few more clock IDs (for example `CLOCK_VIRTUAL` and `CLOCK_PROF`) and acquires process locks when needed, but the output-parameter pattern is the same.
 
 ### Function Naming Conventions
 
@@ -1932,7 +1781,7 @@ In the next section, we'll explore the restrictions that make kernel C different
 
 ## Restrictions and Pitfalls of Kernel C
 
-The kernel operates under constraints that simply don't exist in user-space programming. These aren't arbitrary limitations; they're the necessary boundaries that allow a kernel to manage system resources safely and efficiently while running the entire machine. Understanding these restrictions is crucial because violating them doesn't just cause your program to crash; it can bring down the entire system.
+The kernel operates under constraints that simply don't exist in user-space programming. These aren't arbitrary limitations; they're the necessary boundaries that allow a kernel to manage system resources safely and efficiently while running the entire machine. Understanding these restrictions matters because violating them doesn't just cause your program to crash; it can bring down the entire system.
 
 ### The Floating-Point Restriction
 
@@ -1983,7 +1832,7 @@ In practice, kernel algorithms use **fixed-point arithmetic** or **scaled intege
 
 ### Stack Size Limitations
 
-User-space programs typically have stack sizes measured in megabytes. Kernel stacks are much smaller, typically **8KB to 16KB total**, including space for interrupt handling.
+User-space programs typically have stack sizes measured in megabytes. Kernel stacks are much smaller: **16KB per thread** on FreeBSD 14.3 (four pages on amd64 and arm64), which includes space for interrupt handling.
 
 ```c
 /* DANGEROUS - can overflow kernel stack */
@@ -2020,30 +1869,29 @@ good_iterative_function(int max_iterations)
 }
 ```
 
-Here's a real example of careful stack management from `sys/kern/vfs_lookup.c`:
+An illustrative pattern for careful stack management in a long-running path lookup:
 
 ```c
 int
-namei(struct nameidata *ndp)
+my_resolve(struct my_request *req)
 {
-    struct filedesc *fdp;
-    struct pwd *pwd;
-    struct thread *td;
-    struct proc *p;
-    char *cp;          /* Small local variables only */
-    int error, linklen;
-    
-    td = curthread;
-    p = td->td_proc;
-    
-    /* Large work buffers are allocated dynamically */
-    if (ndp->ni_pathlen > MAXPATHLEN) {
+    struct my_context *ctx;
+    char *work_buffer;          /* large buffer allocated dynamically */
+    int error;
+
+    if (req->path_len > MY_MAXPATHLEN)
         return (ENAMETOOLONG);
-    }
-    
-    /* ... rest of function uses minimal stack space ... */
+
+    work_buffer = malloc(MY_MAXPATHLEN, M_TEMP, M_WAITOK);
+
+    /* ... perform lookup using work_buffer ... */
+
+    free(work_buffer, M_TEMP);
+    return (error);
 }
 ```
+
+You can read `namei()` in `/usr/src/sys/kern/vfs_lookup.c` for the real implementation that FreeBSD uses for every path resolution. The function itself is complex, but it keeps its stack footprint small by allocating the working buffer through `namei_zone` (a dedicated UMA zone) instead of declaring it on the stack.
 
 ### Sleep Restrictions: Atomic vs. Preemptible Context
 
@@ -2096,21 +1944,23 @@ my_interrupt_handler(void *arg)
 }
 ```
 
-From `sys/dev/e1000/if_em.c`, here's how a real driver handles this:
+An illustrative sketch of the same pattern you'll see inside real drivers like `/usr/src/sys/dev/e1000/if_em.c`:
 
 ```c
 static void
-em_msix_rx(void *arg)
+my_intr(void *arg)
 {
-    struct rx_ring *rxr = arg;
-    struct adapter *adapter = rxr->adapter;
-    
-    /* Interrupt context - cannot sleep */
-    ++rxr->rx_irq;
-    
-    /* Schedule deferred processing in a context that can sleep */
-    if (em_rxeof(rxr, adapter->rx_process_limit, NULL) != 0)
-        taskqueue_enqueue(rxr->tq, &rxr->rx_task);
+    struct my_softc *sc = arg;
+
+    /* Interrupt context: fast, no sleeping allowed. */
+    sc->intr_count++;
+
+    /*
+     * Hand the heavy lifting over to a taskqueue so it runs in a
+     * context where we're allowed to sleep (for instance, in case
+     * it needs to allocate memory with M_WAITOK).
+     */
+    taskqueue_enqueue(sc->tq, &sc->rx_task);
 }
 ```
 
@@ -2411,30 +2261,27 @@ On a multiprocessor system, `global_counter++` actually involves multiple steps:
 
 If two CPUs execute this code simultaneously, you can get race conditions where both CPUs read the same initial value, increment it, and store the same result, effectively losing one of the increments.
 
-Here's a real example from `sys/kern/kern_synch.c`:
+You will see this pattern, "increment a shared counter atomically", in many places across the kernel:
 
 ```c
-/*
- * The sleep queue interface uses atomic operations to safely
- * manage thread counts without heavy locking.
- */
-void
-sleepq_add(void *wchan, struct lock_object *lock, const char *wmesg,
-    int flags, int queue)
+static volatile u_int active_consumers = 0;
+
+static void
+my_consumer_add(void)
 {
-    struct sleepqueue *sq;
-    struct thread *td;
-    
-    td = curthread;
-    sq = sleepq_lookup(wchan);
-    
-    /* Atomically increment the count of sleeping threads */
-    TAILQ_INSERT_TAIL(&sq->sq_blocked[queue], td, td_slpq);
-    atomic_add_int(&sq->sq_blockedcnt[queue], 1);
-    
-    /* ... rest of function ... */
+
+    atomic_add_int(&active_consumers, 1);
+}
+
+static void
+my_consumer_remove(void)
+{
+
+    atomic_subtract_int(&active_consumers, 1);
 }
 ```
+
+Using `atomic_add_int()` and `atomic_subtract_int()` instead of the C `++` and `--` operators ensures that concurrent increments from different CPUs don't lose updates.
 
 ### FreeBSD's Atomic Operations
 
@@ -2491,27 +2338,33 @@ The `_acq` (acquire) and `_rel` (release) suffixes indicate memory ordering:
 - **Acquire**: Operations after this one cannot be reordered before it
 - **Release**: Operations before this one cannot be reordered after it
 
-Here's an example from `sys/kern/kern_rwlock.c`:
+An illustrative sketch of the acquire/release pattern at the heart of most lock primitives:
 
 ```c
+struct my_flag {
+    volatile u_int value;
+};
+
 void
-_rw_runlock_cookie(volatile uintptr_t *c, const char *file, int line)
+my_flag_set_ready(struct my_flag *f)
 {
-    struct rwlock *rw;
-    struct turnstile *ts;
-    uintptr_t x, v, queue;
-    
-    rw = rwlock2rw(c);
-    
-    /* Use release semantics to ensure all critical section
-     * operations complete before we release the lock */
-    x = atomic_load_acq_ptr(&rw->rw_lock);
-    
-    /* ... lock release logic ... */
-    
-    atomic_store_rel_ptr(&rw->rw_lock, v);
+
+    /* "Release": all earlier writes are visible to any CPU that
+     * later observes value == READY. */
+    atomic_store_rel_int(&f->value, READY);
+}
+
+bool
+my_flag_is_ready(struct my_flag *f)
+{
+
+    /* "Acquire": once we've read READY, subsequent reads see all
+     * the writes that happened before the paired release. */
+    return (atomic_load_acq_int(&f->value) == READY);
 }
 ```
+
+Real lock primitives in `/usr/src/sys/kern/kern_rwlock.c` and friends use exactly this `acq`/`rel` pairing around their internal state, which is how they guarantee that data protected by the lock becomes visible in the correct order.
 
 ### Compare-and-Swap: The Building Block
 
@@ -2557,7 +2410,7 @@ lockfree_push(struct lock_free_stack *stack, struct stack_node *node)
 
 ### Inline Functions for Performance
 
-Inline functions are crucial in kernel programming because they provide the type safety of functions with the performance of macros. FreeBSD makes extensive use of `static __inline` functions:
+Inline functions are important in kernel programming because they provide the type safety of functions with the performance of macros. FreeBSD makes extensive use of `static __inline` functions:
 
 ```c
 /* From sys/sys/systm.h */
@@ -2839,12 +2692,12 @@ my_function(int parameter)
 
 **Variable declarations**: Declare variables at the beginning of blocks, with a blank line separating declarations from code.
 
-Here's an example from `sys/kern/kern_proc.c` that shows KNF in practice:
+Here is an illustrative function in KNF:
 
 ```c
 static int
-proc_read_mem(struct thread *td, struct proc *p, vm_offset_t offset, void* buf,
-    size_t len)
+my_read_chunk(struct thread *td, struct my_source *src, off_t offset,
+    void *buf, size_t len)
 {
     struct iovec iov;
     struct uio uio;
@@ -2853,7 +2706,7 @@ proc_read_mem(struct thread *td, struct proc *p, vm_offset_t offset, void* buf,
     if (len == 0)
         return (0);
 
-    iov.iov_base = (caddr_t)buf;
+    iov.iov_base = buf;
     iov.iov_len = len;
     uio.uio_iov = &iov;
     uio.uio_iovcnt = 1;
@@ -2863,7 +2716,7 @@ proc_read_mem(struct thread *td, struct proc *p, vm_offset_t offset, void* buf,
     uio.uio_rw = UIO_READ;
     uio.uio_td = td;
 
-    error = proc_rwmem(p, &uio);
+    error = my_read_via_uio(src, &uio);
     return (error);
 }
 ```
@@ -3521,48 +3374,31 @@ Never trust data that comes from outside your immediate control. This includes:
 - File system contents
 - Even other kernel subsystems (they have bugs too)
 
-Here's a real example from `sys/kern/sys_generic.c`:
+Here is an illustrative system-call prologue in the same style as the real `sys_read()` in `/usr/src/sys/kern/sys_generic.c`:
 
 ```c
 int
-sys_read(struct thread *td, struct read_args *uap)
+my_syscall(struct thread *td, struct my_args *uap)
 {
     struct file *fp;
     int error;
 
-    /* Validate file descriptor */
+    if (uap->nbyte > IOSIZE_MAX)
+        return (EINVAL);
+
     AUDIT_ARG_FD(uap->fd);
-    if ((error = fget_read(td, uap->fd, &cap_read_rights, &fp)) != 0) {
+    error = fget_read(td, uap->fd, &cap_read_rights, &fp);
+    if (error != 0)
         return (error);
-    }
 
-    /* Validate buffer pointer and size */
-    if (uap->buf == NULL) {
-        error = EFAULT;
-        goto done;
-    }
+    /* ... validated fd and fp are now safe to use ... */
 
-    if (uap->nbytes < 0) {
-        error = EINVAL;
-        goto done;
-    }
-
-    if (uap->nbytes > IOSIZE_MAX) {
-        error = EINVAL;
-        goto done;
-    }
-
-    /* Perform the actual read with validated parameters */
-    error = dofileread(td, uap->fd, fp, uap->buf, uap->nbytes, 
-                      (off_t)-1, 0);
-
-done:
     fdrop(fp, td);
-    return (error);
+    return (0);
 }
 ```
 
-Notice how every parameter is validated before use, and the file descriptor is properly managed with reference counting.
+Notice how the single size check is done first (cheap and uses no resources), the audit record is emitted next, and the file descriptor is resolved and reference-counted through `fget_read()` / `fdrop()`. The real `sys_read()` in FreeBSD 14.3 is even shorter: it validates the size and hands the rest off to `kern_readv()`, which does the work.
 
 ### Integer Overflow Prevention
 
@@ -4167,7 +4003,7 @@ Defensive programming isn't about being paranoid; it's about being realistic. In
 
 ### Kernel Attributes and Error Handling Idioms
 
-FreeBSD's kernel uses several compiler attributes and established error handling patterns to make code safer, more efficient, and easier to debug. Understanding these idioms will help you write kernel code that integrates seamlessly with the rest of the system and follows the patterns that experienced FreeBSD developers expect.
+FreeBSD's kernel uses several compiler attributes and established error handling patterns to make code safer, more efficient, and easier to debug. Understanding these idioms will help you write kernel code that follows the patterns experienced FreeBSD developers expect.
 
 ### Compiler Attributes for Kernel Safety
 
@@ -4851,190 +4687,98 @@ We'll look at code from different subsystems, device drivers, memory management,
 
 ### A Simple Character Device Driver: `/dev/null`
 
-Let's start with one of the simplest yet most essential device drivers in FreeBSD: the null device. Found in `sys/kern/kern_conf.c` and related files, this driver demonstrates basic device operations.
+Let's start with one of the simplest yet most essential device drivers in FreeBSD: the null device. It lives in `/usr/src/sys/dev/null/null.c` and provides three devices together: `/dev/null`, `/dev/zero`, and `/dev/full`.
 
-Here's the core implementation from `sys/kern/kern_conf.c`:
+Here's the `cdevsw` definition for `/dev/null`, excerpted from that file:
 
 ```c
-static d_write_t null_write;
-static d_read_t null_read;
-
 static struct cdevsw null_cdevsw = {
     .d_version =    D_VERSION,
-    .d_read =       null_read,
+    .d_read =       (d_read_t *)nullop,
     .d_write =      null_write,
+    .d_ioctl =      null_ioctl,
     .d_name =       "null",
 };
+```
 
+And the write handler itself:
+
+```c
 static int
-null_write(struct cdev *dev __unused, struct uio *uio, int ioflag __unused)
+null_write(struct cdev *dev __unused, struct uio *uio, int flags __unused)
 {
-    if (uio->uio_resid == 0)
-        return (0);
-
     uio->uio_resid = 0;
-    uio->uio_offset += uio->uio_iov->iov_len;
-    return (0);
-}
 
-static int  
-null_read(struct cdev *dev __unused, struct uio *uio __unused, 
-          int ioflag __unused)
-{
-    return (0);  /* EOF */
+    return (0);
 }
 ```
 
 **Key observations:**
 
-1. **Function attributes**: The `__unused` attribute prevents compiler warnings about unused parameters.
+1. **Function attributes**: The `__unused` attribute prevents compiler warnings about parameters the function intentionally ignores. `/dev/null` does not look at the `cdev` or the `flags`; only `uio` matters.
 
-2. **Consistent naming**: Functions follow the `subsystem_operation` pattern (`null_read`, `null_write`).
+2. **Consistent naming**: Functions follow the `subsystem_operation` pattern (`null_write`, `null_ioctl`).
 
-3. **UIO abstraction**: Instead of working directly with user buffers, the driver uses the `uio` structure for safe data transfer.
+3. **UIO abstraction**: Instead of working directly with user buffers, the driver uses the `uio` structure for safe data transfer. Setting `uio->uio_resid = 0` tells the caller "all bytes consumed," which is how `/dev/null` pretends to have absorbed the whole write.
 
-4. **Simple semantics**: Writing to `/dev/null` always succeeds (data is discarded), reading always returns EOF.
+4. **Simple semantics**: Writing to `/dev/null` always succeeds (data is discarded); reads use the kernel-supplied `nullop` helper which returns end-of-file immediately.
 
-5. **Parameter validation**: The write function checks for zero-length transfers.
-
-The driver is initialized during system startup:
-
-```c
-static void
-null_drvinit(void *unused __unused)
-{
-    make_dev_credf(MAKEDEV_ETERNAL_KLD, &null_cdevsw, 0, NULL,
-                   UID_ROOT, GID_WHEEL, 0666, "null");
-}
-
-SYSINIT(null_dev, SI_SUB_DRIVERS, SI_ORDER_MIDDLE, null_drvinit, NULL);
-```
-
-This shows the **SYSINIT pattern** as a way to register initialization functions that run at specific points during system startup.
+The driver is registered with the kernel module system. We will study the full registration path in Chapter 6; for now, the important thing is how compact and focused the handler is.
 
 ### Memory Allocation in Action: `malloc(9)` Implementation
 
-The kernel memory allocator in `sys/kern/kern_malloc.c` demonstrates sophisticated resource management patterns. Let's examine key parts:
+The kernel memory allocator in `/usr/src/sys/kern/kern_malloc.c` is where `malloc(9)` and `free(9)` live. Reading the full implementation requires more vocabulary than we have introduced so far (memguard debugging, KASAN redzones, UMA slab mechanics, branch-prediction hints), but the top-level shape is easy to summarise:
 
 ```c
+/* Simplified sketch of malloc(9). */
 void *
-malloc(size_t size, struct malloc_type *mtp, int flags)
+my_allocator(size_t size, struct malloc_type *mtp, int flags)
 {
-    int indx;
-    caddr_t va;
-    uma_zone_t zone;
+    void *va;
 
-    KASSERT(mtp->ks_magic == M_MAGIC, ("malloc: bad malloc type magic"));
-    
-    if (__predict_false(size > kmem_zmax)) {
-        /* Large allocation path */
-        if (size == 0 || size > kmem_zmax) {
-            if (size == 0)
-                size = 1;
-            va = uma_large_malloc(size, flags);
-        } else {
-            va = NULL;
-        }
-        if (va != NULL)
-            malloc_type_allocated(mtp, va ? size : 0);
-        return ((void *)va);
-    }
-
-    /* Small allocation path using UMA zones */
-    indx = zone_index_of(size);
-    zone = malloc_type_zone_idx_to_zone[indx];
-    va = uma_zalloc_arg(zone, mtp, flags);
-    if (va != NULL)
-        size = zone_get_size(zone);
-    malloc_type_allocated(mtp, size);
-    
-    return ((void *)va);
-}
-```
-
-**Key observations:**
-
-1. **Defensive programming**: KASSERT validates the malloc type structure.
-
-2. **Branch prediction hints**: `__predict_false` optimizes for the common case of small allocations.
-
-3. **Dual allocation strategy**: Large allocations use a different path than small ones.
-
-4. **Resource tracking**: `malloc_type_allocated()` updates statistics for debugging and monitoring.
-
-5. **Zone-based allocation**: Small allocations use UMA (Universal Memory Allocator) zones for efficiency.
-
-The corresponding `free()` function shows matching defensive patterns:
-
-```c
-void
-free(void *addr, struct malloc_type *mtp)
-{
-    uma_zone_t zone;
-    uma_slab_t slab;
-    u_long size;
-
-    KASSERT(mtp->ks_magic == M_MAGIC, ("free: bad malloc type magic"));
-    
-    if (addr == NULL)
-        return;  /* free(NULL) is safe */
-
-    if (is_memguard_addr(addr)) {
-        memguard_free(addr);
-        return;
-    }
-
-    size = 0;
-    zone = vtoslab((vm_offset_t)addr & (~UMA_SLAB_MASK), &slab);
-    if (zone != NULL) {
-        /* Small allocation - free to zone */
-        size = zone_get_size(zone);
-        uma_zfree_arg(zone, addr, mtp);
+    if (size > ZONE_MAX_SIZE) {
+        /* Large allocation: bypass the zone cache. */
+        va = large_alloc(size, flags);
     } else {
-        /* Large allocation - free directly */
-        size = vmem_size(kmem_arena, (vm_offset_t)addr);
-        uma_large_free(addr);
+        /* Small allocation: pick a size-bucketed zone. */
+        va = zone_alloc(size_to_zone(size), mtp, flags);
     }
-    
-    malloc_type_freed(mtp, size);
+    return (va);
 }
 ```
 
-Notice how `free()` handles NULL pointers gracefully and determines whether to use zone-based or direct freeing based on the address.
+**Patterns to recognise:**
+
+1. **Dual allocation strategy**: Large allocations bypass the fast per-size-bucket zones.
+
+2. **Resource tracking**: Every successful allocation updates statistics tied to the `malloc_type`. That is what lets `vmstat -m` show per-subsystem memory use.
+
+3. **Defensive programming**: The real `malloc()` uses `KASSERT()` to sanity-check the `malloc_type` it receives, and `__predict_false()` to tell the compiler which branch is the hot path.
+
+4. **Graceful `free(NULL)`**: The paired `free()` treats a NULL pointer as a no-op, so cleanup code can call `free(ptr, type)` unconditionally once `ptr` has been initialised to `NULL`.
+
+Open `kern_malloc.c` and read it when you are comfortable; the patterns above will be easy to spot.
 
 ### Network Packet Processing: IP Input
 
-The IP input processing code in `sys/netinet/ip_input.c` demonstrates complex control flow, error handling, and resource management in a performance-critical path:
+The IP input processing code in `/usr/src/sys/netinet/ip_input.c` is a concentrated example of the patterns we have just studied. The real function `ip_input()` is too long to reproduce here in full, but its shape is:
 
 ```c
 void
 ip_input(struct mbuf *m)
 {
-    struct ip *ip = NULL;
-    struct in_ifaddr *ia = NULL;
-    struct ifaddr *ifa;
-    struct ifnet *ifp;
-    int    checkif, hlen = 0;
-    uint16_t sum, ip_len;
-    int dchg = 0;                               /* dest changed after fw */
-    struct in_addr odst;                        /* original dst address */
+    struct ip *ip;
+    int hlen;
 
-    M_ASSERTPKTHDR(m);
-
-    if (m->m_flags & M_FASTFWD_OURS) {
-        /* Packet already processed by fast forwarding */
-        m->m_flags &= ~M_FASTFWD_OURS;
-        goto ours;
-    }
-
-    IPSTAT_INC(ips_total);
+    M_ASSERTPKTHDR(m);              /* invariant check */
+    IPSTAT_INC(ips_total);          /* stat counter */
 
     if (m->m_pkthdr.len < sizeof(struct ip))
-        goto tooshort;
+        goto bad;                   /* too short to be an IP header */
 
-    if (m->m_len < sizeof (struct ip) &&
-        (m = m_pullup(m, sizeof (struct ip))) == NULL) {
-        IPSTAT_INC(ips_toosmall);
+    if (m->m_len < sizeof(struct ip) &&
+        (m = m_pullup(m, sizeof(struct ip))) == NULL) {
+        IPSTAT_INC(ips_toosmall);   /* pullup failed; freed the mbuf */
         return;
     }
     ip = mtod(m, struct ip *);
@@ -5045,190 +4789,103 @@ ip_input(struct mbuf *m)
     }
 
     hlen = ip->ip_hl << 2;
-    if (hlen < sizeof(struct ip)) { /* minimum header length */
+    if (hlen < sizeof(struct ip)) {
         IPSTAT_INC(ips_badhlen);
         goto bad;
     }
-    if (hlen > m->m_len) {
-        if ((m = m_pullup(m, hlen)) == NULL) {
-            IPSTAT_INC(ips_badhlen);
-            return;
-        }
-        ip = mtod(m, struct ip *);
-    }
 
-    /* 1003.1g draft requires all options to be checked */
-    if (ip->ip_sum && (sum = in_cksum(m, hlen)) != 0) {
-        IPSTAT_INC(ips_badsum);
-        goto bad;
-    }
-
-    /* Retrieve the packet length */
-    ip_len = ntohs(ip->ip_len);
-
-    /*
-     * Check that the amount of data in the buffers
-     * is as at least as much as the IP header would have us expect.
-     */
-    if (m->m_pkthdr.len < ip_len) {
-tooshort:
-        IPSTAT_INC(ips_tooshort);
-        goto bad;
-    }
-
-    /* ... continued packet processing ... */
-
-bad:
-    m_freem(m);
+    /* ... checksum, length checks, forwarding, delivery ... */
     return;
 
-ours:
-    /* ... local delivery processing ... */
+bad:
+    m_freem(m);                     /* drop and return */
 }
 ```
 
-**Key observations:**
+**Patterns to notice:**
 
-1. **Assertions**: `M_ASSERTPKTHDR(m)` validates the mbuf structure early.
+1. **Assertions**: `M_ASSERTPKTHDR(m)` validates the mbuf structure before anything else touches it.
 
-2. **Statistics tracking**: `IPSTAT_INC()` updates counters for network monitoring.
+2. **Statistics tracking**: `IPSTAT_INC()` updates counters so that tools like `netstat -s` can report per-protocol drop reasons.
 
-3. **Early validation**: The function validates packet length and IP version before processing.
+3. **Early validation**: Every assumption (minimum length, version, header length) is checked before the code operates on it.
 
-4. **Resource management**: `m_pullup()` ensures header data is contiguous, `m_freem()` cleans up on errors.
+4. **Resource management**: `m_pullup()` ensures the IP header is contiguous in memory; if it fails, it has already freed the mbuf, so the driver must not touch it again.
 
-5. **Defensive checks**: Every assumption about packet format is verified.
+5. **Single cleanup path**: The `bad:` label provides one central place to drop the packet. Every error path converges there.
 
-6. **Performance optimization**: Fast-path handling for packets already processed.
-
-7. **Goto for cleanup**: The `bad:` label provides a single exit point for error cases.
+This is network code in miniature: defend, measure, then do the work.
 
 ### Device Driver Initialization: PCI Bus Driver
 
-The PCI bus driver in `sys/dev/pci/pci.c` shows how complex hardware drivers handle initialization, resource management, and error recovery:
+The PCI bus driver in `/usr/src/sys/dev/pci/pci.c` shows how complex hardware drivers handle initialization, resource management, and error recovery. The real `pci_attach()` is short and delegates most of the work to helpers:
 
 ```c
-static int
+int
 pci_attach(device_t dev)
 {
     int busno, domain, error;
-    struct pci_softc *sc;
-    
-    sc = device_get_softc(dev);
+
+    error = pci_attach_common(dev);
+    if (error)
+        return (error);
+
     domain = pcib_get_domain(dev);
     busno = pcib_get_bus(dev);
-    
-    if (bootverbose)
-        device_printf(dev, "domain=%d, physical bus=%d\n", domain, busno);
-
-    /*
-     * Since there can be multiple PCI domains, we can't use a
-     * single static variable for the unit number. Instead, use
-     * the function unit of the bridge device.
-     */
-    sc->pci_domain = domain;
-    sc->pci_bus = busno;
-
-    /*
-     * Setup sysctl subtree for this bus.
-     */
-    error = pci_setup_sysctl(dev);
-    if (error != 0) {
-        device_printf(dev, "failed to setup sysctl tree: %d\n", error);
-        return (error);
-    }
-
-    /*
-     * The PCI specification says that a device may optionally be
-     * equipped with ROM containing executable code.
-     */
-    pci_add_resources(dev);
-
-    return (0);
+    pci_add_children(dev, domain, busno);
+    return (bus_generic_attach(dev));
 }
 ```
 
-The corresponding detach function shows proper cleanup:
+**Patterns to notice:**
 
-```c
-static int
-pci_detach(device_t dev)
-{
-    struct pci_softc *sc;
-    int error;
+1. **Delegation**: `pci_attach_common()` sets up per-instance state (softc, sysctl node, resources). When something new must happen on every PCI bus, it goes into that helper.
 
-    sc = device_get_softc(dev);
+2. **Error propagation**: If `pci_attach_common()` returns non-zero, `pci_attach()` returns the same error immediately. Chapter 6 will show how Newbus treats a non-zero return as "this attach failed; roll back."
 
-    error = bus_generic_detach(dev);
-    if (error != 0)
-        return (error);
+3. **Subordinate enumeration**: `pci_add_children()` discovers the devices that sit on this PCI bus; `bus_generic_attach()` asks each one to attach.
 
-    pci_cleanup_sysctl(dev);
-    return (0);
-}
-```
+4. **Symmetric detach**: The companion `pci_detach()` calls `bus_generic_detach()` first, and only then frees bus-level resources. That is the same reverse-order discipline you've been practising throughout this chapter.
 
-**Key observations:**
-
-1. **Resource acquisition order**: Initialize softc, setup sysctl, add resources.
-
-2. **Error propagation**: Setup errors are reported and cause attachment failure.
-
-3. **Symmetric cleanup**: Detach undoes operations in reverse order.
-
-4. **Verbose logging**: Optional detailed output for debugging.
-
-5. **Generic bus operations**: Leverages common bus infrastructure.
+We will follow this lifecycle, `probe  ->  attach  ->  operate  ->  detach`, in detail in Chapter 6.
 
 ### Synchronization in Practice: Reference Counting
 
-The vnode reference counting code in `sys/kern/vfs_subr.c` demonstrates safe reference management:
+The vnode reference counting helpers in `/usr/src/sys/kern/vfs_subr.c` show how small the public API of a well-designed subsystem can be:
 
 ```c
 void
 vref(struct vnode *vp)
 {
-    u_int old;
+    enum vgetstate vs;
 
     CTR2(KTR_VFS, "%s: vp %p", __func__, vp);
-    old = atomic_fetchadd_int(&vp->v_usecount, 1);
-    VNASSERT(old > 0, vp, ("vref: wrong ref count"));
-    VNASSERT(old < INT_MAX, vp, ("vref: ref count overflow"));
+    vs = vget_prep(vp);
+    vget_finish_ref(vp, vs);
 }
 
 void
 vrele(struct vnode *vp)
 {
-    u_int old;
 
-    KASSERT(vp != NULL, ("vrele: null vp"));
-    CTR2(KTR_VFS, "%s: vp %p", __func__, vp);
-    old = atomic_fetchadd_int(&vp->v_usecount, -1);
-    VNASSERT(old > 0, vp, ("vrele: wrong ref count"));
-    
-    if (old == 1) {
-        /* Last reference - handle cleanup */
-        VI_LOCK(vp);
-        if (vp->v_usecount == 0) {
-            vdestroy(vp);
-            return;
-        }
-        VI_UNLOCK(vp);
-    }
+    ASSERT_VI_UNLOCKED(vp, __func__);
+    if (!refcount_release(&vp->v_usecount))
+        return;
+    vput_final(vp, VRELE);
 }
 ```
 
-**Key observations:**
+**Patterns to notice:**
 
-1. **Atomic operations**: Reference count updates use atomic fetch-and-add.
+1. **Atomic reference counts**: `refcount_release()` decrements the count atomically and returns `true` only when the caller was the last holder. The two-step dance of "atomic decrement, then check for zero" is a standard FreeBSD idiom.
 
-2. **Overflow protection**: Assertions catch reference count overflow.
+2. **Delegation**: All the interesting work, locking, last-reference teardown, lives in `vget_prep()`, `vget_finish_ref()`, and `vput_final()`. The public functions read like a clear sentence.
 
-3. **Race handling**: The last-reference case uses additional locking.
+3. **Kernel tracing**: `CTR2(KTR_VFS, ...)` produces a low-overhead trace record that can be read back with `ktrdump` or DTrace. It is not a `printf()` and it does not appear in `dmesg`.
 
-4. **Debugging support**: CTR2 provides kernel tracing support.
+4. **Assertion strategy**: `ASSERT_VI_UNLOCKED(vp, ...)` documents a precondition: callers must not hold the vnode interlock when they call `vrele()`. If they do, the kernel will catch it immediately in a debug build.
 
-5. **Assertion strategy**: Different assertion types for different conditions.
+We will come back to reference counting and the `refcount(9)` API when we look at driver lifetimes in later chapters.
 
 ### What We've Learned from Real Code
 
@@ -5476,7 +5133,7 @@ Build and test the module:
 ```
 
 **Expected output**:
-```
+```text
 Memory Lab: Module loading
 Memory Lab: Successfully allocated 1024 bytes at 0xfffff8000c123000
 Memory Lab: Test data: 'Allocated at ticks=12345'
@@ -5745,7 +5402,7 @@ Build and test the module:
 ```
 
 **Expected output**:
-```
+```text
 Echo Lab: Module loading
 Echo Lab: Device /dev/echolab created
 Echo Lab: Write request for 24 bytes
@@ -6043,7 +5700,7 @@ Build and test the module:
 ```
 
 **Expected output**:
-```
+```text
 Log Lab: ========================================
 Log Lab: Module loading - demonstrating kernel logging
 Log Lab: Build time: Sep 30 2025 12:34:56
@@ -6525,7 +6182,7 @@ Build and test the module:
 ```
 
 **Expected output**:
-```
+```text
 Error Lab: Module loading with error handling demo
 Error Lab: Processing command: 'alloc'
 Error Lab: Allocated buffer 0 at 0xfffff8000c456000 (1/5 total)
@@ -6618,7 +6275,7 @@ But perhaps most importantly, you've developed **fluency in the kernel C dialect
 - **Resource consciousness**: Memory, CPU cycles, and stack space are precious resources; kernel C demands accounting for every allocation
 - **Defensive assumptions**: Always assume the worst-case scenario and plan for it; kernel C expects paranoid programming
 - **Long-term maintainability**: Code must be readable and debuggable years after it's written; kernel C values clarity over cleverness
-- **Community integration**: Your code must fit seamlessly with decades of existing development; kernel C has established patterns and idioms
+- **Community integration**: Your code must fit alongside decades of existing code; kernel C has established patterns and idioms
 
 This isn't just a different way of using C; it's a different way of **thinking** about programming. You've learned to speak the language that the FreeBSD kernel understands.
 
@@ -6639,7 +6296,7 @@ When I first began exploring kernel programming, I found it intimidating, the ki
 
 Once you accept its constraints, everything starts to make sense. Defensive programming stops feeling paranoid and becomes instinctive. Manual memory management turns from a chore into a craft. Every line of code matters, and that precision is deeply satisfying.
 
-FreeBSD's kernel is an exceptional learning environment because it values clarity, consistency, and collaboration. If you've taken the time to absorb the material in this chapter, you now understand how the kernel "thinks in C." That mindset will serve you for the rest of your systems programming journey.
+FreeBSD's kernel is an exceptional learning environment because it values clarity, consistency, and collaboration. If you've taken the time to absorb the material in this chapter, you now understand how the kernel "thinks in C." That mindset will serve you for the rest of your systems programming work.
 
 ### The Next Chapter: From Language to Structure
 

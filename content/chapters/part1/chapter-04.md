@@ -1,11 +1,12 @@
-﻿---
+---
 title: "A First Look at the C Programming Language"
 description: "This chapter introduces the C programming language for complete beginners."
-author: "Edson Brandi"
-date: "2025-08-30"
-status: "Complete"
-part: 1
+partNumber: 1
+partName: "Foundations: FreeBSD, C, and the Kernel"
 chapter: 4
+lastUpdated: "2026-04-20"
+status: "complete"
+author: "Edson Brandi"
 reviewer: "TBD"
 translator: "TBD"
 estimatedReadTime: 720
@@ -13,7 +14,7 @@ estimatedReadTime: 720
 
 # A First Look at the C Programming Language
 
-Before we can dive into writing FreeBSD device drivers, we need to learn the language they're written in. That language is C, short, powerful, and, admittedly, a little quirky. But don't worry, you don't need to be a programming expert to get started.
+Before we can start on writing FreeBSD device drivers, we need to learn the language they're written in. That language is C, short and, admittedly, a little quirky. But don't worry, you don't need to be a programming expert to get started.
 
 In this chapter, I'll walk you through the basics of the C programming language, assuming absolutely no prior experience. If you've never written a line of code in your life, you're in the right place. If you've done some programming in other languages like Python or JavaScript, that's fine too; C might feel a little more manual, but we'll tackle it together.
 
@@ -23,7 +24,7 @@ By the time we're done, you'll be able to read and write basic C programs, under
 
 ## Reader Guidance: How to Use This Chapter
 
-This chapter is not just a quick read; it is both a **reference** and a **hands-on bootcamp** in C programming with a FreeBSD flavour. The depth of material is significant, covering everything from the very first “Hello, World!” to pointers, memory safety, modular code, debugging, good practices, labs, and challenge exercises. How much time you'll spend here depends on how deep you go:
+This chapter is not just a quick read; it is both a **reference** and a **hands-on bootcamp** in C programming with a FreeBSD flavour. The depth of material is significant, covering everything from the very first "Hello, World!" to pointers, memory safety, modular code, debugging, good practices, labs, and challenge exercises. How much time you'll spend here depends on how deep you go:
 
 - **Reading only:** Around **12 hours** to read all explanations and FreeBSD kernel examples at a beginner's pace. This assumes careful reading but not stopping for practice.
 - **Reading + labs:** Around **18 hours** if you pause to type, compile, and run each of the practical labs on your FreeBSD system, making sure you understand the results.
@@ -47,7 +48,7 @@ Let's start at the beginning: what is C, and why is it important to us?
 ### What is C?
 C is a programming language created in the early 1970s by Dennis Ritchie at Bell Labs. It was designed to write operating systems, and that's still one of its biggest strengths today. In fact, most modern operating systems, including FreeBSD, Linux, and even parts of Windows and macOS, are written mainly in C.
 
-C is fast, compact, and close to the hardware, but unlike assembly language, it's still readable and expressive. You can write efficient, powerful code with C, but it also expects you to be careful. There's no safety net: no automatic memory management, no runtime error messages, and not even built-in strings like in Python or JavaScript.
+C is fast, compact, and close to the hardware, but unlike assembly language, it's still readable and expressive. You can write efficient code with C, but it also expects you to be careful. There's no safety net: no automatic memory management, no runtime error messages, and not even built-in strings like in Python or JavaScript.
 
 This might sound scary, but it's actually a feature. When writing drivers or working inside the kernel, you want control, and C gives you that control.
 
@@ -84,6 +85,22 @@ Here's a quick preview of what's coming up:
 * Finally, we'll wrap up with some good practices and a look at what's coming in the next chapter, where we begin applying C to the kernel world.
 
 Are you ready? Let's jump into the next section and get your environment set up so you can run your first C program on FreeBSD.
+
+> **If You Already Know C**
+>
+> Not every section in this chapter will be new territory for you. If you are comfortable writing C that compiles, links, and runs on a UNIX system, and if you already read pointers, structs, and function pointers without effort in unfamiliar code, a fast path through the chapter is the better use of your time.
+>
+> Read these sections carefully, because they cover the places where kernel C differs meaningfully from the C you already know:
+>
+> - **Pointers and Memory**, in particular the subsections *Pointers and Functions* and *Pointers to Structs*. The first introduces function pointers the way the FreeBSD kernel actually uses them; the second shows the softc-and-handle idioms that recur in every driver.
+> - **Dynamic Memory Allocation** introduces `malloc(9)`, `M_*` memory types, and the rules around sleeping versus non-sleeping allocations. None of this is standard C, and skimming it is a false economy.
+> - **Memory Safety in Kernel Code** covers the kernel-specific failure modes (double free, use-after-free, unchecked `copyin`/`copyout`, sleeping while holding a spin lock) that standard C handbooks do not teach.
+> - **Structures and typedef in C** reviews the idioms FreeBSD uses for softc layouts, kobj method tables, and opaque type handles. Read it even if you already know what a `struct` is.
+> - **Good Practices for C Programming** closes the chapter with FreeBSD's Kernel Normal Form (KNF) and the conventions described in `style(9)`. Every patch submitted upstream is judged against these.
+>
+> Skim the rest of the labs. Most of them drill standard-C material you already know. A handful are kernel-flavoured and worth doing even if your C is strong: **Hands-On Lab 1: Crashing with an Uninitialized Pointer** and **Mini-Lab 3: Memory Allocation in a Kernel Module** in the memory sections, and **Lab 4: Function Pointer Dispatch ("Mini devsw")** in the Final Practice Labs. These three give you kernel-specific muscle memory that the prose alone cannot.
+>
+> Once the sections above are behind you, **jump ahead to Chapter 5** and engage with the kernel directly. If Chapter 5 flags a concept that feels unfamiliar, come back to the matching section here and read it properly. A reader who already knows C can comfortably compress Chapter 4 into a single focused evening while still leaving with everything Chapter 5 needs.
 
 ## Setting Up Your Environment
 
@@ -192,7 +209,7 @@ the operating system loads the program into memory and starts executing it at th
 - Assembly = workers cutting raw materials
 - Linking = putting all parts together into the finished house
 
-Later in Section 4.15, we’ll dive deeper into compiling, linking, and debugging, but for now, this mental picture will help you understand what’s really happening when you build your first programs.
+Later in Section 4.15, we'll go further into compiling, linking, and debugging, but for now, this mental picture will help you understand what's really happening when you build your first programs.
 
 ### Using Makefiles
 
@@ -505,7 +522,7 @@ The FreeBSD kernel style guide requires **tabs, not spaces**, for indentation. Y
 
 Avoid calling your variables `a`, `b`, or `tmp1`. A name like `counter`, `buffer_size`, or `error_code` makes the code immediately self-explanatory. Remember: in FreeBSD, your code will one day be read by someone else, and often years after you wrote it.
 
-#### 4. No “Magic Numbers”
+#### 4. No "Magic Numbers"
 
 If you find yourself writing something like:
 
@@ -524,7 +541,7 @@ This makes your code easier to maintain and avoids hidden assumptions.
 
 #### Why This Matters for You
 
-Right now, these may feel like small details. But by building these habits early, you will avoid learning “sloppy” C that has to be unlearned when you reach kernel development. Think of this as a **survival kit**: a few essential rules that will keep your code clear, safe, and closer to what you will see in the FreeBSD source tree.
+Right now, these may feel like small details. But by building these habits early, you will avoid learning "sloppy" C that has to be unlearned when you reach kernel development. Think of this as a **survival kit**: a few essential rules that will keep your code clear, safe, and closer to what you will see in the FreeBSD source tree.
 
 Later in this chapter, you will revisit these practices in depth, along with many more advanced conventions used by FreeBSD developers. For now, just keep these four in mind as you start coding.
 
@@ -717,7 +734,7 @@ You now have the tools to store and work with data in C, and you've already seen
 
 ## Operators and Expressions
 
-So far, we've learned how to declare and initialise variables. Now it's time to make them do something! In this section, we'll dive into operators and expressions, the mechanisms in C that allow you to compute values, compare them, and control program logic.
+So far, we've learned how to declare and initialise variables. Now it's time to make them do something! In this section, we'll look at operators and expressions, the mechanisms in C that allow you to compute values, compare them, and control program logic.
 
 We'll cover:
 
@@ -827,7 +844,7 @@ We'll cover these in detail later when we work with flags, registers, and hardwa
 
 Let's look at a real example from the FreeBSD source code. 
 
-Open the file `sys/kern/tty_info.c`and look for the function `thread_compare()` starting on line 109, you will see the code below:
+Open the file `sys/kern/tty_info.c` and look for the function `thread_compare()`, you will see the code below:
 
 ```c
 	static int
@@ -910,7 +927,7 @@ Later, this line:
 
 Uses the less-than operator to compare two pointers (`td` and `td2`). This is valid in C; pointer comparisons are common when choosing between resources.
 
-Another real expression in that same file can be found at line 367:
+Another real expression in that same file, inside `tty_info()`, is:
 
 ```c
 	pctcpu = (sched_pctcpu(td) * 10000 + FSCALE / 2) >> FSHIFT;
@@ -963,18 +980,18 @@ One of the most basic ways to control the flow of a C program is with the `if` s
 
 Here's how it works step by step:
 
-1. `if (x > 0)` – The program checks the first condition. If it's true, the block inside runs and the rest of the chain is skipped.
+1. `if (x > 0)`: The program checks the first condition. If it's true, the block inside runs and the rest of the chain is skipped.
 
-1. `else if (x < 0)` – If the first condition was false, this second one is checked. If it's true, it's block runs and the chain ends.
+1. `else if (x < 0)`: If the first condition was false, this second one is checked. If it's true, it's block runs and the chain ends.
 
-1. `else` – If none of the previous conditions are true, the code inside `else` runs.
+1. `else`: If none of the previous conditions are true, the code inside `else` runs.
 
 **Important syntax rules:**
 
 * Each condition must be inside **parentheses** `( )`.
 * Each block of code is surrounded by **curly braces `{ }`**, even if it's only one line (this prevents common mistakes).
 
-You can see a real example of `if` , `if else` and `else` usage flow control in the function `ifhwioctl()` that starts at line 2407 of `sys/net/if.c` file, the fragment that we are interested in starts at line 2537:
+You can see a real example of `if`, `if else` and `else` usage flow control in the function `ifhwioctl()` in `sys/net/if.c`. The fragment that we are interested in is:
 
 ```c
 	/* Copy only (length-1) bytes so if_description is always NUL-terminated. */
@@ -998,13 +1015,13 @@ This fragment handles a request from user space to set a description for a netwo
 
 Let's walk through the flow control step by step:
 
-1. First `if` – Checks whether the description is too long to fit.
+1. First `if`: Checks whether the description is too long to fit.
 	* If **true**, the function immediately stops and returns an error code (`ENAMETOOLONG`).
 	* If **false**, execution moves on to the next condition.
-1. `else if` – Runs only if the first condition was **false**.
+1. `else if`: Runs only if the first condition was **false**.
 	* If the length is exactly zero, it means the user didn't provide a description, so the code sets `descrbuf` to `NULL`.
 	* If **false**, the program moves on to the final `else`.
-1. Final `else` – Executes when neither of the previous conditions are true.
+1. Final `else`: Executes when neither of the previous conditions are true.
 	* Allocates memory for the description and copies the provided text into it.
 	* If copying fails, it frees the memory and exits the loop or function.
 
@@ -1041,7 +1058,7 @@ Here's a simple example:
 * The `break` statement tells the program to stop checking further cases once a match is found. Without `break`, execution will continue into the next case, a behaviour called **fall-through**.
 * The `default` case runs if none of the listed cases match.
 
-You can see a real use of switch in the FreeBSD kernel inside the function `thread_compare()` (starting at line 109 in `sys/kern/tty_info.c`). The fragment we're interested in is from lines 134 to 141:
+You can see a real use of switch in the FreeBSD kernel inside the function `thread_compare()` in `sys/kern/tty_info.c`. The fragment we're interested in is:
 
 ```c
 	switch (TESTAB(runa, runb)) {
@@ -1066,9 +1083,9 @@ This code decides which of two threads is "more interesting" for the scheduler b
 
 The switch works like this:
 
-1. Case `ONLYA` – If only thread A is runnable, return `0`.
-1. Case `ONLYB` – If only thread B is runnable, return `1`.
-1. Case `BOTH` – If both threads are runnable, don't return immediately; instead, `break` so the rest of the function can handle this situation.
+1. Case `ONLYA`: If only thread A is runnable, return `0`.
+1. Case `ONLYB`: If only thread B is runnable, return `1`.
+1. Case `BOTH`: If both threads are runnable, don't return immediately; instead, `break` so the rest of the function can handle this situation.
 
 In short, `switch` statements provide a clean and efficient way to handle multiple possible outcomes from a single expression, avoiding the clutter of long `if / else if` chains. In the FreeBSD kernel, they are often used to react to different commands, flags, or states, as in our example, which decides between thread A, thread B, or both. Once you become comfortable reading switch structures, you'll start to recognise them throughout kernel code as a go-to pattern for organising decision-making logic in a clear, maintainable way.
 
@@ -1088,7 +1105,10 @@ A `for` loop in C is perfect when you know **how many times** you want to repeat
 
 A widespread beginner error is related to off-by-one errors (`<=` vs `<`), and forgetting the increment (which can cause an infinite loop).
 
-You can see a real for loop inside `sys/net/iflib.c`, in the function `netmap_fl_refill()`, which begins at line 859. The fragment we care about is the inner batching loop at lines 922–949: 
+You can see a real `for` loop inside `/usr/src/sys/net/iflib.c`, in the function `netmap_fl_refill()`. The fragment we care about is the inner batching loop nested inside the function's outer `while (n > 0)` body.
+
+> **A note on line numbers.** Line numbers accurate for the tree at time of writing; function names are the durable reference. For the curious reader who wants to open the file and look around, `netmap_fl_refill()` begins near line 859 of `/usr/src/sys/net/iflib.c`, the outer `while (n > 0)` body starts near line 915, and the inner batching `for` loop we dissect below runs from roughly line 922 to line 949. These numbers will drift as the file is revised; the function name will not.
+
 
 ```c
 	for (i = 0; n > 0 && i < IFLIB_MAX_RX_REFRESH; n--, i++) {
@@ -1158,7 +1178,7 @@ Lets see a example:
 ```
 
 `printf("%d\n", i);` - Prints the value of `i` followed by a newline (`\n`).
-`i++;` - Increases `i` by 1 after each iteration. This step is crucial; without it, `i` would stay 0 forever, and the loop would never end, creating an infinite loop.
+`i++;` - Increases `i` by 1 after each iteration. Without this step, `i` would stay 0 forever, and the loop would never end, creating an infinite loop.
 
 **Key Points to Remember**
 
@@ -1169,13 +1189,13 @@ Lets see a example:
 	* Waiting for a buffer to be filled.
 	* Implementing retry mechanisms.
 
-You can see a real example of `while` loop usage in the function `netmap_fl_refill()` that starts at line 858 of `sys/net/iflib.c` file.
+You can see a real example of `while` loop usage in the function `netmap_fl_refill()`, defined in `/usr/src/sys/net/iflib.c`.
 
 This time, I've decided to show you the complete source code for this FreeBSD kernel function because it offers an excellent opportunity to see several concepts from this chapter working together in a real-world context. 
 
 To make it easier to follow, I've added explanatory comments at key points so you can connect the theory to the actual implementation. Don't worry if you don't fully understand every detail right now; this is normal when first looking at kernel code. 
 
-For our discussion, pay special attention to the while loop that begins at line 915, as it's the part we will explore in depth. Look for `while (n > 0) {` in the code below:
+For our discussion, pay special attention to the `while` loop inside `netmap_fl_refill()`, as it's the part we will study in depth. Look for `while (n > 0) {` in the code below:
 
 ```c
 	/*
@@ -1321,7 +1341,7 @@ For our discussion, pay special attention to the while loop that begins at line 
 	}
 ```
 
-**Understanding the `while (n > 0)` Loop in `sys/net/iflib.c`**
+**Understanding the `while (n > 0)` Loop in `netmap_fl_refill()`**
 
 The loop we're about to study looks like this:
 
@@ -1349,9 +1369,9 @@ Each pass of the loop prepares a group of buffers and hands them off to the NIC.
 
 Each time the loop runs, it processes one batch of buffers. Here's the breakdown:
 
-1. **Debug Tracking** – If the driver is compiled with debugging enabled, it may update counters that track how often large batches of buffers are refilled. This is just for performance monitoring.
-1. **Batch Setup** – The driver remembers where this batch starts (`nic_i_first`) so it can later tell the NIC exactly which slots were updated.
-1. **Inner Batch Processing** – Inside the loop, there's another for loop that refills up to a maximum number of buffers at a time (IFLIB_MAX_RX_REFRESH). For each buffer in this batch:
+1. **Debug Tracking**: If the driver is compiled with debugging enabled, it may update counters that track how often large batches of buffers are refilled. This is just for performance monitoring.
+1. **Batch Setup**: The driver remembers where this batch starts (`nic_i_first`) so it can later tell the NIC exactly which slots were updated.
+1. **Inner Batch Processing**: Inside the loop, there's another for loop that refills up to a maximum number of buffers at a time (IFLIB_MAX_RX_REFRESH). For each buffer in this batch:
 	* Look up the buffer's address and physical location in memory.
 	* Check if the buffer is valid. If not, reinitialise the receive ring.
 	* Store the physical address and slot index so the NIC knows where to place incoming data.
@@ -1359,13 +1379,13 @@ Each time the loop runs, it processes one batch of buffers. Here's the breakdown
 	* Synchronise the buffer for reading so the NIC can safely use it.
 	* Clear any "buffer changed" flags.
 	* Move to the next buffer position in the ring.
-1. **Publishing the Batch to the NIC** – Once the batch is ready, the driver calls a function to tell the NIC: 
+1. **Publishing the Batch to the NIC**: Once the batch is ready, the driver calls a function to tell the NIC: 
 
 "These new buffers are ready for use."
 
-By breaking the work into manageable batches and looping until every buffer is ready, this while loop ensures the NIC is always prepared to receive incoming data without interruption. It's a small but crucial part of keeping packet flow continuous in a high-performance networking environment. 
+By breaking the work into manageable batches and looping until every buffer is ready, this while loop ensures the NIC is always prepared to receive incoming data without interruption. It's a small but necessary part of keeping packet flow continuous in a high-performance networking environment. 
 
-Even if some of the lower-level details—like DMA mapping or ring indices aren't fully clear yet, the key takeaway is this: 
+Even if some of the lower-level details (like DMA mapping or ring indices) aren't fully clear yet, the key takeaway is this: 
 
 Loops like this are the engine that quietly keeps the system running at full speed. As you progress through the book, these concepts will become second nature, and you'll start to recognise similar patterns across many parts of the FreeBSD kernel.
 
@@ -1384,7 +1404,7 @@ A `do...while` loop is a variation of the while loop where the **loop body runs 
 * The loop always executes the code inside at least once, even if the condition is false to begin with.
 * Afterwards, it checks the condition (`i < 10`) to decide whether to repeat.
 
-In the FreeBSD kernel, you'll often see this pattern inside macros designed to behave like single statements. For example, in `sys/sys/timespec.h`, you'll find an example of his type of loop starting at line 44:
+In the FreeBSD kernel, you'll often see this pattern inside macros designed to behave like single statements. For example, `sys/sys/timespec.h` defines the `TIMESPEC_TO_TIMEVAL` macro using exactly this idiom:
 
 ```c
 	#define TIMESPEC_TO_TIMEVAL(tv, ts) \
@@ -1413,8 +1433,8 @@ While `do...while (0)` may look odd, it's a solid C idiom used to make macro exp
 
 When working with loops in C, sometimes you need to change the normal flow:
 
-1. `break` – Immediately exits the loop, even if the loop condition could still be true.
-1. `continue` – Skips the rest of the current iteration and jumps directly to the loop's next iteration.
+1. `break`: Immediately exits the loop, even if the loop condition could still be true.
+1. `continue`: Skips the rest of the current iteration and jumps directly to the loop's next iteration.
 
 Here's a simple example:
 
@@ -1455,7 +1475,7 @@ Output of the Code
 
 The loop ends at `8` because of `break`.
 
-You can see a real example of `break` and `continue` usage in the function `if_purgeaddrs(ifp)` that starts at line 994 of `sys/net/if.c` file.
+You can see a real example of `break` and `continue` usage in the function `if_purgeaddrs(ifp)` of `sys/net/if.c`.
 
 ```c
 	/*
@@ -1641,8 +1661,8 @@ Functions are one of the most important tools you have as a programmer because t
 
 You've already seen functions at work:
 
-* `main()` — the starting point of every C program.
-* `printf()` — a library function that handles formatted output for you.
+* `main()`: the starting point of every C program.
+* `printf()`: a library function that handles formatted output for you.
 
 In the FreeBSD kernel, you'll find functions everywhere, from low-level routines that copy data between memory regions to specialised ones that communicate with hardware. For example, when a network packet arrives, the kernel doesn't put all the processing logic in one giant block of code. Instead, it calls a series of functions, each responsible for a clear, isolated step in the process.
 
@@ -1652,7 +1672,7 @@ In this section, you'll learn how to create your own functions, giving you the p
 
 When your program calls a function, something important happens behind the scenes:
 
-```
+```text
 	   +---------------------+
 	   | Return Address      | <- Where to resume execution after the function ends
 	   +---------------------+
@@ -1669,10 +1689,10 @@ When your program calls a function, something important happens behind the scene
 
 1. **The caller pauses** - your program stops at the function call and saves the **return address** on the stack so it knows where to continue afterwards.
 1. **Arguments are placed** - the values you pass to the function (parameters) are stored, either in registers or on the stack, depending on the platform.
-1. **Local variables are created** — the function gets its own workspace in memory, separate from the caller's variables.
-1. **The function runs** — it executes its statements in order, possibly calling other functions along the way.
-1. **A return value is sent back** — if the function produces a result, it is placed in a register (commonly eax on x86) for the caller to pick up.
-1. **Cleanup and resume** — the function's workspace is removed from the stack, and the program continues where it left off.
+1. **Local variables are created:** the function gets its own workspace in memory, separate from the caller's variables.
+1. **The function runs:** it executes its statements in order, possibly calling other functions along the way.
+1. **A return value is sent back:** if the function produces a result, it is placed in a register (commonly eax on x86) for the caller to pick up.
+1. **Cleanup and resume:** the function's workspace is removed from the stack, and the program continues where it left off.
 
 **Why do you need to understand that?**
 
@@ -1682,18 +1702,18 @@ In kernel programming, every function call has a cost in both time and memory. U
 
 Every function in C follows a simple recipe. To create one, you need to specify four things:
 
-1. **Return type** – what kind of value the function gives back to the caller.
+1. **Return type**: what kind of value the function gives back to the caller.
 	* Example: `int` means the function will return an integer.
 	* If it doesn't return anything, we use the keyword `void`.
 
-1. **Name** – a unique, descriptive label for your function, so you can call it later.
+1. **Name**: a unique, descriptive label for your function, so you can call it later.
 	* Example: `read_temperature()` is much clearer than `rt()`.
 	
-1. **Parameters** – zero or more values the function needs to do its job.
+1. **Parameters**: zero or more values the function needs to do its job.
 	* 	Each parameter has its own type and name.
 	* 	If there are no parameters, use void in the list to make it explicit.
 
-1. **Body** – the block of code, enclosed in {} braces, that performs the task.
+1. **Body**: the block of code, enclosed in {} braces, that performs the task.
 	* This is where you write the actual instructions.
 
 **General form:**
@@ -1768,7 +1788,7 @@ Understanding this difference will save you a lot of compiler errors, especially
 In small programs, you might write the function's definition before `main()` and be done.
 But in real projects, like a FreeBSD device driver, code is split into header files (`.h`) for declarations and source files (`.c`) for definitions.
 
-```
+```text
           +----------------------+
           |   mydevice.h         |   <-- Header file
           |----------------------|
@@ -1807,7 +1827,7 @@ But in real projects, like a FreeBSD device driver, code is split into header fi
 
 * You might have `mydevice.c` containing the driver logic, and `mydevice.h` holding the function declarations shared across the driver.
 * The kernel build system will compile your `.c` files and link them into a kernel module.
-* If the declarations don't match the definitions exactly, you'll get compiler errors — which is why keeping them in sync is critical.
+* If the declarations don't match the definitions exactly, you'll get compiler errors, which is why keeping them in sync is critical.
 
 **Common mistakes with functions and how to fix them**
 
@@ -1836,7 +1856,7 @@ Symptom: Type mismatch errors or subtle bugs.
 Fix: Keep qualifiers consistent. If the declaration has `const char *`, the definition must match exactly.
 
 7) Multiple definitions across files
-Symptom: Linker error "multiple definition of …".
+Symptom: Linker error "multiple definition of ...".
 Fix: Only one definition per function. If a helper should be private to a file, mark it `static` in that `.c` file.
 
 8) Putting function definitions in headers by accident
@@ -1918,14 +1938,14 @@ For this exercise, we will create 3 files.
 
 Open a terminal in the folder with the three files and run:
 
-```
+```console
 	cc -Wall -o myprogram main.c mydevice.c
 	./myprogram
 ```
 
 Expected output:
 
-```
+```text
 	[mydevice] Probing hardware... done.
 	[mydevice] Attaching device and initialising resources...
 	[mydevice] Detaching device and cleaning up.
@@ -2021,13 +2041,13 @@ main() ends
 
 When the kernel calls your driver's `attach()` function, the exact same process happens. The kernel jumps into your code, you run your initialization logic, and then control returns to the kernel so it can continue loading devices. Whether in user space or kernel space, function calls follow the same flow.
 
-**Try It Yourself – Simulating a Driver Function Call**
+**Try It Yourself: Simulating a Driver Function Call**
 
 In this exercise, you'll write a small program that mimics calling a driver function to read a "hardware register" value.
 
 We'll simulate it in user space so you can compile and run it easily on your FreeBSD system.
 
-**Step 1 — Define the function**
+**Step 1: Define the function**
 
 Create a file called `driver_sim.c` and start with this function:
 
@@ -2044,7 +2064,7 @@ unsigned int read_register(unsigned int address)
 }
 ```
 
-**Step 2 — Call the function from `main()`**
+**Step 2: Call the function from `main()`**
 
 In the same file, add `main()` below your function:
 
@@ -2061,9 +2081,9 @@ int main(void)
 }
 ```
 
-**Step 3 — Compile and run**
+**Step 3: Compile and run**
 
-```
+```console
 % cc -Wall -o driver_sim driver_sim.c
 ./driver_sim
 ```
@@ -2123,7 +2143,7 @@ Hello, World!
 1. **Forgetting `void`in the parameter list**
 
 	```c
-		void say_hello()     //  Works, but less explicit — avoid in new code
+		void say_hello()     //  Works, but less explicit - avoid in new code
 		void say_hello(void) // Best practice
 	```
 In old C code, `()` without void means *"this function takes an unspecified number of arguments"*, which can cause confusion.
@@ -2157,9 +2177,9 @@ In FreeBSD drivers, many important functions are void because they are all about
 
 For example:
 
-* `mydevice_reset(void)` — might reset the hardware to a known state.
-* `mydevice_led_on(void)` — might turn on a status LED.
-* `mydevice_log_status(void)` — might print debugging information to the kernel log.
+* `mydevice_reset(void)`: might reset the hardware to a known state.
+* `mydevice_led_on(void)`: might turn on a status LED.
+* `mydevice_log_status(void)`: might print debugging information to the kernel log.
 
 The kernel doesn't care about a return value in these cases, it just expects your function to perform its action.
 
@@ -2298,11 +2318,11 @@ These tell the kernel or bus subsystem that your driver has these functions avai
 
 The build system compiles all the pieces together and links the calls to the correct implementations.
 
-### Try It Yourself – Moving a Function Below `main()`
+### Try It Yourself: Moving a Function Below `main()`
 
 One of the main reasons to use prototypes is so you can call a function that hasn't been defined yet in the file. Let's see this in action.
 
-**Step 1 — Start without a prototype**
+**Step 1: Start without a prototype**
 
 ```c
 #include <stdio.h>
@@ -2338,7 +2358,7 @@ warning: call to undeclared function 'add'; ISO C99 and later do not support imp
 
 ```
 
-**Step 2 — Fix it with a prototype**
+**Step 2: Fix it with a prototype**
 
 Add the function prototype before `main()` like this:
 
@@ -2364,7 +2384,7 @@ int add(int a, int b)
 
 Recompile, the warning is gone, and the program runs:
 
-```
+```text
 Result: 7
 ```
 
@@ -2387,9 +2407,9 @@ This arrangement ensures two critical things:
 
 Without correct prototypes, the kernel build could fail or, worse, compile but behave unpredictably at runtime. In kernel programming, that's not just a bug, it could mean a crash.
 
-**Example — Prototypes in a FreeBSD Driver**
+**Example: Prototypes in a FreeBSD Driver**
 
-`mydriver.h` — Driver header file with prototypes:
+`mydriver.h`, the driver header file with prototypes:
 
 ```c
 #ifndef _MYDRIVER_H_
@@ -2412,7 +2432,7 @@ Here, we declare three key entry points `probe()`, `attach()`, and `detach()`, b
 
 The kernel or bus subsystem will include this header so it knows how to call these functions during device lifecycle events.
 
-`mydriver.c` — Driver source file with definitions:
+`mydriver.c`, the driver source file with definitions:
 
 ```c
 /*
@@ -2562,7 +2582,7 @@ In the next section, we'll explore real examples from the FreeBSD source tree to
 
 Now that you understand how function declarations and definitions work, let's walk through a concrete example from the FreeBSD kernel. We will follow `device_printf()` from its prototype in a header, to its definition in the kernel source, and finally to a real driver that calls it during initialisation. This shows the full path a function takes in real code and why prototypes are critical in driver development.
 
-**1) Prototype — where it is declared**
+**1) Prototype: where it is declared**
 
 The `device_printf()` function is declared in the FreeBSD kernel's bus interface header `sys/sys/bus.h`. Any driver source that includes this header can call it safely because the compiler knows its signature in advance.
 
@@ -2580,7 +2600,7 @@ What each part means:
 
 Because this declaration lives in a shared header, any driver that includes `<sys/sys/bus.h>` can call `device_printf()` without needing to know how it is implemented.
 
-**2) Definition — where it is implemented**
+**2) Definition: where it is implemented**
 
 Here is the actual implementation of `device_printf()` in `sys/kern/subr_bus.c` from **FreeBSD 14.3**. The function builds a prefix with the device name and unit, appends your formatted message, and counts how many characters are produced. I have added extra comments to help you understand how this function works.
 
@@ -2636,7 +2656,7 @@ device_printf(device_t dev, const char * fmt, ...)
 *  The device prefix comes from `device_get_name()` and `device_get_unit()`. If the name is not available, it falls back to `unknown:`.
 *  It accepts a format string and variable arguments, handled by `va_list`, `va_start`, and `va_end`, then forwards them to `sbuf_vprintf()`.
 
-**3) Real driver use — where it is called in practice**
+**3) Real driver use: where it is called in practice**
 
 Here is a clear example from `sys/dev/virtio/virtqueue.c` that calls `device_printf()` while initialising a virtqueue to use indirect descriptors. And like I did for step 2 above, I have added extra comments to help you understand how this function works.
 
@@ -2695,7 +2715,7 @@ This helper prepares a virtqueue to use indirect descriptors, a VirtIO feature t
 
 **Why this example matters**
 
-You have now seen the complete journey:
+You have now seen the full sequence:
 
 * **Prototype** in a shared header tells the compiler how to call the function and enables compile time checks.
 * **Definition** in the kernel source implements the behaviour, using helpers like sbuf to assemble messages safely.
@@ -2713,7 +2733,7 @@ In programming, **scope** defines the boundaries within which a variable can be 
 
 When a variable is declared inside a function, we say it has **local scope**. Such a variable comes into existence when the function starts running and disappears as soon as the function finishes. No other function can see it, and even within the same function, it may be invisible if declared inside a more restricted block, such as inside a loop or an `if` statement.
 
-This form of isolation is a powerful safeguard. It prevents accidental interference from other parts of the program, ensures that one function cannot inadvertently change the internal workings of another, and makes the program's behaviour more predictable. By keeping variables confined to the places they are needed, you make your code easier to reason about, maintain, and debug.
+This form of isolation is an important safeguard. It prevents accidental interference from other parts of the program, ensures that one function cannot inadvertently change the internal workings of another, and makes the program's behaviour more predictable. By keeping variables confined to the places they are needed, you make your code easier to reason about, maintain, and debug.
 
 To make this idea more concrete, let's look at a short example in C. We'll create a function with a variable that lives entirely inside it. You'll see how the variable works perfectly within its own function, but becomes completely invisible the moment we step outside that function's boundaries.
 
@@ -2732,27 +2752,27 @@ int main(void) {
 }
 ```
 
-Here, the variable x is declared inside `print_number()`, which means it is created when the function starts and destroyed when the function ends. If we try to use `x` in `main()`, the compiler complains because `main()` has no knowledge of `x`—it lives in a separate, private workspace. This "one workspace per function" rule is one of the foundations of reliable programming: it keeps code modular, avoids accidental changes from unrelated parts of the program, and helps you reason about the behaviour of each function independently.
+Here, the variable x is declared inside `print_number()`, which means it is created when the function starts and destroyed when the function ends. If we try to use `x` in `main()`, the compiler complains because `main()` has no knowledge of `x`; it lives in a separate, private workspace. This "one workspace per function" rule is one of the foundations of reliable programming: it keeps code modular, avoids accidental changes from unrelated parts of the program, and helps you reason about the behaviour of each function independently.
 
 **Why Local Scope Is Good**
 
 Local scope brings three key benefits to your code:
 
-* Prevents bugs — a variable inside one function cannot accidentally overwrite or be overwritten by another function's variable, even if they share the same name.
-* Keeps code predictable — you always know exactly where a variable can be read or modified, making it easier to follow and reason about the program's flow.
-* Improves efficiency — the compiler can often keep local variables in CPU registers, and any stack space they use is automatically freed when the function returns.
+* Prevents bugs: a variable inside one function cannot accidentally overwrite or be overwritten by another function's variable, even if they share the same name.
+* Keeps code predictable: you always know exactly where a variable can be read or modified, making it easier to follow and reason about the program's flow.
+* Improves efficiency: the compiler can often keep local variables in CPU registers, and any stack space they use is automatically freed when the function returns.
 
 By keeping variables confined to the smallest area where they're needed, you reduce the chances of interference, make debugging easier, and help the compiler optimise performance.
 
 **Why scope matters in driver development**
 
-In FreeBSD device drivers, you'll often manipulate temporary values—buffer sizes, indices, error codes, flags that are relevant only within a specific operation (e.g., probing a device, initialising a queue, handling an interrupt). Keeping these values local prevents cross-talk between concurrent paths and avoids subtle race conditions. In kernel space, small mistakes propagate fast; tight, local scope is your first line of defence.
+In FreeBSD device drivers, you'll often manipulate temporary values, such as buffer sizes, indices, error codes, and flags that are relevant only within a specific operation (e.g., probing a device, initialising a queue, handling an interrupt). Keeping these values local prevents cross-talk between concurrent paths and avoids subtle race conditions. In kernel space, small mistakes propagate fast; tight, local scope is your first line of defence.
 
 **From Simple Scope to Real Kernel Code**
 
 You've just seen how a local variable inside a small C program lives and dies within its function. Now, let's step into a real FreeBSD driver and see exactly the same principle at work, but this time in code that interacts with actual hardware.
 
-We'll look at part of the VirtIO subsystem, which is used for virtual devices in environments like QEMU or bhyve. This example comes from the function `virtqueue_init_indirect()` that is located between the lines 230 and 271 in the file `sys/dev/virtio/virtqueue.c` in FreeBSD 14.3 source code, which sets up "indirect descriptors" for a virtual queue. Watch how variables are declared, used, and limited to the function's own scope, just like in our earlier `print_number()` example. 
+We'll look at part of the VirtIO subsystem, which is used for virtual devices in environments like QEMU or bhyve. This example comes from the function `virtqueue_init_indirect()` in the file `sys/dev/virtio/virtqueue.c` (FreeBSD 14.3 source code), which sets up "indirect descriptors" for a virtual queue. Watch how variables are declared, used, and limited to the function's own scope, just like in our earlier `print_number()` example. 
 
 Note: I've added some extra comments to highlight what's happening at each step.
 
@@ -2773,7 +2793,7 @@ virtqueue_init_indirect(struct virtqueue *vq, int indirect_size)
     int i, size;
 
     // Initialise 'dev' with the device associated with this virtqueue
-    // 'dev' is local, so it's only valid here — other functions cannot touch it
+    // 'dev' is local, so it's only valid here - other functions cannot touch it
     dev = vq->vq_dev;
 
     // Check if the device supports the INDIRECT_DESC feature
@@ -2822,7 +2842,7 @@ virtqueue_init_indirect(struct virtqueue *vq, int indirect_size)
         virtqueue_init_indirect_list(vq, dxp->indirect);
     }
 
-    // Successfully initialised indirect descriptors — locals end their life here
+    // Successfully initialised indirect descriptors - locals end their life here
     return (0);
 }
 ```
@@ -2839,7 +2859,7 @@ One of the quickest ways to get into trouble is to store the address of a local 
 
 **Wrapping Up and Moving Forward**
 
-The lesson here is simple but powerful: local scope makes your code safer, easier to test, and more maintainable. In FreeBSD device drivers, it is the right tool for per-call, temporary data. Long-lived information should be stored in properly designed per-device structures, keeping your driver organised and avoiding accidental data sharing.
+The lesson here is simple: local scope makes your code safer, easier to test, and more maintainable. In FreeBSD device drivers, it is the right tool for per-call, temporary data. Long-lived information should be stored in properly designed per-device structures, keeping your driver organised and avoiding accidental data sharing.
 
 Now that you understand **where** a variable can be used, it is time to look at **how long** it exists. This is called **variable storage duration**, and it affects whether your data lives on the stack, in static storage, or on the heap. Knowing the difference is key to writing robust, efficient drivers, and that's precisely where we are headed next.
 
@@ -2975,7 +2995,7 @@ To make this clearer, let's walk through a real function from the FreeBSD 14.3 s
 
 ### Real Example from FreeBSD 14.3
 
-Before we move on, let's look at how these storage duration concepts appear in production-quality FreeBSD code. Our example comes from the network interface subsystem, specifically from the `_if_delgroup_locked()` function in `sys/net/if.c` (lines 1474 to 1512 in FreeBSD 14.3). This function removes an interface from a named interface group, updates reference counts, and frees memory when the group becomes empty.
+Before we move on, let's look at how these storage duration concepts appear in production-quality FreeBSD code. Our example comes from the network interface subsystem, specifically from the `_if_delgroup_locked()` function in `sys/net/if.c` (FreeBSD 14.3). This function removes an interface from a named interface group, updates reference counts, and frees memory when the group becomes empty.
 
 As in our earlier, simpler examples, you'll see **automatic** variables created and destroyed entirely within the function, **dynamic** memory being released explicitly with `free(9)`, and, elsewhere in the same file, **static** variables that persist for the module's entire lifetime. By walking through this function, you'll see lifetime and scope management in action not just in an isolated snippet, but in the complex, interconnected world of the FreeBSD kernel.
 
@@ -3377,7 +3397,7 @@ If you do want to change the original variable inside a function, you must pass 
 
 ### A Real Example from FreeBSD 14.3
 
-This concept shows up in production kernel code all the time. Let's see a real function from 'sys/net/if.c' in FreeBSD 14.3 that removes an interface from a group (this function is located between lines 1470 and 1512). Pay special attention to the **parameters** at the top: `ifp`, `ifgl`, and `groupname`. Each is a  **copy** of the value that the caller passed in. They're local to this function call, even though they **refer to** shared kernel objects.
+This concept shows up in production kernel code all the time. Let's see a real function from 'sys/net/if.c' in FreeBSD 14.3 that removes an interface from a group: `_if_delgroup_locked()`. Pay special attention to the **parameters** at the top: `ifp`, `ifgl`, and `groupname`. Each is a **copy** of the value that the caller passed in. They're local to this function call, even though they **refer to** shared kernel objects.
 
 In the listing below, I've added extra comments so you can see exactly what's happening at each step.
 
@@ -3467,7 +3487,7 @@ In driver code, understanding that parameters are copies helps you avoid dangero
 * If you change the object the pointer refers to, the caller and possibly the rest of the kernel will see the change, so you must be sure it's safe.
 * Passing large structures by value creates full copies on the stack; passing pointers shares the same data.
 
-This distinction is vital for writing predictable, race-free kernel code.
+This distinction is essential for writing predictable, race-free kernel code.
 
 ### Common Beginner Mistakes
 
@@ -3503,7 +3523,7 @@ In the previous section, you learned that function parameters are passed by valu
 
 Both are central to FreeBSD driver development: arrays become buffers that move data in and out of hardware, and strings carry device names, configuration options, and environment variables.
 
-In this section, we will build from the basics, highlight common pitfalls, and then connect the concepts to real FreeBSD kernel code, concluding with hands-on labs.
+We build from the basics, highlight common pitfalls, and then connect the concepts to real FreeBSD kernel code, concluding with hands-on labs.
 
 ### Declaring and Using Arrays
 
@@ -3655,7 +3675,7 @@ nvpair_unpack_string_array(bool isbe __unused, nvpair_t *nvp,
 
 #### Visualising the Missing '\0' Problem
 
-```
+```text
 CVE-2024-45288
 
 Legend:
@@ -3768,7 +3788,7 @@ FreeBSD stores its kernel environment as an **array of C strings**, each of the 
 The array itself is declared in `sys/kern/kern_environment.c`:
 
 ```c
-// sys/kern/kern_environment.c, line 83
+// sys/kern/kern_environment.c - file-scope kenvp array
 char **kenvp;    // Array of pointers to strings like "name=value"
 ```
 
@@ -3783,7 +3803,7 @@ kenvp[1] → "hw.model=Intel(R) Core(TM) i7"
 To look up a variable by name, FreeBSD uses the helper `_getenv_dynamic_locked()`:
 
 ```c
-// sys/kern/kern_environment.c, lines 495-511
+// sys/kern/kern_environment.c - _getenv_dynamic_locked()
 static char *
 _getenv_dynamic_locked(const char *name, int *idx)
 {
@@ -3824,7 +3844,7 @@ _getenv_dynamic_locked(const char *name, int *idx)
 The public interface `kern_getenv()` wraps this logic with safe copying and locking:
 
 ```c
-// sys/kern/kern_environment.c, lines 561-582
+// sys/kern/kern_environment.c - kern_getenv()
 char *
 kern_getenv(const char *name)
 {
@@ -3990,7 +4010,7 @@ int main() {
 
 Run it, and you will see:
 
-```
+```text
 Found kern.ostype, value = FreeBSD
 ```
 
@@ -4034,12 +4054,12 @@ In the next section, we will connect arrays and strings to the deeper concept of
 
 ## Pointers and Memory
 
-Welcome to one of the most mysterious and magical topics in your C journey: **pointers**.
+Welcome to one of the most mysterious and magical topics in your C learning: **pointers**.
 
 By now, you've probably heard things like:
 
 - "Pointers are hard."
-- "C is powerful because of pointers."
+- "Pointers are what give C its power."
 - "You can shoot yourself in the foot with pointers."
 
 Those statements aren't wrong, but don't worry. I'm going to walk you through it carefully, step by step. Our goal is to **demystify pointers**, not memorize obscure syntax. And because we're learning with FreeBSD in mind, I'll also point out where and how pointers are used in the real kernel source (without overwhelming you).
@@ -4052,7 +4072,7 @@ So far, we've worked with variables like `int`, `char`, and `float`. These are f
 
 Now we're going to talk about something that doesn't store a value directly, but rather **stores the location of a value**.
 
-This magical concept is called a **pointer**, and it's one of the most powerful tools in C, especially when you're writing low-level code like device drivers in FreeBSD.
+This magical concept is called a **pointer**, and it's one of the most important tools in C, especially when you're writing low-level code like device drivers in FreeBSD.
 
 #### Analogy: Memory as a Row of Lockers
 
@@ -4116,7 +4136,7 @@ Let's look at a real pointer declaration in FreeBSD.
 
 Remember our good friend, the `tty_info()` function from `sys/kern/tty_info.c`?
 
-Inside it, at line 288, you'll find this line:
+Inside it, you'll find this declaration:
 
 ```c
 struct proc *p, *ppick;
@@ -4129,7 +4149,7 @@ What this line means:
 - `p` and `ppick` don't *store* processes; they **point to** process structures in memory.
 - In FreeBSD, almost all kernel structures are accessed via pointers because data is passed around and shared across kernel subsystems.
 
-Later in the same function, at line 333, we see:
+Later in the same function, we see:
 
 ```c
 /*
@@ -4193,7 +4213,7 @@ Because both `num` and `*p` refer to the **same location** in memory.
 - Use `*` to access the value at a pointer's address.
 - Pointers are heavily used in FreeBSD (and all OS kernels) because they allow efficient access to shared and dynamic data.
 
-#### Mini Hands-On Lab — Your First Pointers
+#### Mini Hands-On Lab: Your First Pointers
 
 **Goal**
 Build confidence with the three core pointer moves: taking an address with `&`, storing it in a pointer, and reading or writing through that pointer with `*`.
@@ -4288,7 +4308,7 @@ Understanding pointers is not just about writing clever C code. It's about speak
 
 #### Wrapping Up
 
-We've just taken our first careful step into the world of pointers: variables that don't hold data directly but instead hold the location of data. This shift in perspective is what makes C so powerful and, at the same time, so dangerous if misunderstood.
+We've just taken our first careful step into the world of pointers: variables that don't hold data directly but instead hold the location of data. This shift in perspective is what makes C so flexible and, at the same time, so dangerous if misunderstood.
 
 Pointers let us share information between parts of a program without copying it around, which is essential in an operating system kernel where efficiency and precision matter. But this power also comes with responsibility: mixing up addresses, dereferencing invalid pointers, or forgetting what memory a pointer refers to can easily crash your program or, in the case of a driver, the entire operating system.
 
@@ -4355,13 +4375,13 @@ Since `dangerous_ptr` was never assigned a valid address, the program will attem
 
 #### A Real Example from FreeBSD
 
-If you open the file `sys/kern/tty_info.c`, you will find the following declaration inside the `tty_info()` function, at line 289:
+If you open the file `sys/kern/tty_info.c`, you will find the following declaration inside the `tty_info()` function:
 
 ```c
 struct thread *td, *tdpick;
 ```
 
-Both `td` and `tdpick` are pointers to a structure called `thread`. FreeBSD uses these pointers to walk through all threads that belong to a process. Later in the code, at line 341, you will see these pointers being utilised:
+Both `td` and `tdpick` are pointers to a structure called `thread`. FreeBSD uses these pointers to walk through all threads that belong to a process. Later in the same function, you will see these pointers being utilised:
 
 ```c
 FOREACH_THREAD_IN_PROC(p, tdpick)
@@ -4398,7 +4418,7 @@ When we run this code, it prints `30` before and `35` after. We never assigned d
 
 This technique is used everywhere in system programming. Functions that need to return more than one value, or that must directly alter data structures inside the kernel, rely on pointers. Without them, it would be impossible to write efficient drivers or manage complex objects like processes, devices, and memory buffers.
 
-#### Mini Hands-On Lab — Pointer Chains
+#### Mini Hands-On Lab: Pointer Chains
 
 **Goal**
 Learn how multiple pointers can point to the same variable, and how a pointer-to-pointer works in practice. This prepares you for real kernel patterns where functions receive not just data but pointers to pointers that need updating.
@@ -4497,9 +4517,9 @@ The lesson is clear: understanding how to declare and use pointers properly give
 
 At this point, you have moved beyond simply knowing what a pointer is. You can now declare a pointer, initialise it, print its address, dereference it, and even use it to modify a variable indirectly. You have seen how FreeBSD uses these techniques in real code, such as iterating through process threads or updating kernel structures. You also practised with pointer chains and saw how a pointer-to-pointer lets you redirect another pointer, a pattern that will appear often in kernel APIs.
 
-What makes this knowledge powerful is that it transforms your ability to work with functions. Passing pointers into functions allows those functions to update the caller's data, to redirect a pointer to a new target, or to return multiple results at once. In kernel development, this is not a rare pattern but the norm. Drivers almost always interact with the kernel and hardware by passing pointers into functions and receiving updated pointers back.
+What makes this knowledge valuable is that it transforms your ability to work with functions. Passing pointers into functions allows those functions to update the caller's data, to redirect a pointer to a new target, or to return multiple results at once. In kernel development, this is not a rare pattern but the norm. Drivers almost always interact with the kernel and hardware by passing pointers into functions and receiving updated pointers back.
 
-In the next section, we will explore **Pointers and Functions**, and you will see how this combination becomes the standard way to write flexible, efficient, and safe code inside FreeBSD.
+The next section covers **Pointers and Functions**, where you will see how this combination becomes the standard way to write flexible, efficient, and safe code inside FreeBSD.
 
 ### Pointers and Functions
 
@@ -4551,13 +4571,13 @@ int main(void) {
 
 This time the caller sends the address of `x` using `&x`. Inside the function, `*n` lets us reach into that memory location and actually change the variable in `main()`.
 
-This pattern is simple but incredibly powerful. It transforms functions from isolated workshops into tools that can work directly on the caller's data.
+This pattern is simple but essential. It transforms functions from isolated workshops into tools that can work directly on the caller's data.
 
 #### Why This Matters in the Kernel
 
 In kernel code, this technique is not just helpful, it's essential. Kernel functions often need to report back multiple pieces of information. Since C does not allow multiple return values, the usual approach is to pass pointers to variables or structures that the function can fill in.
 
-Here's an example you can find in the FreeBSD source file `sys/kern/tty_info.c`, at line 382:
+Here's an example you can find inside `tty_info()` in the FreeBSD source file `sys/kern/tty_info.c`:
 
 ```c
 rufetchcalc(p, &ru, &utime, &stime);
@@ -4627,11 +4647,11 @@ If your function works, you've just written your first function that modifies a 
 
 By themselves, functions only work with copies. With pointers, functions gain the ability to modify the caller's variables and to pass back multiple results efficiently. This pattern shows up everywhere in FreeBSD, from memory management to process scheduling, and it is one of the most essential techniques you can master as a future driver developer.
 
-Now that we've seen how pointers connect with functions, let's take the next step. Pointers also form a natural partnership with another key feature of C: arrays. In the next section, we'll explore **Pointers and Arrays: A Powerful Duo**, and you'll discover how these two concepts work together to make memory access both flexible and efficient.
+Now that we've seen how pointers connect with functions, let's take the next step. Pointers also form a natural partnership with another key feature of C: arrays. In the next section, we'll explore **Pointers and Arrays: A Natural Pair**, and you'll discover how these two concepts work together to make memory access both flexible and efficient.
 
-### Pointers and Arrays: A Powerful Duo
+### Pointers and Arrays: A Natural Pair
 
-In C, arrays and pointers are like close friends. They are not the same thing, but they are deeply connected, and in practice, they often work together. This connection shows up constantly in kernel code, where performance and direct memory access matter. If you can understand how arrays and pointers interact, you will unlock a powerful toolset for navigating buffers, strings, and hardware data.
+In C, arrays and pointers are like close friends. They are not the same thing, but they are deeply connected, and in practice, they often work together. This connection shows up constantly in kernel code, where performance and direct memory access matter. If you can understand how arrays and pointers interact, you will unlock a flexible toolset for navigating buffers, strings, and hardware data.
 
 #### What's the Connection?
 
@@ -4681,13 +4701,13 @@ Here, the pointer `p` starts at the first element. Adding `1` to `p` moves it fo
 
 #### Using Arrays and Pointers in FreeBSD
 
-The FreeBSD kernel makes heavy use of this connection. A good example is found inside `sys/kern/tty_info.c` in the `tty_info()` function, at line 384:
+The FreeBSD kernel makes heavy use of this connection. A good example is found inside `sys/kern/tty_info.c` in the `tty_info()` function:
 
 ```c
 strlcpy(comm, p->p_comm, sizeof comm);
 ```
 
-Here, `p->p_comm` is a character array that belongs to a process structure. The variable `comm` is another array declared locally, at line 295:
+Here, `p->p_comm` is a character array that belongs to a process structure. The variable `comm` is another array declared locally at the top of `tty_info()`:
 
 ```c
 char comm[MAXCOMLEN + 1];
@@ -4705,7 +4725,7 @@ A pointer, by contrast, is a variable that stores an address. It does not alloca
 
 Another key distinction is that the compiler knows the size of an array, but it does not track the size of the memory a pointer refers to. This means the array's boundaries are known at compile time, while a pointer only knows where it starts, not how far it extends. That responsibility falls on you as the programmer.
 
-These rules can be summarised in plain language. An array is a fixed block of storage, like a house built on a specific lot of land. A pointer is like a set of keys: you can use them to access that house, but tomorrow you might use the same keys to open another house entirely. Both are useful, but they serve different purposes, and the distinction becomes crucial in kernel code where memory management and safety cannot be left to chance.
+These rules can be summarised in plain language. An array is a fixed block of storage, like a house built on a specific lot of land. A pointer is like a set of keys: you can use them to access that house, but tomorrow you might use the same keys to open another house entirely. Both are useful, but they serve different purposes, and the distinction matters in kernel code where memory management and safety cannot be left to chance.
 
 #### Common Beginner Pitfall: Off-by-One Errors
 
@@ -4755,7 +4775,7 @@ By making the upper limit part of your loop condition, you ensure you never walk
 
 Many FreeBSD subsystems manage buffers as arrays while navigating them with pointers. This combination lets the kernel avoid unnecessary copying, keep operations efficient, and interact directly with hardware. Whether you are looking at character device buffers, network packet rings, or process command names, you will see this pattern again and again.
 
-By mastering the array–pointer relationship, you will be able to read and write kernel code more confidently, recognizing when the code is simply walking through memory one element at a time.
+By mastering the array-pointer relationship, you will be able to read and write kernel code more confidently, recognizing when the code is simply walking through memory one element at a time.
 
 #### Hands-On Lab: Walking an Array with a Pointer
 
@@ -4791,7 +4811,7 @@ Notice that the result is the same. This is the power of combining pointers and 
 
 You have now seen how arrays and pointers fit together. Arrays provide the structure, while pointers provide the flexibility to navigate memory efficiently. In the FreeBSD kernel, this combination is everywhere, from device buffers to string manipulation. Always remember the two golden rules: `array[i]` is equivalent to `*(array + i)`, and you must never step outside the bounds of the array.
 
-In the next section, we will explore Pointer Arithmetic more deeply. You will learn how incrementing a pointer works under the hood, why it follows the size of the type, and what boundaries you must respect to avoid stepping into dangerous memory.
+The next section covers Pointer Arithmetic more deeply. You will learn how incrementing a pointer works under the hood, why it follows the size of the type, and what boundaries you must respect to avoid stepping into dangerous memory.
 
 ### Pointer Arithmetic and Boundaries
 
@@ -4809,7 +4829,7 @@ When you add or subtract an integer from a pointer, C advances the pointer by **
 
 This behaviour is what makes pointer arithmetic natural for walking arrays, because arrays live in contiguous memory. Each "+1" lands you precisely on the next element, not in the middle of it.
 
-Let’s see a complete program that demonstrates this. I have added comments to allow you to understand what's happening at each step. 
+Let's see a complete program that demonstrates this. I have added comments to allow you to understand what's happening at each step. 
 
 Save it as `pointer_arithmetic_demo.c`:
 
@@ -4963,7 +4983,7 @@ Here, the expression `*(ptr + i)` asks C to move forward `i` positions from the 
 
 #### Staying Within Boundaries
 
-Pointer arithmetic is powerful, but it comes with a serious responsibility: you must never move beyond the memory that belongs to your array. If you do, you step into undefined behaviour. That can mean a crash, corrupted memory, or silent errors that appear much later.
+Pointer arithmetic is flexible, but it comes with a serious responsibility: you must never move beyond the memory that belongs to your array. If you do, you step into undefined behaviour. That can mean a crash, corrupted memory, or silent errors that appear much later.
 
 ```c
 #include <stdio.h>
@@ -4993,7 +5013,7 @@ This expression divides the total size of the array by the size of a single elem
 
 #### A Glimpse into the FreeBSD Kernel
 
-Pointer arithmetic shows up frequently in the FreeBSD kernel. Sometimes it is used directly with arrays, but more often it appears while navigating through structures linked together in memory. Let us look at a small excerpt adapted from `sys/kern/tty_info.c` (near line 333):
+Pointer arithmetic shows up frequently in the FreeBSD kernel. Sometimes it is used directly with arrays, but more often it appears while navigating through structures linked together in memory. Let us look at a small excerpt adapted from `tty_info()` in `sys/kern/tty_info.c`:
 
 ```c
 struct proc *p, *ppick;
@@ -5074,7 +5094,7 @@ Now, change the boundary check:
 printf("Unsafe access: %d\n", *(ptr + 4));
 ```
 
-Compile and run again. On your system, it might print a random number, or it might crash. This is **undefined behaviour** in action. The program stepped outside the array’s safe memory and read garbage. On FreeBSD in user space this might only crash your program, but in kernel space the same mistake could crash the whole system.
+Compile and run again. On your system, it might print a random number, or it might crash. This is **undefined behaviour** in action. The program stepped outside the array's safe memory and read garbage. On FreeBSD in user space this might only crash your program, but in kernel space the same mistake could crash the whole system.
 
 ##### Step 3: Think like a kernel developer
 
@@ -5110,15 +5130,15 @@ Always validate that you are within valid bounds before dereferencing a pointer.
 
 Pointer arithmetic gives you a new way to move through memory. It allows you to scan arrays efficiently, traverse structures, and interact with hardware buffers. But with this power comes the danger of stepping outside the safe zone. In user programs, that might crash only your program. In kernel code, a mistake could crash the entire system or open a security hole.
 
-As you continue your journey, keep the mental image of walking along a row of boxes. Step carefully, never wander off the edge, and always count how many boxes you really have. With this habit, you will be ready for the next topic: using pointers to access not just plain values, but entire **structures**, the building blocks of more complex data in FreeBSD.
+As you continue your work, keep the mental image of walking along a row of boxes. Step carefully, never wander off the edge, and always count how many boxes you really have. With this habit, you will be ready for the next topic: using pointers to access not just plain values, but entire **structures**, the building blocks of more complex data in FreeBSD.
 
 ### Pointers to Structs
 
 In C programming, especially when writing device drivers or working inside the FreeBSD kernel, you will constantly encounter **structs**. A struct is a way of grouping several related variables together under one name. These variables, called *fields*, can be of different types, and together they represent a more complex entity.
 
-Because structs are often large and frequently shared between parts of the kernel, we usually interact with them through **pointers**. Understanding how to work with pointers to structs is, therefore, a crucial skill for reading kernel code and writing drivers of your own.
+Because structs are often large and frequently shared between parts of the kernel, we usually interact with them through **pointers**. Understanding how to work with pointers to structs is, therefore, a fundamental skill for reading kernel code and writing drivers of your own.
 
-Let’s build this step by step.
+Let's build this step by step.
 
 #### What Is a Struct?
 
@@ -5202,9 +5222,9 @@ This is particularly important in device drivers, where structs often represent 
 
 #### A Real FreeBSD Example
 
-Let’s look at a real snippet from the FreeBSD source tree. 
+Let's look at a real snippet from the FreeBSD source tree. 
 
-In `sys/kern/tty_info.c`, the `tty_info()` function works with a `struct proc`, which represents a process. This code appears **around lines 331-350** in the FreeBSD 14.3 source: 
+In `sys/kern/tty_info.c`, the `tty_info()` function works with a `struct proc`, which represents a process. The relevant fragment (inside `tty_info()` in the FreeBSD 14.3 source) is: 
 
 ```c
 struct proc *p, *ppick;
@@ -5222,7 +5242,7 @@ pid = p->p_pid;                        // get the process ID
 strlcpy(comm, p->p_comm, sizeof comm); // copy the process name into a local buffer
 ```
 
-Here’s what happens, step by step:
+Here's what happens, step by step:
 
 - `p` and `ppick` are pointers to `struct proc`. The code initialises `p` to `NULL`, then iterates over the foreground process group with `LIST_FOREACH`. 
 - On each step, it calls `proc_compare()` to decide whether the current candidate `ppick` is "better" than the one already chosen; if so, it updates `p`. Later, it reads fields from the selected process via `p->p_pid` and `p->p_comm`. 
@@ -5233,7 +5253,7 @@ This is a typical kernel pattern: **select a struct instance via pointer travers
 
 #### A Quick Bridge: what `LIST_FOREACH` does
 
-Beginners often see `LIST_FOREACH(...)` and wonder what magic is happening. There’s no magic, it’s a macro that walks a **singly-linked list**. Its common BSD style is:
+Beginners often see `LIST_FOREACH(...)` and wonder what magic is happening. There's no magic, it's a macro that walks a **singly-linked list**. Its common BSD style is:
 
 ```c
 LIST_FOREACH(item, &head->list_field, link_field) {
@@ -5242,7 +5262,7 @@ LIST_FOREACH(item, &head->list_field, link_field) {
 ```
 
 - `item` is the loop variable that points to each element.
-- `&head->list_field` is the list head you’re iterating.
+- `&head->list_field` is the list head you're iterating.
 - `link_field` is the name of the link that chains elements together (the "next" pointer field in each node).
 
 In our snippet, `ppick` is the loop variable, `&tp->t_pgrp->pg_members` is the list of processes in the foreground process group, and `p_pglist` is the link field inside each `struct proc`. Each iteration points `ppick` at the next process, allowing the code to compare and ultimately select the one stored in `p`. 
@@ -5251,7 +5271,7 @@ This small macro hides the pointer-chasing details so your code reads like: "for
 
 #### A Minimal User-Space Example
 
-Here’s a simple program you can compile and run yourself to get hands-on practice:
+Here's a simple program you can compile and run yourself to get hands-on practice:
 
 ```c
 #include <stdio.h>
@@ -5287,10 +5307,10 @@ This mirrors what happens in the kernel. We define a struct, create an instance 
 
 #### Common Beginner Pitfalls with Struct Pointers
 
-Working with pointers to structs is straightforward once you get used to it, but beginners often fall into the same traps. Let’s look at the most frequent mistakes and how to avoid them.
+Working with pointers to structs is straightforward once you get used to it, but beginners often fall into the same traps. Let's look at the most frequent mistakes and how to avoid them.
 
 **1. Forgetting to Initialise the Pointer**
- A pointer that hasn’t been given a value points to "somewhere" in memory,  which usually means garbage. Accessing it causes undefined behaviour, often leading to crashes.
+ A pointer that hasn't been given a value points to "somewhere" in memory,  which usually means garbage. Accessing it causes undefined behaviour, often leading to crashes.
 
 ```c
 struct Device *d;  // Uninitialised, points to who-knows-where
@@ -5337,7 +5357,7 @@ if (d != NULL) {
 In kernel code, this check is especially important. Dereferencing a NULL pointer inside the kernel can bring the whole system down.
 
 **4. Using a Pointer After the Struct Has Gone Out of Scope**
- Pointers don’t "own" the struct they point to. If the struct disappears (for example, because it was a local variable in a function that has returned), the pointer becomes invalid, a *dangling pointer*.
+ Pointers don't "own" the struct they point to. If the struct disappears (for example, because it was a local variable in a function that has returned), the pointer becomes invalid, a *dangling pointer*.
 
 ```c
 struct Device *make_device(void) {
@@ -5597,7 +5617,7 @@ Try these exercises to make sure you really understand how struct pointers work.
 
 Pointers to structs are one of the most important idioms in kernel programming. They allow you to work with complex objects efficiently, without copying large blocks of memory, and they provide the foundation for navigating linked lists and device tables.
 
-You’ve now seen how:
+You've now seen how:
 
 - Structs group related fields into a single object.
 - Pointers to structs let you access and modify those fields efficiently.
@@ -5606,9 +5626,9 @@ You’ve now seen how:
 
 With the challenge questions, you can now test yourself and confirm you really understand how struct pointers behave in C.
 
-The natural next step is to see what happens when we combine these ideas with **arrays**. Arrays of pointers and pointer arrays are a powerful duo that appear everywhere in kernel code, from device tables to argument lists.
+The natural next step is to see what happens when we combine these ideas with **arrays**. Arrays of pointers and pointer arrays appear everywhere in kernel code, from device tables to argument lists.
 
-Let’s continue and learn about the next topic:  **Arrays of Pointers and Pointer Arrays**.
+Let's continue and learn about the next topic:  **Arrays of Pointers and Pointer Arrays**.
 
 ### Arrays of Pointers and Pointer Arrays
 
@@ -5647,7 +5667,7 @@ This is exactly the same structure as the `argv` parameter to `main()`: it is ju
 
 ##### Real FreeBSD Example: Locale Names
 
-Looking into FreeBSD 14.3 source code, more specifically in `bin/sh/var.c`, around line 130:
+Looking into FreeBSD 14.3 source code, more specifically in `bin/sh/var.c`, the `locale_names` array:
 
 ```c
 static const char *const locale_names[7] = {
@@ -5660,7 +5680,7 @@ This is an **array of constant character pointers**. Each element points to a st
 
 ##### Real FreeBSD Example: SNMP Transport Names
 
-Looking into FreeBSD 14.3 source code, more specifically, in `contrib/bsnmp/lib/snmpclient.c`, around line 1887:
+Looking into FreeBSD 14.3 source code, more specifically, in `contrib/bsnmp/lib/snmpclient.c`, the `trans_list` array:
 
 ```c
 static const char *const trans_list[] = {
@@ -5746,7 +5766,7 @@ This style makes the code more transparent, easier to maintain, and integrates b
 
 ##### Real FreeBSD Example: Struct with a Fixed-Size Array
 
-FreeBSD 14.3 source, `sys/dev/random/random_harvestq.h`, lines 33-44:
+FreeBSD 14.3 source, `sys/dev/random/random_harvestq.h`, the `HARVESTSIZE` macro and `struct harvest_event` definition:
 
 ```c
 #define HARVESTSIZE     2       /* Max length in words of each harvested entropy unit */
@@ -5769,7 +5789,7 @@ Even though raw pointers to arrays are rare in the tree, understanding them help
 
 #### Mini Hands-On Lab
 
-Let’s test your understanding. For each declaration, decide whether it is an **array of pointers** or a **pointer to an array**. Then explain how you would access the third element.
+Let's test your understanding. For each declaration, decide whether it is an **array of pointers** or a **pointer to an array**. Then explain how you would access the third element.
 
 1. `const char *names[] = { "a", "b", "c", NULL };`
 2. `int (*ring)[64];`
@@ -5851,7 +5871,7 @@ But inside the **FreeBSD kernel**, we cannot use `<stdlib.h>`'s `malloc()` or `f
 
 ### Visualising Memory in User Space
 
-```
+```text
 +-----------------------------------------------------------+
 |                        STACK (grows down)                 |
 |   - Local variables                                       |
@@ -5905,7 +5925,7 @@ free(buf, M_TEMP);
 
 ### Kernel malloc(9) Workflow
 
-```
+```text
 ┌──────────────────────────┐
 │ Driver code              │
 │                          │
@@ -6049,30 +6069,33 @@ On unload:
 
 This exercise mirrors what real drivers do when they keep track of device states, DMA buffers, or I/O queues.
 
-### Real FreeBSD Example: Building the corefile path in `coredump_vnode.c`
+### Real FreeBSD Example: Building the corefile path in `kern_sig.c`
 
-Let's look at a real example from FreeBSD's source code: `sys/kern/coredump_vnode.c`. This function builds the path for a process core dump. It allocates a temporary buffer, uses it to assemble the path string, and later frees it. I've added additional comments to the example code below to make it easier for you to understand what happens at each step:
+Let's look at a real example from FreeBSD's source code: `/usr/src/sys/kern/kern_sig.c`. This file is the heart of the kernel's signal-handling machinery, and tucked inside it are the two routines that together build and write a process core dump when a program crashes. The helper `corefile_open()` constructs the core-file path in a temporary kernel buffer, and `coredump()` drives the whole operation, from policy checks to the final cleanup. We will walk through both, because together they illustrate almost every `malloc(9)` habit you will need when writing a driver. I've added additional comments to the example code below to make it easier for you to understand what happens at each step.
+
+> **Reading this example.** The two listings below are an abbreviated view of the real `corefile_open()` and `coredump()` functions in `/usr/src/sys/kern/kern_sig.c`. We have kept the signatures, the control-flow spine, and the allocation and free sites intact, but we have replaced some blocks of defensive work with `/* ... omitted for brevity ... */` or `/* ... policy checks ... */` comments so the `malloc(9)` and `free(9)` discipline stays in the foreground. Every symbol the listing names is real and can be found with a symbol search; the real file is larger. We use this convention again in Chapters 13, 21, and 22 whenever a listing abbreviates a real FreeBSD function for teaching purposes.
 
 ```c
 /*
  * corefile_open(...) builds the final core file path into a temporary
  * kernel buffer named `name`. The buffer must be large enough to hold
- * a path, so MAXPATHLEN is used. The buffer is freed by the caller
- * (see the coredump_vnode() snippet further below).
+ * a path, so MAXPATHLEN is used. The buffer is returned to the caller
+ * through *namep; the caller then becomes responsible for freeing it.
  */
 static int
 corefile_open(const char *comm, uid_t uid, pid_t pid, struct thread *td,
     int compress, int signum, struct vnode **vpp, char **namep)
 {
     struct sbuf sb;
+    struct nameidata nd;
     const char *format;
     char *hostname, *name;
-    int indexpos, indexlen, ncores;
+    int cmode, error, flags, i, indexpos, indexlen, oflags, ncores;
 
     hostname = NULL;
     format = corefilename;
 
-    /* 
+    /*
      * Allocate a zeroed path buffer from the kernel allocator.
      * - size: MAXPATHLEN bytes (fits a full path)
      * - M_TEMP: a temporary allocation type tag (helps tracking/debug)
@@ -6112,6 +6135,8 @@ corefile_open(const char *comm, uid_t uid, pid_t pid, struct thread *td,
     sbuf_finish(&sb);
     sbuf_delete(&sb);
 
+    /* ... open or create the vnode for the corefile into *vpp ... */
+
     /*
      * On success, return `name` to the caller via namep.
      * Ownership of `name` transfers to the caller, who must free it.
@@ -6123,58 +6148,85 @@ corefile_open(const char *comm, uid_t uid, pid_t pid, struct thread *td,
 
 What to notice here:
 
-- The buffer is **typed** with `M_TEMP` to help kernel memory accounting and leak detection. This is a FreeBSD kernel convention that you'll reuse for your own drivers by defining your own `MALLOC_DEFINE` tag. 
-- `M_WAITOK` is chosen because this path can safely sleep; the kernel allocator will wait rather than fail spuriously. If you are in a context where sleeping is unsafe, you must use `M_NOWAIT` and handle allocation failure immediately. 
-- Error paths **free what they allocate** before returning. This is the habit to ingrain early: every `malloc(9)` must have a clear and reliable `free(9)` in all paths. 
+- The buffer is **typed** with `M_TEMP` to help kernel memory accounting and leak detection. This is a FreeBSD kernel convention that you'll reuse for your own drivers by defining your own `MALLOC_DEFINE` tag.
+- `M_WAITOK` is chosen because this path can safely sleep; the kernel allocator will wait rather than fail spuriously. If you are in a context where sleeping is unsafe, you must use `M_NOWAIT` and handle allocation failure immediately.
+- Error paths **free what they allocate** before returning. This is the habit to ingrain early: every `malloc(9)` must have a clear and reliable `free(9)` in all paths.
 
 Now let's see where the caller cleans up:
 
 ```c
 /*
- * coredump_vnode(...) calls corefile_open() to obtain both the vnode (vp)
- * and the dynamically built `name` path. After it finishes writing the core
- * or handling errors, it must free `name`. This snippet shows both another
- * temporary allocation (for cwd when needed) and the final free(name).
+ * coredump(td) is the main entry point for writing a process core
+ * dump. It calls corefile_open() to obtain both the vnode (vp) and
+ * the dynamically built `name` path, writes the core through the
+ * process ABI's coredump routine, optionally emits a devctl
+ * notification, and finally frees `name`. The snippet below shows
+ * another temporary allocation (for the working directory, used
+ * while building the notification) and the final free(name).
+ *
+ * Notice the signature: coredump() takes a single struct thread *
+ * and reaches the process and its credentials through it. The
+ * corefile size limit is read from the process's resource limits
+ * inside the function, not passed in as a separate argument.
  */
 static int
-coredump_vnode(struct thread *td, off_t limit)
+coredump(struct thread *td)
 {
+    struct proc *p = td->td_proc;
+    struct ucred *cred = td->td_ucred;
     struct vnode *vp;
-    char *name;         /* corefile path returned by corefile_open() */
+    char *name;                 /* corefile path returned by corefile_open() */
     char *fullpath, *freepath = NULL;
     size_t fullpathsize;
+    off_t limit;
     struct sbuf *sb;
     int error, error1;
 
+    /* ... policy checks on do_coredump, P_SUGID, P2_NOTRACE ...      */
+    /* ... then read RLIMIT_CORE into `limit`; bail out if it is 0 ... */
+
     /* Build name + open/create target vnode */
     error = corefile_open(p->p_comm, cred->cr_uid, p->p_pid, td,
-        compress_user_cores, sig, &vp, &name);
+        compress_user_cores, p->p_sig, &vp, &name);
     if (error != 0)
         return (error);
 
-    /* ... write/extend coredump, lock ranges, set attributes, etc ... */
+    /* ... write the core through p->p_sysent->sv_coredump, manage the
+     *     range lock on the vnode, set file attributes, etc ...
+     */
 
     /*
-     * When emitting a devctl notification, if the core path is relative,
-     * allocate a small temporary buffer to fetch the current working dir,
-     * then free it once we've appended it to the sbuf.
+     * Build a devctl notification describing the core. Start an
+     * auto-growing sbuf (sbuf_new_auto() allocates its own backing
+     * storage, which we release later with sbuf_delete()).
+     */
+    sb = sbuf_new_auto();                                    /* <-- sbuf allocates */
+    /* ... append comm="..." core="..." to sb ... */
+
+    /*
+     * If the core path is relative, allocate a small temporary
+     * buffer to fetch the current working dir, then free it once
+     * we've appended it to the sbuf.
      */
     if (name[0] != '/') {
         fullpathsize = MAXPATHLEN;
         freepath = malloc(fullpathsize, M_TEMP, M_WAITOK);   /* <-- allocate temp */
         if (vn_getcwd(freepath, &fullpath, &fullpathsize) != 0) {
             free(freepath, M_TEMP);                          /* <-- free on error */
-            /* ... fall through to cleanup below ... */
+            goto out2;
         }
-        /* use fullpath ... */
+        /* append fullpath to sb ... */
         free(freepath, M_TEMP);                              /* <-- free on success */
         /* ... continue building notification ... */
     }
 
+out2:
+    sbuf_delete(sb);                                         /* <-- release sbuf */
 out:
     /*
-     * Close the vnode we opened and then free the dynamically built `name`.
-     * This pairs with the malloc(MAXPATHLEN, ...) in corefile_open().
+     * Close the vnode we opened and then free the dynamically built
+     * `name`. This free pairs with the malloc(MAXPATHLEN, ...) in
+     * corefile_open().
      */
     error1 = vn_close(vp, FWRITE, cred, td);
     if (error == 0)
@@ -6184,9 +6236,9 @@ out:
 }
 ```
 
-This example highlights several important practices that apply directly to device driver development. Temporary kernel strings and small work buffers are often created with `malloc(9)` and must always be released, whether the code succeeds or fails, as shown in the careful cleanup logic of `coredump_vnode()`. T
+This example highlights several important practices that apply directly to device driver development. Temporary kernel strings and small work buffers are often created with `malloc(9)` and must always be released, whether the code succeeds or fails, as shown in the careful cleanup logic of `coredump()`. The same pattern applies to other allocating helpers used nearby: `sbuf_new_auto()` quietly allocates its own backing storage, so the paired `sbuf_delete()` is just as important as any manual `free(9)`. Whenever the kernel hands you something, ask at once where you will give it back.
 
-he choice between `M_WAITOK` and `M_NOWAIT` also depends on context: in code paths where the kernel can safely sleep, `M_WAITOK` ensures the allocation will eventually succeed, while in contexts such as interrupt handlers, where sleeping is forbidden, `M_NOWAIT` must be used and a `NULL` pointer handled immediately. Finally, keeping allocations local and freeing them as soon as their last use is complete reduces the risk of memory leaks and use-after-free errors. 
+The choice between `M_WAITOK` and `M_NOWAIT` also depends on context: in code paths where the kernel can safely sleep, `M_WAITOK` ensures the allocation will eventually succeed, while in contexts such as interrupt handlers, where sleeping is forbidden, `M_NOWAIT` must be used and a `NULL` pointer handled immediately. Finally, keeping allocations local and freeing them as soon as their last use is complete reduces the risk of memory leaks and use-after-free errors.
 
 The handling of the short-lived `freepath` buffer is a clear demonstration of this principle in practice.
 
@@ -6316,7 +6368,7 @@ FreeBSD provides mechanisms and conventions to help developers write robust code
 
 ### A Real Example from FreeBSD 14.3
 
-In the FreeBSD source tree, memory is often managed through pre-allocated buffers rather than frequent dynamic allocations. Here is a snippet from `sys/kern/tty_info.c`, it's located at line 303:
+In the FreeBSD source tree, memory is often managed through pre-allocated buffers rather than frequent dynamic allocations. Here is a snippet from the `tty_info()` function in `sys/kern/tty_info.c`:
 
 ```c
 (void)sbuf_new(&sb, tp->t_prbuf, tp->t_prbufsz, SBUF_FIXEDLEN);
@@ -6470,7 +6522,7 @@ int main(void) {
 
 #### What is wrong here?
 
-```
+```text
 STACK (main)
 +---------------------------+
 | ptr : ??? (uninitialised) |  -> not a real address you own
@@ -6529,7 +6581,7 @@ int main(void) {
 
 #### Why this works
 
-```
+```text
 STACK (main)
 +---------------------------+
 | ptr : 0xHHEE...          |  -> valid heap address returned by malloc
@@ -6584,7 +6636,7 @@ int main(void) {
 
 #### Leak vs program exit
 
-```
+```text
 Before exit:
 
 STACK (main)
@@ -6636,7 +6688,7 @@ int main(void) {
 
 #### Proper lifecycle
 
-```
+```text
 1) Allocation
    HEAP: [ 128-byte block ]  <- buffer points here
 
@@ -6735,7 +6787,7 @@ Unload with:
 
 Comment out the `free()` line, recompile, and load/unload several times. Now inspect memory:
 
-```
+```console
 % vmstat -m | grep memlab
 ```
 
@@ -6811,7 +6863,7 @@ By keeping these pitfalls in mind and practising the good habits shown earlier, 
 
 ### Golden Rules for Kernel Memory
 
-```
+```text
 1. Every malloc() must have a matching free().
 2. Never use a pointer before initialising it (or after freeing it).
 3. Use the correct allocation flag (M_WAITOK or M_NOWAIT) for the context.
@@ -6821,7 +6873,7 @@ Keep these three rules in mind whenever you write kernel code. They may look sim
 
 ### Pointers Recap: The Lifecycle of Memory in C
 
-```
+```text
 Step 1: Declare a pointer
 -------------------------
 struct data *ptr;
@@ -6888,13 +6940,15 @@ Test yourself with these quick questions before moving on. Answers are at the en
 
 ### Wrapping Up
 
-With this section, we have reached the end of our journey through **pointers in C**. Along the way you learned what pointers are, how they relate to arrays and structures, and why they are so powerful but also so dangerous. We concluded with one of the most important lessons: **memory safety**.
+With this section, we have reached the end of our tour through **pointers in C**. Along the way you learned what pointers are, how they relate to arrays and structures, and why they are so flexible but also so dangerous. We concluded with one of the most important lessons: **memory safety**.
 
 Every pointer must be treated with care. Every allocation must be checked. Every buffer must have a known size. In user space, mistakes usually crash only your program. In kernel space, the very same mistakes can corrupt memory or bring down the entire operating system.
 
 By following FreeBSD's allocation patterns, checking results, freeing memory diligently, and using debugging tools like `vmstat -m` and DTrace, you will be on the path to writing drivers that are both stable and reliable.
 
 In the next section, we'll cover **structures** and **typedefs** in C. Structures allow you to group related data, making your code more organized and expressive. Typedefs will enable you to assign meaningful names to complex types, improving readability. Together, they form the basis of almost every real kernel subsystem and are a natural step after mastering pointers.
+
+> **A good moment to pause.** You have now worked through the C foundations: variables, operators, control flow, functions, arrays, pointers, and the rules that keep `malloc(9)` and `free(9)` safe in kernel code. The rest of the chapter turns to the tools that shape larger programs: structures and `typedef`, header files and modular code, the compile-and-link workflow, the C preprocessor, and the practices that keep kernel-style C maintainable. If you want to close the book and come back, this is a natural place to stop.
 
 ## Structures and typedef in C
 
@@ -7089,7 +7143,7 @@ When you start writing drivers, you'll constantly encounter types like `device_t
 
 ### Real Example from FreeBSD 14.3: Creating a USB Character Device
 
-Now that you've seen how structures and `typedef` work in isolation, let's step into real FreeBSD kernel code. This example comes from the USB subsystem, specifically the function `usb_make_dev` in `sys/dev/usb/usb_device.c` (between lines 2119-2157). This function is responsible for creating a character device node under `/dev` for a USB endpoint, allowing user programs to interact with it.
+Now that you've seen how structures and `typedef` work in isolation, let's step into real FreeBSD kernel code. This example comes from the USB subsystem, specifically the function `usb_make_dev` in `sys/dev/usb/usb_device.c`. This function is responsible for creating a character device node under `/dev` for a USB endpoint, allowing user programs to interact with it.
 
 As you read the code, pay attention to two things:
 
@@ -7873,7 +7927,7 @@ struct syscall_args {
 - Before introducing `struct proc`, the header provides a **long explanatory comment**. This is not just filler; it tells you what a process is and introduces the **locking key** (letters like `a`, `b`, `c`, `d`, `e`). These letters are used as shorthand later, next to each field of the process structure, to show which lock protects it.
 - Then the file defines a number of **forward declarations** (e.g., `struct cpuset;`). These act as placeholders, saying "this type exists, but you don't need its full definition here." This keeps the header lightweight and avoids pulling in lots of other headers unnecessarily.
 
-Think of this section as a **map legend**: it gives you the symbols (locking keys) and placeholders you'll need before you dive into the main data structure. And in the next item, you'll see exactly how those locking keys are applied to real fields inside `struct proc`. 
+Think of this section as a **map legend**: it gives you the symbols (locking keys) and placeholders you'll need before you reach the main data structure. And in the next item, you'll see exactly how those locking keys are applied to real fields inside `struct proc`. 
 
 #### 3) The shared data structure definition (`struct proc`)
 
@@ -7925,7 +7979,7 @@ You can confirm these with:
 % nl -ba /usr/src/sys/sys/proc.h | sed -n '652,679p'
 ```
 
-**Note**: `nl -ba` prints line numbers for every line (even blanks), so the ranges above will match exactly on your system.
+**Note**: `nl -ba` prints line numbers for every line (even blanks). The ranges above are for the FreeBSD 14.3 tree at the time of writing and may drift a few lines in later releases; if the output does not start at the section shown, scroll up or down to the nearest `#ifndef _SYS_PROC_H_`, locking-key comment, or `struct proc {` landmark.
 
 #### Why this matters
 
@@ -8199,7 +8253,7 @@ Expected output:
 
    ### Hands-On Lab 4: Exploring FreeBSD Headers
 
-Now that you've built your own modular program, let's explore how FreeBSD does the same thing at scale.
+Now that you've built your own modular program, let's look at how FreeBSD does the same thing at scale.
 
    #### Step 1: Locate the Process Header
 
@@ -8279,7 +8333,7 @@ Up to this point you have written short C programs and even split them into more
 
 Think of the compiler as a factory line. You give it raw material (your `.c` source file) and it sends the material through several machines. By the end, you have a finished product: an executable program you can run.
 
-Here is the journey in simple terms:
+Here is the sequence in simple terms:
 
 1. **Preprocessing** - This is like preparing the ingredients before cooking. The compiler looks at `#include` and `#define` lines and replaces them with the actual content or values. At this stage, your program is expanded into the final "recipe" that will be cooked.
 2. **Compilation** - Now the recipe is turned into instructions your CPU can understand at a more abstract level. Your C code is translated into **assembly language**, which is close to the language of the hardware but still readable to humans.
@@ -8387,7 +8441,7 @@ By noticing whether an error comes from the compiler or the linker, you can imme
 - Compiler errors = the syntax or types inside one file are wrong.
 - Linker errors = the files do not agree with each other, or a function is missing.
 
-This difference is small but crucial. FreeBSD drivers are often spread across multiple files, so being able to distinguish between compiler and linker messages will save you hours of frustration.
+This difference is small but important. FreeBSD drivers are often spread across multiple files, so being able to distinguish between compiler and linker messages will save you hours of frustration.
 
 ### Why `make` matters in real projects
 
@@ -8481,7 +8535,7 @@ Notice that the dependencies for `main.o` and `greet.o` **do not list the header
 
 Output:
 
-```
+```text
 Hello!
 ```
 
@@ -8502,7 +8556,7 @@ void greet_twice(void);   // New function added
 
 Do **not** change `main.c` or `greet.c`. Now run:
 
-```
+```console
 % make
 ```
 
@@ -8528,7 +8582,7 @@ greet.o: greet.c greet.h
 
 Now run:
 
-```
+```console
 % make
 ```
 
@@ -8570,7 +8624,7 @@ Here are some of the things you can do with GDB:
 - **Inspect variables and memory** at that instant, seeing both values and addresses.
 - **Step through code line by line**, watching how control flow really moves.
 - **Check the call stack**, which tells you not only where you are, but *how you got there*.
-- **Watch variables change over time**, a powerful way to confirm whether your logic matches your expectations.
+- **Watch variables change over time**, a direct way to confirm whether your logic matches your expectations.
 
 For example, imagine your calculator program suddenly prints the wrong result for multiplication. With GDB, you can stop inside the `multiply` function, look at the input values, then step through the lines. You may discover that the function is accidentally adding instead of multiplying. The compiler could not warn you; syntactically, the code was fine. But GDB shows you the truth.
 
@@ -8649,13 +8703,13 @@ This opens your program inside the GNU Debugger. You'll see a `(gdb)` prompt.
 
 Tell GDB to pause when it enters the `multiply` function:
 
-```
+```console
 (gdb) break multiply
 ```
 
 **Step 6 - Run the program under GDB.**
 
-```
+```console
 (gdb) run
 ```
 
@@ -8665,7 +8719,7 @@ The program starts, but pauses as soon as `multiply` is called.
 
 Type:
 
-```
+```console
 (gdb) step
 ```
 
@@ -8673,7 +8727,7 @@ This moves into the first line of the function.
 
 **Step 8 - Inspect the variables.**
 
-```
+```console
 (gdb) print a
 (gdb) print b
 ```
@@ -8682,7 +8736,7 @@ GDB shows you the values of `a` and `b`: 3 and 4.
 
 Now type:
 
-```
+```console
 (gdb) next
 ```
 
@@ -8719,7 +8773,7 @@ Bug fixed!
 
 **Why this matters:** 
 
-This exercise shows you that not all bugs cause crashes. Some are *logic errors* that only a debugger (and your careful attention) can reveal. In kernel programming, this mindset is vital, you cannot rely on warnings or printf alone.
+This exercise shows you that not all bugs cause crashes. Some are *logic errors* that only a debugger (and your careful attention) can reveal. In kernel programming, this mindset matters: you cannot rely on warnings or printf alone.
 
 ### Hands-On Lab 3: Chasing a Segmentation Fault with GDB
 
@@ -8749,13 +8803,13 @@ Compile it with debug info:
 
 **Step 2 - Run without GDB.**
 
-```
+```console
 % ./crash
 ```
 
 Output:
 
-```
+```text
 About to crash...
 Segmentation fault (core dumped)
 ```
@@ -8770,7 +8824,7 @@ You know the program crashed, but not *where* or *why*. This is the frustration 
 
 Inside GDB:
 
-```
+```console
 (gdb) run
 ```
 
@@ -8784,7 +8838,7 @@ Program received signal SIGSEGV, Segmentation fault.
 
 Now ask GDB to show the backtrace:
 
-```
+```console
 (gdb) backtrace
 ```
 
@@ -8817,7 +8871,7 @@ The debugger shows you the *real cause*: you dereferenced a NULL pointer. This i
 
 ### A peek into real FreeBSD build rules
 
-FreeBSD keeps the build system simple at the surface and powerful underneath. Your module's `Makefile` can be only a few lines because the heavy lifting is centralised in shared rules.
+FreeBSD keeps the build system simple at the surface and flexible underneath. Your module's `Makefile` can be only a few lines because the heavy lifting is centralised in shared rules.
 
 #### The include chain you are stepping into
 
@@ -8982,7 +9036,7 @@ It's tempting to `#include <stdio.h>` or other libc headers in your kernel code,
 **5. Not cleaning before switching branches or kernel versions.**
 If you update your kernel or switch source trees but reuse the same object files, you may get baffling build errors. Always run `make clean` when switching environments, to avoid stale objects from polluting your build.
 
- With this knowledge, you can now see why FreeBSD's module `Makefile`s are so short yet so powerful. The system does the heavy lifting, and your job is simply to avoid working *against* it. In the next chapters, when you start writing real drivers, this consistency will save you time and frustration,  letting you focus on device logic rather than boilerplate.
+ With this knowledge, you can now see why FreeBSD's module `Makefile`s are so short yet so effective. The system does the heavy lifting, and your job is simply to avoid working *against* it. In the next chapters, when you start writing real drivers, this consistency will save you time and frustration,  letting you focus on device logic rather than boilerplate.
 
 #### Reflection Quiz: FreeBSD Build Rules
 
@@ -9015,7 +9069,7 @@ Working with FreeBSD's build system is straightforward once you understand the r
  It is easy to shrug off warnings when the program still compiles. In user space, this is already risky; in kernel space, it can be catastrophic. A missing prototype, an implicit type conversion, or a discarded return value can all compile but still lead to unpredictable behaviour at runtime. FreeBSD's own build system is configured to treat many warnings as fatal, precisely because the project culture assumes "a warning today is a crash tomorrow." During your learning, adopt the same discipline: use `-Wall -Werror` so that warnings stop you early.
 
 **Mixing compiler and linker errors.**
- Many beginners blur the line between these two. Compiler errors mean the C code is not valid in isolation; linker errors mean the different parts of the program do not agree. In kernel module development this distinction is crucial. For example, you might declare a driver method in a header but forget to provide its implementation. The compiler will happily generate an object file; the linker will later complain with "undefined reference." Understanding that difference quickly points you to whether the problem is *in one file* or *across files*.
+ Many beginners blur the line between these two. Compiler errors mean the C code is not valid in isolation; linker errors mean the different parts of the program do not agree. In kernel module development this distinction matters. For example, you might declare a driver method in a header but forget to provide its implementation. The compiler will happily generate an object file; the linker will later complain with "undefined reference." Understanding that difference quickly points you to whether the problem is *in one file* or *across files*.
 
 **Incomplete rebuilds leading to "phantom" bugs.**
  When your program is more than one file, it is tempting to recompile just the file you edited. But headers ripple changes into many files, and if you do not rebuild all of them, you can end up with an inconsistent module. The bug might vanish when you do a clean build, which makes it especially frustrating. The FreeBSD kernel build system avoids this with precise dependency tracking, but if you are experimenting in your own directory, remember to use `make clean; make` when in doubt. Phantom bugs are almost always build artefacts.
@@ -9245,7 +9299,7 @@ With these foundations in place, you are ready to explore the **C Preprocessor**
 
 ## The C Preprocessor: Directives Before Compilation
 
-Before your C code is compiled, it makes a stop at an earlier stage called **preprocessing**. You can think of this as the **pre-flight checklist for your program**: it prepares the source, pulls in external declarations, expands macros, removes comments, and decides which parts of the code will even reach the compiler. In practice, this means the compiler never works directly on the file you wrote. Instead, it sees a transformed version that has already been “cleaned up” and adapted by the preprocessor.
+Before your C code is compiled, it makes a stop at an earlier stage called **preprocessing**. You can think of this as the **pre-flight checklist for your program**: it prepares the source, pulls in external declarations, expands macros, removes comments, and decides which parts of the code will even reach the compiler. In practice, this means the compiler never works directly on the file you wrote. Instead, it sees a transformed version that has already been "cleaned up" and adapted by the preprocessor.
 
 This may sound like a small detail, but it has a huge impact. The preprocessor explains why a simple driver file in FreeBSD often starts with a long series of `#include` and `#define` lines before any actual function appears. It is also the reason the **same kernel source code can build successfully on different CPU architectures, with or without debugging support, and with optional subsystems like networking or USB enabled**.
 
@@ -9262,7 +9316,7 @@ Here are its main responsibilities:
 - **Conditional compilation** that allows sections of code to be included or excluded depending on configuration.
 - **Preventing duplicate inclusion** of the same header, which avoids errors and keeps compilation efficient.
 
-Because the preprocessor works purely at the text level, it is both **powerful and risky**. Used wisely, it makes your code portable, configurable, and easier to maintain. Used carelessly, it can lead to cryptic error messages and behaviour that is difficult to debug.
+Because the preprocessor works purely at the text level, it is both **flexible and risky**. Used wisely, it makes your code portable, configurable, and easier to maintain. Used carelessly, it can lead to cryptic error messages and behaviour that is difficult to debug.
 
 ### A Quick Example
 
@@ -9293,7 +9347,7 @@ Compile and run it normally, then recompile after commenting out the `#define DE
 - The only difference is whether the preprocessor includes or skips the `printf("[DEBUG] ...");` line.
 - This demonstrates the central idea: **the preprocessor decides what code the compiler even gets to see**.
 
-In FreeBSD drivers, this exact pattern is everywhere. Developers often wrap diagnostic output in preprocessor checks. For example, macros like `DPRINTF()` or `device_printf()` are enabled only when a debug flag is set. This means the same driver source code can produce a “quiet” production build or a “verbose” debugging build without changing the actual driver logic.
+In FreeBSD drivers, this exact pattern is everywhere. Developers often wrap diagnostic output in preprocessor checks. For example, macros like `DPRINTF()` or `device_printf()` are enabled only when a debug flag is set. This means the same driver source code can produce a "quiet" production build or a "verbose" debugging build without changing the actual driver logic.
 
 ### Real Example from FreeBSD 14.3 Source
 
@@ -9348,7 +9402,7 @@ extern unsigned usb_port_reset_delay;
 
 - Everything is controlled by **preprocessor switches**, not by runtime `if` statements. When `USB_DEBUG` is off, the debug code is not even compiled.
 - `USB_DEBUG_VAR` gives each driver a simple knob: raise it to see more messages, lower it to stay quiet.
-- This mirrors the “Quick Example” you compiled earlier, but in a real subsystem that many drivers rely on.
+- This mirrors the "Quick Example" you compiled earlier, but in a real subsystem that many drivers rely on.
 
 **Try It Yourself:**
  A driver source file that wants debug logging would add:
@@ -9373,7 +9427,7 @@ The most visible directive is `#include`. It literally copies the contents of an
 #include "myheader.h"  /* Local header */
 ```
 
-Angle brackets (`< >`) tell the preprocessor to look in the system’s include directories, while quotes (`" "`) tell it first to search the current directory.
+Angle brackets (`< >`) tell the preprocessor to look in the system's include directories, while quotes (`" "`) tell it first to search the current directory.
 
 In FreeBSD, every kernel source file begins with `#include` lines. For example, most device drivers start with:
 
@@ -9495,7 +9549,7 @@ In FreeBSD, build-time errors like this are common in `sys/conf` and device head
 
 Most FreeBSD headers use the `#ifndef / #define / #endif` pattern. Some modern compilers support `#pragma once` as a simpler alternative; however, FreeBSD maintains the portable style to ensure headers work on every compiler supported by the project.
 
-Think of them as the switches and dials that configure how the compiler views your program. Without them, FreeBSD’s single source tree could never build across dozens of architectures and feature sets.
+Think of them as the switches and dials that configure how the compiler views your program. Without them, FreeBSD's single source tree could never build across dozens of architectures and feature sets.
 
 ### Hands-On Lab 1: Protecting Headers with Include Guards
 
@@ -9574,11 +9628,11 @@ You should see a successful build.
 
 - With `KERNEL_VERSION 14`, the build succeeds.
 - With `KERNEL_VERSION 13`, the build fails immediately and prints the error message.
-- This is the same pattern used in FreeBSD’s build system to stop unsupported configurations before they reach runtime.
+- This is the same pattern used in FreeBSD's build system to stop unsupported configurations before they reach runtime.
 
 ### Common Beginner Pitfalls with the Preprocessor
 
-The preprocessor is simple and powerful, but it can also create subtle bugs if used carelessly. These are the issues beginners most often face when writing C and especially when moving into kernel code.
+The preprocessor is simple and flexible, but it can also create subtle bugs if used carelessly. These are the issues beginners most often face when writing C and especially when moving into kernel code.
 
 **Forgetting that macros are plain text.**
  A macro does not behave like a function or a variable. It is copied into your code as text. This easily goes wrong if you skip parentheses:
@@ -9650,7 +9704,7 @@ Avoid short or generic guard names that could clash across the tree.
  Kernel options are often generated into `opt_*.h` headers during the build. Do not hand-define them in source files. Let the build system provide those macros, and include the correct option header when needed.
 
 **Undocumented `-D` flags.**
- If a module depends on a `-DDEBUG` or `-DUSB_DEBUG` flag, document it in the driver’s README or the top of the source file. Future you will thank present you.
+ If a module depends on a `-DDEBUG` or `-DUSB_DEBUG` flag, document it in the driver's README or the top of the source file. Future you will thank present you.
 
 ### Why This Matters for FreeBSD Driver Development
 
@@ -9703,7 +9757,7 @@ int main(void) {
 }
 ```
 
-- a) It prints “Driver loaded.”
+- a) It prints "Driver loaded."
 - b) It fails to compile and shows the error message
 - c) It compiles but prints nothing
 
@@ -9716,7 +9770,7 @@ int main(void) {
 
 You have seen how the preprocessor sets the stage before the compiler arrives. It pulls in declarations, expands macros, and decides which code exists in a given build. Used with care, it makes your drivers portable, testable, and tidy. Used without discipline, it can hide bugs and make code difficult to reason about.
 
-In the next section, **Good Practices for C Programming**, we will shift from mechanisms to habits. You will learn how to choose between macros and `inline`, how to name and document flags, how to structure includes in kernel code, and how to keep your driver readable for future contributors. We will also connect these practices with FreeBSD’s coding style so your code feels at home in the tree.
+In the next section, **Good Practices for C Programming**, we will shift from mechanisms to habits. You will learn how to choose between macros and `inline`, how to name and document flags, how to structure includes in kernel code, and how to keep your driver readable for future contributors. We will also connect these practices with FreeBSD's coding style so your code feels at home in the tree.
 
 ## Good Practices for C Programming
 
@@ -9724,7 +9778,7 @@ By now you know the basic building blocks of the C language and how they fit tog
 
 Consistent code makes bugs easier to spot, reviews faster to complete, and long-term maintenance less painful. It also helps your own future self when you return to a file months later and need to understand what you were thinking.
 
-In this section, we will go beyond syntax and into **habits**. These habits may look small in isolation, choosing clear names, checking return values, keeping functions short, but together they shape code that fits naturally into the FreeBSD source tree. If you adopt them early, every driver you write will not only work, but also feel like part of FreeBSD itself.
+Here we go beyond syntax and into **habits**. These habits may look small in isolation, choosing clear names, checking return values, keeping functions short, but together they shape code that fits naturally into the FreeBSD source tree. If you adopt them early, every driver you write will not only work, but also feel like part of FreeBSD itself.
 
 Let us now explore these practices step by step, beginning with how to make your code readable through indentation, naming, and comments.
 
@@ -9760,7 +9814,7 @@ Notice how:
 - The opening brace `{` is placed on a new line.
 - Each nested block is indented with a tab.
 
-The result is a structure you can “see” at a glance.
+The result is a structure you can "see" at a glance.
 
 #### Naming
 
@@ -10049,7 +10103,7 @@ This hides which step failed and makes the logs confusing.
 #### Practical tips for drivers
 
 - **Keep error checks local.** Use the result right after the call, rather than collecting them and checking later.
-- **Use the smallest scope.** Declare variables near their first use. Don’t reuse one `err` variable for unrelated operations in long functions.
+- **Use the smallest scope.** Declare variables near their first use. Don't reuse one `err` variable for unrelated operations in long functions.
 - **Be consistent.** Always return an error code (`errno` value) that matches FreeBSD conventions (for example, `ENXIO` when no hardware is found).
 - **Log once.** Do not log repeatedly at every level of the call stack; let the highest-level function print the context.
 
@@ -10066,7 +10120,7 @@ By always checking and propagating errors, you make your driver predictable, deb
 ### Mini Lab: Check, Log, Clean Up, Propagate
 
 **Goal**
-Take a “works on my machine” setup path that ignores return codes and turn it into FreeBSD-quality code that:
+Take a "works on my machine" setup path that ignores return codes and turn it into FreeBSD-quality code that:
 
 - checks every call,
 - logs once with device context,
@@ -10085,7 +10139,7 @@ Take a “works on my machine” setup path that ignores return codes and turn i
 #define E_IRQ   -2
 #define E_SYS   -3
 
-/* Pretend “device context” */
+/* Pretend "device context" */
 struct softc {
 	int res_ready;
 	int irq_ready;
@@ -10203,7 +10257,7 @@ main(int argc, char **argv)
     Declare `err` near its first use or use separate `err_*` variables in small scopes. Avoid reusing one variable across unrelated checks if it hurts clarity.
 4. **Log once.**
     Only the failing site should log. The caller (`main`) should not print an error message, beyond the final return code it already prints.
-5. **Propagate, don’t mask.**
+5. **Propagate, don't mask.**
     Return `E_RES`, `E_IRQ`, or `E_SYS` as appropriate. Do not always return `E_OK`.
 
 **How to test**
@@ -10388,7 +10442,7 @@ main(int argc, char **argv)
 
 ### `const` Signals Intent
 
-In C, the keyword `const` marks data as **read-only**. This is not just a technicality: it is a way of signalling intent. When you declare something `const`, you are telling both the compiler and other developers: *“this value should not change.”*
+In C, the keyword `const` marks data as **read-only**. This is not just a technicality: it is a way of signalling intent. When you declare something `const`, you are telling both the compiler and other developers: *"this value should not change."*
 
 The compiler enforces that promise. If you try to modify a `const` value, the code will fail to compile. This protects you against accidental changes and makes your code more self-documenting.
 
@@ -10434,7 +10488,7 @@ In kernel code, data often belongs to other subsystems, the bus, or user space. 
 - Documents whose values are read-only.
 - Prevents accidental writes at compile time.
 - Makes interfaces clearer for future maintainers.
-- Signal safety: You are promising not to alter the caller’s data.
+- Signal safety: You are promising not to alter the caller's data.
 
 #### Pro Tip
 
@@ -10535,7 +10589,7 @@ main(void)
 - Adding `const` to input-only function parameters (like `buffer`) documents intent and prevents accidental modification.
 - The compiler now enforces safety, if you try to write to `buffer` again, the build will fail.
 
-This lab builds a **muscle memory habit**: whenever you write a function, ask yourself “Does this parameter need to be modified?” If the answer is no, mark it `const`.
+This lab builds a **muscle memory habit**: whenever you write a function, ask yourself "Does this parameter need to be modified?" If the answer is no, mark it `const`.
 
 **Why this matters for driver development**
 
@@ -10549,7 +10603,7 @@ These pitfalls are not tied to any one feature of C, but they appear so often in
 
 #### Uninitialised Values
 
-Never assume a variable “starts out” with a useful value. If you use it before assigning one, the contents are unpredictable. In kernel space, that can mean reading garbage memory or corrupting the state. Always initialize variables explicitly, even locals.
+Never assume a variable "starts out" with a useful value. If you use it before assigning one, the contents are unpredictable. In kernel space, that can mean reading garbage memory or corrupting the state. Always initialize variables explicitly, even locals.
 
 ```c
 int count = 0;   /* safe */
@@ -10607,7 +10661,7 @@ double_int(int x)
 
 #### Why These Matter for FreeBSD Drivers
 
-These mistakes are easy to make and difficult to debug. They often produce symptoms far away from the actual bug. By training yourself to spot them early, you save yourself hours of chasing crashes and reviewers’ time pointing out obvious issues.
+These mistakes are easy to make and difficult to debug. They often produce symptoms far away from the actual bug. By training yourself to spot them early, you save yourself hours of chasing crashes and reviewers' time pointing out obvious issues.
 
 In the next lab, you will practice finding and fixing such problems in real code.
 
@@ -10759,7 +10813,7 @@ Spotting and correcting these mistakes early will save you hours of debugging an
 
 ### Keep Whitespace and Braces Consistent
 
-You saw earlier that whitespace mistakes can cause subtle bugs and messy diffs. Here is how FreeBSD’s KNF rules solve that in a consistent way.
+You saw earlier that whitespace mistakes can cause subtle bugs and messy diffs. Here is how FreeBSD's KNF rules solve that in a consistent way.
 
 Whitespace may look unimportant to a beginner, but in a large project like FreeBSD it makes the difference between clean, easy-to-review code and confusing, error-prone patches. The FreeBSD kernel follows **KNF (Kernel Normal Form)**, which sets expectations for indentation, spacing, and brace placement.
 
@@ -10785,7 +10839,7 @@ if (error != 0) {
 #### Braces
 
 - For **function definitions** and **multi-line statements**, put the opening brace on its own line.
-- For **single-line statements**, braces are optional, but if you use them, stay consistent with the file’s style.
+- For **single-line statements**, braces are optional, but if you use them, stay consistent with the file's style.
 
 Bad (brace style inconsistent, all crammed on one line):
 
@@ -10853,7 +10907,7 @@ Take a tiny but messy file and make it KNF-clean. You will practise indentation 
 
 **Starting file: `knf_demo.c`**
 
-```
+```c
 #include <stdio.h>
 int main(){int x=0;for(int i=0;i<=10;i++){x=x+i;} if (x= 56){printf(sum is 56\n);}else{printf(sum is %d\n,x);} }
 ```
@@ -10904,7 +10958,7 @@ Reading real code builds instincts faster than any checklist. Instead of pasting
 **Before you start**
 
 - Ensure your 14.3 source is at `/usr/src`.
-- Use an editor configured for tabs at width 8 and “show invisibles” enabled.
+- Use an editor configured for tabs at width 8 and "show invisibles" enabled.
 
 **Open one of these widely used files**
 
@@ -10920,7 +10974,7 @@ Reading real code builds instincts faster than any checklist. Instead of pasting
 3. **Paragraph comments**
     Multi-line comments that explain decisions or constraints rather than narrating each line.
 4. **Early returns on error**
-    Short checks that fail fast and keep the “happy path” easy to read.
+    Short checks that fail fast and keep the "happy path" easy to read.
 5. **Small helpers**
     Long tasks broken into short static functions with focused names.
 
@@ -11053,7 +11107,7 @@ Train your eye to spot **KNF style** and the small structural habits that make F
 
    **How this mirrors kernel code**
 
-   When you look at real probe/attach functions in the FreeBSD tree, you’ll notice the same patterns:
+   When you look at real probe/attach functions in the FreeBSD tree, you'll notice the same patterns:
 
    - Early exits on failure.
    - Helpers to keep top-level functions focused.
@@ -11072,7 +11126,7 @@ Train your eye to spot **KNF style** and the small structural habits that make F
 **What you should learn**
 
 - **Style communicates intent.** Indentation, naming, and comments all carry meaning for readers.
-- **Error-first returns** keep the “happy path” easy to see.
+- **Error-first returns** keep the "happy path" easy to see.
 - **Helpers** make attach paths short, testable, and reviewable.
 - **Consistency** with the tree keeps diffs small and reviews focused on behaviour, not formatting.
 
@@ -11167,7 +11221,7 @@ Attach and detach code must be easy to audit. In real drivers you will add featu
 
 ### Hands-On Lab 4: Putting It All Together
 
-You’ve practised style, naming, indentation, error handling, pitfalls, and refactoring in isolation. Now it’s time to bring them all together. In this lab you will be given a deliberately messy **driver-like scaffold**. It compiles, but it contains poor style, bad naming, unchecked errors, misleading comments, and several pitfalls. Your task is to clean it up into FreeBSD-quality code.
+You've practised style, naming, indentation, error handling, pitfalls, and refactoring in isolation. Now it's time to bring them all together. In this lab you will be given a deliberately messy **driver-like scaffold**. It compiles, but it contains poor style, bad naming, unchecked errors, misleading comments, and several pitfalls. Your task is to clean it up into FreeBSD-quality code.
 
 #### Starting File: `driver_skeleton.c`
 
@@ -11252,7 +11306,7 @@ The FreeBSD style rules and tools exist to help you reach this standard from day
 
 In this section you saw that writing C code for FreeBSD is not just about getting something to compile. It is about habits that make your code clear, predictable, and trustworthy inside the kernel. You learned how consistent indentation, meaningful names, and purposeful comments make your code easier to read. You saw how keeping functions short, returning early on errors, and using `const` express your intent clearly. You learned why small details such as whitespace, brace placement, and trailing spaces matter in a large collaborative project.
 
-We also looked at common pitfalls that beginners fall into uninitialized variables, off-by-one loops, accidental assignments, and dangerous macros and saw how to avoid them. And we reinforced the lesson that boring, straightforward code is the safest and most respected kind of code in FreeBSD. Tools like `style(9)` and the `checkstyle9.pl` script, along with studying real code in the tree, give you the practical support you need to write code that blends seamlessly with the rest of the system.
+We also looked at common pitfalls that beginners fall into uninitialized variables, off-by-one loops, accidental assignments, and dangerous macros and saw how to avoid them. And we reinforced the lesson that boring, straightforward code is the safest and most respected kind of code in FreeBSD. Tools like `style(9)` and the `checkstyle9.pl` script, along with studying real code in the tree, give you the practical support you need to write code that reads like the rest of FreeBSD.
 
 The next step is to **consolidate these skills**. In the following section you will work through a final set of **hands-on labs** that combine all the practices you have learned in this chapter. After that, a short **recap quiz** will help you check whether you remember the key ideas and can apply them on your own.
 
@@ -11327,14 +11381,14 @@ By writing down what you observed and how you applied it, you turn reading into 
 - Early returns keep the happy path straight: [  ] Yes / [  ] No
 - Shared teardown consolidated (labels or helpers): [  ] Yes / [  ] No
 
-**Helper I’ll emulate:** `_____________________________________________`
+**Helper I'll emulate:** `_____________________________________________`
 
 #### 6) Intent & const-correctness
 
 - Read-only data/params marked `const`: [  ] Yes / [  ] No (examples: `__________`)
-- No “clever” macros with side effects (prefers `static inline`): [  ] Yes / [  ] No
+- No "clever" macros with side effects (prefers `static inline`): [  ] Yes / [  ] No
 
-**One const usage I’ll adopt:** `_________________________________________`
+**One const usage I'll adopt:** `_________________________________________`
 
 #### 7) Three patterns I will copy (be specific)
 
@@ -11382,14 +11436,14 @@ Target function/file: `___________________________________________`
 
 #### 10) One-line takeaway (for your portfolio)
 
-“`______________________________________________________________`”
+"`______________________________________________________________`"
 
 **How to use this worksheet**
 
 1. Print or duplicate it for each driver you study.
 2. Capture **evidence** (line numbers/snippets) so you can revisit patterns later.
 3. Immediately transform one of your own functions using the items in Section 9.
-4. Keep the before/after diff with this worksheet, it’s proof of learning and a handy reference when you start writing real drivers.
+4. Keep the before/after diff with this worksheet, it's proof of learning and a handy reference when you start writing real drivers.
 
 ## Final Practice Labs
 
@@ -11399,7 +11453,7 @@ Before we move on to kernel-specific topics in later chapters, it is time to **p
 
 Each lab includes clear steps, comments, and brief reflections to help you check your understanding and solidify the learning.
 
-### Lab 1 (Easy): Bit Flags and Enums - “Device State Inspector”
+### Lab 1 (Easy): Bit Flags and Enums - "Device State Inspector"
 
 **Goal**
  Use bitwise operators to manage a device-style state. Practise set, clear, toggle, and test, then print a readable summary.
@@ -11516,7 +11570,7 @@ main(int argc, char **argv)
 ```
 
 **Interpret your results**
- You should see a hex state plus a human list. If you “toggle open” from zero, OPEN appears; toggle again and it disappears. Change the order of operations to predict the final state first, then run to confirm.
+ You should see a hex state plus a human list. If you "toggle open" from zero, OPEN appears; toggle again and it disappears. Change the order of operations to predict the final state first, then run to confirm.
 
 **What you practised**
 
@@ -11524,7 +11578,7 @@ main(int argc, char **argv)
 - Using `|`, `&`, `^`, `~` correctly
 - Writing small helpers to make bit logic readable
 
-### Lab 2 (Easy → Medium): Preprocessor Hygiene - “Feature-Gated Logging”
+### Lab 2 (Easy → Medium): Preprocessor Hygiene - "Feature-Gated Logging"
 
 **Goal**
  Create a minimal logging API whose verbosity is controlled at compile time with a `DEBUG` macro, and demonstrate safe header usage.
@@ -11618,7 +11672,7 @@ int main(void) {
 - Conditional compilation with `#ifdef`
 - `_Static_assert` for build-time safety
 
-### Lab 3 (Medium): Safe Strings and Arrays - “Bounded Device Names”
+### Lab 3 (Medium): Safe Strings and Arrays - "Bounded Device Names"
 
 **Goal**
  Build device-style names safely into a caller-supplied buffer. Return explicit error codes rather than crashing or truncating silently.
@@ -11732,7 +11786,7 @@ int main(void) {
 - Using return codes rather than assuming success
 - Designing tiny, testable APIs that are hard to misuse
 
-### Lab 4 (Medium → Hard): Function Pointer Dispatch - “Mini devsw”
+### Lab 4 (Medium → Hard): Function Pointer Dispatch - "Mini devsw"
 
 **Goal**
  Model a device operations table with function pointers and switch between two implementations at runtime.
@@ -11860,7 +11914,7 @@ int main(int argc, char **argv) {
 - Grouping related operations in a struct
 - Selecting implementations at runtime without `if` chains everywhere
 
-### Lab 5 (Hard): Fixed-Size Circular Buffer - “Single-Producer Single-Consumer Queue”
+### Lab 5 (Hard): Fixed-Size Circular Buffer - "Single-Producer Single-Consumer Queue"
 
 **Goal**
  Implement a small ring buffer for integers with wrap-around indexing and clear rules for empty/full conditions. No concurrency yet, just correct arithmetic and invariants.
@@ -12017,7 +12071,7 @@ You have now walked through a vast landscape: from your very first `printf()` al
 
 The following **60 questions** are designed to make you reflect on what you learned. They are not here to intimidate you, quite the opposite: they are a mirror for you to see how much ground you have already covered. If you can answer most of them, even approximately, it means you have built a strong foundation for device driver programming.
 
-Treat this as a self-assessment: keep a notebook open, write down your answers, and don’t be afraid to go back to the text or labs if you feel uncertain. Remember: mastery is built by revisiting, practising, and questioning.
+Treat this as a self-assessment: keep a notebook open, write down your answers, and don't be afraid to go back to the text or labs if you feel uncertain. Remember: mastery is built by revisiting, practising, and questioning.
 
 ### Questions
 
@@ -12030,7 +12084,7 @@ Treat this as a self-assessment: keep a notebook open, write down your answers, 
 7. What happens if you assign a `char` into an `int` variable?
 8. Give one example of a kernel structure where you expect to see a `char[]` rather than a `char *`.
 9. What does the `%` operator do, and why is it common in buffer management?
-10. Why should kernel code avoid “clever” chained assignments such as `a = b = c = 0;`?
+10. Why should kernel code avoid "clever" chained assignments such as `a = b = c = 0;`?
 11. How does operator precedence affect the expression `x + y << 2`?
 12. Why is `==` not the same as `=`, and what bug appears if you confuse them?
 13. What danger exists when omitting braces `{}` in `if` statements?
@@ -12040,8 +12094,8 @@ Treat this as a self-assessment: keep a notebook open, write down your answers, 
 17. Why should you mark parameters as `const` where possible in driver helper functions?
 18. What is an inline function, and why might it be better than a macro?
 19. How does returning error codes like `ENXIO` help standardise driver behaviour?
-20. What does it mean that function parameters are passed “by value” in C?
-21. Why does passing a pointer to a struct give the illusion of “by reference”?
+20. What does it mean that function parameters are passed "by value" in C?
+21. Why does passing a pointer to a struct give the illusion of "by reference"?
 22. How does this behaviour influence the design of `probe()` or `attach()` functions?
 23. What could happen if you modify a pointer argument inside a function without informing the caller?
 24. Why must C strings be null-terminated, and what happens if they are not?
@@ -12074,17 +12128,17 @@ Treat this as a self-assessment: keep a notebook open, write down your answers, 
 51. Why is it important to always initialise local variables, even if you plan to overwrite them soon?
 52. How does using fixed-width integer types (`uint32_t`) improve portability across architectures?
 53. Why should you prefer descriptive variable names over single letters in kernel code?
-54. What coding pattern in loops helps prevent “off-by-one” errors?
+54. What coding pattern in loops helps prevent "off-by-one" errors?
 55. Why should every `malloc()` in kernel space have a corresponding `free()` in the unload path?
 56. How can consistent indentation and braces improve long-term maintainability of drivers?
-57. Why is it recommended to avoid “magic numbers” and instead use named constants or macros?
+57. Why is it recommended to avoid "magic numbers" and instead use named constants or macros?
 58. How can reading similar drivers in FreeBSD source guide you toward better style?
 59. Why is it important to check the return value of every system or library call in kernel code?
 60. How does following KNF (Kernel Normal Form) style make your contributions easier to review and accept?
 
-### Wrapping Up
+## Wrapping Up
 
-You’ve reached the end of Chapter 4, and that is no small achievement. In this single chapter, you have gone from zero C knowledge to handling the same building blocks used daily in the FreeBSD kernel. Along the way, you wrote real programs, explored actual kernel code, and faced questions that sharpened both your memory and your reasoning.
+You've reached the end of Chapter 4, and that is no small achievement. In this single chapter, you have gone from zero C knowledge to handling the same building blocks used daily in the FreeBSD kernel. Along the way, you wrote real programs, explored actual kernel code, and faced questions that sharpened both your memory and your reasoning.
 
 The key takeaway is this: **C is not just a language; it is the medium through which the kernel communicates. ** Every pointer you follow, every struct you design, and every header you include brings you closer to understanding how FreeBSD itself works inside.
 

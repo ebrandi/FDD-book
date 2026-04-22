@@ -1,11 +1,12 @@
 ---
 title: "Setting Up Your Lab"
 description: "This chapter guides you through setting up a safe and ready FreeBSD lab for driver development."
-author: "Edson Brandi"
-date: "2025-08-24"
-status: "complete"
-part: 1
+partNumber: 1
+partName: "Foundations: FreeBSD, C, and the Kernel"
 chapter: 2
+lastUpdated: "2026-04-20"
+status: "complete"
+author: "Edson Brandi"
 reviewer: "TBD"
 translator: "TBD"
 estimatedReadTime: 60
@@ -15,9 +16,9 @@ estimatedReadTime: 60
 
 Before we can begin writing code or exploring FreeBSD's internals, we need a place where it's safe to experiment, make mistakes, and learn. That place is your **lab environment**. In this chapter, we'll create the foundation you'll use throughout the rest of the book: a FreeBSD system configured for driver development.
 
-Think of this chapter as preparing your **workshop**. Just as a carpenter needs the right bench, tools, and safety gear before building furniture, you need a reliable FreeBSD installation, the right development utilities, and a way to recover quickly when things go wrong. Kernel programming is powerful but unforgiving; a tiny mistake in your driver can crash the whole system. Having a dedicated lab means those crashes become part of the learning process, not disasters.
+Think of this chapter as preparing your **workshop**. Just as a carpenter needs the right bench, tools, and safety gear before building furniture, you need a reliable FreeBSD installation, the right development utilities, and a way to recover quickly when things go wrong. Kernel programming is unforgiving; a tiny mistake in your driver can crash the whole system. Having a dedicated lab means those crashes become part of the learning process, not disasters.
 
-By the end of this chapter, you will:
+After finishing this chapter you will be able to:
 
 - Understand the importance of isolating your experiments from your main computer.
 - Choose between using a virtual machine or bare-metal installation.
@@ -29,7 +30,7 @@ Along the way, we'll pause for **hands-on labs** so you don't just read about se
 
 ### Reader Guidance: How to Use This Chapter
 
-This chapter is more practical than theoretical. Think of it as a step-by-step manual to prepare your workshop before you begin the real experiments. You'll be asked to make choices (virtual machine or bare metal), follow installation steps, and configure your FreeBSD system.
+This chapter is more practical than theoretical. Think of it as a step-by-step manual to set up your FreeBSD lab before you begin the real experiments. You'll be asked to make choices (virtual machine or bare metal), follow installation steps, and configure your FreeBSD system.
 
 The best way to use this chapter is to **do the steps as you read them**. Don't just skim through, actually install FreeBSD, take the snapshots, write down your choices in your lab logbook, and try the exercises. Each section builds on the last, so by the end you'll have a complete environment that matches the examples in the rest of this book.
 
@@ -45,7 +46,7 @@ Before we start typing commands and writing our first pieces of code, we need to
 
 This doesn't mean driver development is dangerous, it means we need to take precautions and set up a **safe environment** where mistakes are expected, recoverable, and even encouraged as part of the learning process. That environment is what we'll call your **lab**.
 
-Think of your lab as your **personal workshop**. Just like a chemist wouldn't run an experiment on the family dining table without protective equipment, you shouldn't run unfinished kernel code on the same machine where you keep your personal photos, work documents, or important school projects. You need a space designed for exploration and failure, because failure is how you'll learn.
+Your lab should be a **dedicated, isolated environment**. Just like a chemist wouldn't run an experiment on the family dining table without protective equipment, you shouldn't run unfinished kernel code on the same machine where you keep your personal photos, work documents, or important school projects. You need a space designed for exploration and failure, because failure is how you'll learn.
 
 ### Why Not Use Your Main Computer?
 
@@ -57,7 +58,7 @@ Your lab setup gives you freedom: you can break things, restart, and recover in 
 
 Most beginners (and even many experienced developers) start with **virtual machines (VMs)**. A VM is like a sandboxed computer running inside your real computer. It acts just like a physical machine, but if something goes wrong, you can reset it, take a snapshot, or reinstall FreeBSD in minutes. You don't need a spare laptop or server to start developing drivers; your current computer can host your lab.
 
-We'll dive deeper into virtualization in the next section, but here are the highlights:
+We'll cover virtualization in more detail in the next section, but here are the highlights:
 
 - **Safe experiments**: If your driver crashes the kernel, only the VM goes down, not your host computer.
 - **Easy recovery**: Snapshots let you save the VM's state and roll back instantly if you break something.
@@ -91,7 +92,7 @@ This may feel unnecessary, but keeping a **lab log** will help you track your pr
 
 We've introduced the idea of your **lab environment** and why it's so important for safe driver development. Whether you choose a virtual machine or a spare physical computer, the key is having a dedicated place where it's okay to make mistakes.
 
-In the next section, we'll dive deeper into the **pros and cons of virtual machines versus bare metal setups**. By the end of that section, you'll know exactly which setup makes sense for you to begin your FreeBSD journey.
+In the next section, we'll look more closely at the **pros and cons of virtual machines versus bare metal setups**. By the end of that section, you'll know exactly which setup makes sense for you to begin your FreeBSD work.
 
 ## Choosing Your Setup: Virtual Machine or Bare Metal
 
@@ -406,7 +407,7 @@ On Windows, the easiest tool is **Rufus**:
 
 If you already have a UNIX-like system, you can create the USB from the terminal using the `dd` command:
 
-```
+```console
 % sudo dd if=FreeBSD-14.3-RELEASE-amd64-memstick.img of=/dev/da0 bs=1M
 ```
 
@@ -446,7 +447,7 @@ In the next section, we'll walk through the **initial configuration** you should
 
 When your FreeBSD system finishes its first reboot after installation, you're greeted with something that feels very different from Windows or macOS. There's no flashy desktop, no icons, no "getting started" wizard. Instead, you're dropped at a **login prompt**.
 
-Don't worry, this is normal and intentional. FreeBSD is a UNIX-like system designed to be powerful, stable, and flexible, not flashy. The default environment is simple so that you, the administrator, are in full control. Think of this as the moment you've just unlocked the door to your workshop: the benches are empty, the tools aren't yet arranged, but the space is ready to be built into exactly what you need.
+Don't worry, this is normal and intentional. FreeBSD is a UNIX-like system designed for stability and flexibility, not flashy first impressions. The default environment is deliberately minimal so that you, the administrator, stay in full control. Think of this as the first time you sit down at a freshly provisioned lab machine: the shell is empty, the tools are not yet installed, but the system is ready to be shaped into exactly what your work requires.
 
 In this section, we'll perform the **essential first steps** to make your FreeBSD lab comfortable, secure, and ready for driver development.
 
@@ -465,7 +466,7 @@ You're now inside FreeBSD as a regular user.
 
 Some tasks, like installing software or editing system files, require **root privileges**. You should avoid staying logged in as root all the time (it's too risky if you mistype a command), but it's good practice to temporarily switch to root when needed:
 
-```
+```console
 % su -
 Password:
 ```
@@ -514,13 +515,13 @@ Your system needs a name and correct time settings.
 
 Most installations with DHCP "just work." To verify:
 
-```
+```console
 % ifconfig
 ```
 
 You should see an interface (like `em0`, `re0`, or `vtnet0` in VMs) with an IP address. If you don't, you may need to enable DHCP in `/etc/rc.conf`:
 
-```
+```ini
 ifconfig_em0="DHCP"
 ```
 
@@ -575,7 +576,7 @@ Now your user can safely perform admin tasks without staying logged in as root.
 
 Before installing development tools, bring your system up to date:
 
-```
+```console
 # freebsd-update fetch install
 # pkg update
 # pkg upgrade
@@ -662,7 +663,7 @@ You have two simple approaches. Pick the one you prefer; both are fine for a lab
 
 Run these regularly to stay current:
 
-```
+```console
 % sudo freebsd-update fetch install
 % sudo pkg update && pkg upgrade
 ```
@@ -677,7 +678,7 @@ In the next section, we'll install the **development tools** needed for driver p
 
 ## Preparing the System for Development
 
-Now that your FreeBSD lab is installed, updated, and lightly hardened, it's time to turn it into a proper **driver development environment**. Think of this step as stocking your workshop with the right tools; compiler, debugger, version control, and the FreeBSD source tree. Without these, you won't be able to build or test the code we'll write in later chapters.
+Now that your FreeBSD lab is installed, updated, and lightly hardened, it's time to turn it into a proper **driver development environment**. This step adds the pieces needed to build, debug, and version-control kernel code: the compiler, the debugger, a version control system, and the FreeBSD source tree. Without these, you won't be able to build or test the code we'll write in later chapters.
 
 The good news is that FreeBSD already includes most of what we need. In this section, we'll install the missing pieces, verify everything works, and run a tiny "hello module" test to prove that your lab is ready for driver development.
 
@@ -685,7 +686,7 @@ The good news is that FreeBSD already includes most of what we need. In this sec
 
 FreeBSD comes with **Clang/LLVM** in the base system. To confirm:
 
-```
+```console
 % cc --version
 FreeBSD clang version 19.1.7 (...)
 ```
@@ -694,7 +695,7 @@ If you see a version string like the above, you're ready to compile C code.
 
 Still, you'll need some additional tools:
 
-```
+```console
 # pkg install git gmake gdb
 ```
 
@@ -704,9 +705,9 @@ Still, you'll need some additional tools:
 
 ### Choosing an Editor
 
-Every developer has their favourite editor. FreeBSD includes `vi` by default, powerful, but with a steep learning curve. If you're brand new, you can safely start with **`ee` (Easy Editor)**, which guides you with on-screen help, or install **`nano`**, which has simpler shortcuts like Ctrl+O to save and Ctrl+X to quit:
+Every developer has their favourite editor. FreeBSD includes `vi` by default, capable but with a steep learning curve. If you're brand new, you can safely start with **`ee` (Easy Editor)**, which guides you with on-screen help, or install **`nano`**, which has simpler shortcuts like Ctrl+O to save and Ctrl+X to quit:
 
-```
+```console
 % sudo pkg install nano
 ```
 
@@ -755,7 +756,7 @@ But sooner or later, you'll want to learn **`vim`**, the improved version of `vi
 
 If you prefer `nano`, it also supports syntax highlighting. The configuration is stored in `/usr/local/share/nano/`. To enable it for C:
 
-```
+```console
 % cp /usr/local/share/nano/c.nanorc ~/.nanorc
 ```
 
@@ -769,7 +770,7 @@ Now open a `.c` file with `nano` and you'll see basic highlighting.
 
 The **man pages** are your built-in reference library. Try this:
 
-```
+```console
 % man 9 malloc
 ```
 
@@ -785,9 +786,11 @@ Other useful commands:
 
 Most driver development requires access to the FreeBSD kernel source code. You'll store it in `/usr/src`.
 
+From this point on, whenever this book cites a file such as `/usr/src/sys/kern/kern_module.c`, it refers to a real file inside the source tree you are about to clone. `/usr/src` is the conventional location for the FreeBSD source tree on a FreeBSD system, and every path of the form `/usr/src/...` in later chapters maps directly to a file under the `src` checkout below. Later chapters will not re-explain this convention; they will simply quote the path and expect you to find it at that location.
+
 Clone it with Git:
 
-```
+```console
 % sudo git clone --branch releng/14.3 --depth 1 https://git.FreeBSD.org/src.git src /usr/src
 ```
 
@@ -795,7 +798,7 @@ This will take a few minutes and download several gigabytes. When finished, you'
 
 Verify with:
 
-```
+```console
 % ls /usr/src/sys
 ```
 
@@ -807,7 +810,7 @@ FreeBSD is very strict about building loadable kernel modules against the exact 
 
 **Tip**: if `/usr/src` already exists and points elsewhere, you can retarget it:
 
-```
+```console
 % sudo git -C /usr/src fetch --all --tags
 % sudo git -C /usr/src checkout releng/14.3
 % sudo git -C /usr/src pull --ff-only
@@ -874,7 +877,7 @@ MODULE_VERSION(hello_world, 1);
 
 1. Create a `Makefile`:
 
-```
+```console
 # Makefile for hello_world kernel module
 
 KMOD=   hello_world
@@ -885,7 +888,7 @@ SRCS=   hello_world.c
 
 1. Build the module:
 
-```
+```console
 # make
 ```
 
@@ -893,13 +896,13 @@ This should create a file `hello.ko`.
 
 1. Load the module:
 
-```
+```console
 # kldload ./hello_world.ko
 ```
 
 Check the message in the system log:
 
-```
+```console
 % dmesg | tail -n 5
 ```
 
@@ -909,13 +912,13 @@ You should see:
 
 1. Unload the module:
 
-```
+```console
 # kldunload hello_world.ko
 ```
 
 Check again:
 
-```
+```console
 % dmesg | tail -n 5
 ```
 
@@ -993,11 +996,11 @@ If your VM disk is stored on a ZFS dataset, for example `/zroot/vm/freebsd.img`:
 
 ### Snapshots on Bare Metal
 
-If you're running FreeBSD directly on hardware, you don't have the luxury of GUI snapshots. But if you installed FreeBSD with **ZFS**, you still have access to the same powerful snapshot tools.
+If you're running FreeBSD directly on hardware, you don't have the luxury of GUI snapshots. But if you installed FreeBSD with **ZFS**, you still have access to the same snapshot tools.
 
 With ZFS:
 
-```
+```console
 # zfs snapshot -r zroot@clean-install
 ```
 
@@ -1061,7 +1064,7 @@ Record in your **lab logbook**: which method you used, how long it took, and how
 
 ### Wrapping Up
 
-By learning to use **snapshots and backups**, you've added one of the most important safety nets to your lab. Now you can crash, break, or misconfigure FreeBSD and recover in minutes. This freedom is what makes a lab so powerful, it lets you focus on learning, not on being afraid of mistakes.
+By learning to use **snapshots and backups**, you've added one of the most important safety nets to your lab. Now you can crash, break, or misconfigure FreeBSD and recover in minutes. This freedom is what makes a lab so valuable, it lets you focus on learning, not on being afraid of mistakes.
 
 In the next section, we'll set up **version control with Git** so you can track your progress, manage your experiments, and share your drivers.
 
@@ -1087,13 +1090,13 @@ Think of Git as the **lab notebook for your code**, only smarter: it not only re
 
 If you haven't already installed Git in section 2.5, do it now:
 
-```
+```console
 # pkg install git
 ```
 
 Check the version:
 
-```
+```console
 % git --version
 git version 2.45.2
 ```
@@ -1102,7 +1105,7 @@ git version 2.45.2
 
 Before using Git, configure your identity so your commits are labeled correctly:
 
-```
+```console
 % git config --global user.name "Your Name"
 % git config --global user.email "you@example.com"
 ```
@@ -1111,7 +1114,7 @@ This doesn't need to be your real name or email if you're just experimenting loc
 
 You can check your settings with:
 
-```
+```console
 % git config --list
 ```
 
@@ -1172,7 +1175,7 @@ For now, you can keep everything local. But if you want to sync your code betwee
 
 Basic workflow:
 
-```
+```console
 % git remote add origin git@github.com:yourname/mydriver.git
 % git push -u origin main
 ```
@@ -1269,7 +1272,7 @@ Git commit messages are a form of documentation. Together, they tell the story o
 
 Example:
 
-```
+```text
 Fix panic when unloading hello module
 
 The handler did not check for NULL before freeing resources,
@@ -1280,7 +1283,7 @@ causing a panic when unloading. Added a guard condition.
 
 In Section 2.1, we suggested starting a lab logbook. Now is a good time to make it a habit. Keep a text file (for example, `LABLOG.md`) in the root of your Git repository. Each time you try something new, add a short entry:
 
-```
+```text
 2025-08-23
 - Built hello module successfully.
 - Confirmed "Hello, kernel world!" appears in dmesg.
@@ -1321,9 +1324,9 @@ This log doesn't need to be polished, it's just for you. Later, when debugging, 
 
 You've now learned how to document your FreeBSD driver experiments so that you never lose track of what you did or why. With a `README`, meaningful commit messages, and a lab logbook, you're building habits that will make you a more professional and efficient developer.
 
-In the next section, we'll wrap up this chapter, reviewing everything you've built: a safe FreeBSD lab with the right tools, backups, version control, and documentation, all ready for the deeper journey into FreeBSD itself in Chapter 3.
+In the next section, we'll wrap up this chapter, reviewing everything you've built: a safe FreeBSD lab with the right tools, backups, version control, and documentation, all ready for the deeper exploration of FreeBSD itself in Chapter 3.
 
-### Bringing It All Together
+## Wrapping Up
 
 Congratulations! You've built your FreeBSD lab!
 

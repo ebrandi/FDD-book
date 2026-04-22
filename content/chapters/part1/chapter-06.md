@@ -1,11 +1,12 @@
 ---
 title: "The Anatomy of a FreeBSD Driver"
-description: "A deep dive into the internal structure, lifecycle, and essential components that define every FreeBSD device driver."
-author: "Edson Brandi"
-date: "2025-11-01"
-status: "complete"
-part: 1
+description: "The internal structure, lifecycle, and essential components that define every FreeBSD device driver."
+partNumber: 1
+partName: "Foundations: FreeBSD, C, and the Kernel"
 chapter: 6
+lastUpdated: "2026-04-20"
+status: "complete"
+author: "Edson Brandi"
 reviewer: "TBD"
 translator: "TBD"
 estimatedReadTime: 1080
@@ -15,7 +16,7 @@ estimatedReadTime: 1080
 
 ## Introduction
 
-If the previous chapters gave you the language and tools to work inside FreeBSD, this chapter will show you **how drivers are actually structured**. Think of it as moving from learning carpentry techniques to understanding architectural blueprints: before you build a house, you need to know where the foundation goes, how the frame connects, where utilities run, and how all the pieces fit together.
+Chapter 5 left you fluent in the kernel dialect of C: you know the safe way to allocate, lock, copy, and tear down inside the kernel, and you have seen how a one-line mistake can cost you a kernel panic. This chapter takes that fluency and points it at a concrete subject, the **shape of a FreeBSD driver**. Think of it as moving from learning carpentry techniques to understanding architectural blueprints: before you build a house, you need to know where the foundation goes, how the frame connects, where utilities run, and how all the pieces fit together.
 
 **Important**: This chapter focuses on understanding driver structure and patterns. You will not yet write a complete, fully functional driver in this chapter; that begins in Chapter 7. Here, we're building your mental model and pattern recognition skills first.
 
@@ -45,7 +46,7 @@ Think of this as learning to read blueprints before you start building.
 
 ### What This Chapter *Is Not*
 
-This chapter deliberately **defers deep mechanics** so we can focus on structure without overwhelming beginners. We will **not** dive deeply into:
+This chapter deliberately **defers deep mechanics** so we can focus on structure without overwhelming beginners. We will **not** cover in detail:
 
 - **Bus specifics (PCI/USB/ACPI/FDT):** We'll mention buses conceptually, but skip hardware- and bus-specific discovery/attachment details.
 - **Interrupt handling:** You'll see where handlers fit in a driver's lifecycle, not how to program or tune them.
@@ -56,7 +57,7 @@ This chapter deliberately **defers deep mechanics** so we can focus on structure
 
 If you're curious about these topics while reading, **great**, bookmark the terms and keep going. This chapter gives you the **map**; the detailed territories come later in the book.
 
-### How This Fits in Your Journey
+### Where This Chapter Fits
 
 You're entering the final chapter of **Part 1 - Foundations**. By the time you finish this chapter, you will have a clear **blueprint** of how a FreeBSD driver is shaped and how it plugs into the system, completing the foundation you've been building:
 
@@ -152,7 +153,7 @@ This lets you acknowledge your questions without derailing your current focus.
 
 ### Success Criteria
 
-By the end of this chapter, you should be able to:
+When you close this chapter you should be able to:
 
 - Open any FreeBSD driver and immediately locate its probe, attach, and detach functions.
 - Identify whether a driver is character, network, storage, or bus-oriented.
@@ -195,7 +196,7 @@ Seeing the full file shows you:
 
 **Practical tip**: Keep a second terminal or editor window open. When the text says:
 
-> "Here's an example from `/usr/src/sys/dev/null/null.c` (lines 67-73):"
+> "Here's an example from `null_cdevsw` in `/usr/src/sys/dev/null/null.c`:"
 
 Actually navigate there:
 ```bash
@@ -204,6 +205,8 @@ Actually navigate there:
 ```
 
 Use `/` in `less` to search for patterns like `probe` or `cdevsw`, and jump directly to relevant sections.
+
+> **A note on line numbers.** Wherever this chapter gives an occasional line number, treat it as accurate for the FreeBSD 14.3 tree at time of writing and nothing more. Function, structure, and table names are the durable reference. When a chapter exercise or hint would otherwise quote line numbers, we cite the enclosing function, `cdevsw` structure, or named array instead; open the file and jump to that symbol.
 
 ### Type the Micro-Snippets Yourself
 
@@ -259,7 +262,7 @@ This chapter repeatedly says things like:
 
 **Trust this structure**. Trying to learn everything at once leads to confusion and burnout.
 
-**Analogy**: When you learn to drive, you first understand the car's controls (steering, pedals, gearshift) before studying engine mechanics. Similarly, learn driver *structure* now, and dive into *mechanisms* later when you have context.
+**Analogy**: When you learn to drive, you first understand the car's controls (steering, pedals, gearshift) before studying engine mechanics. Similarly, learn driver *structure* now, and study *mechanisms* later when you have context.
 
 **Strategy**: When you hit a "defer this" moment, acknowledge it and move on. The deep topics are coming, and they'll make more sense once you've written a basic driver.
 
@@ -286,6 +289,8 @@ FreeBSD's section 9 manual pages document kernel interfaces. They're invaluable 
 ```
 
 This shows you all device-related functions at once.
+
+**Companion reference**: For a curated, book-internal summary of the same APIs you will meet throughout this chapter (`malloc(9)`, `mtx(9)`, `callout(9)`, `bus_alloc_resource_*`, `bus_space(9)`, Newbus macros, and more), Appendix A groups them into themed cheat sheets. It is not a replacement for `man 9`; it is the short lookup you reach for while reading, so you can keep your place in the chapter.
 
 ### Skim Code Before Reading Explanations
 
@@ -633,7 +638,7 @@ This mental model is your foundation. In the next section, we'll explore the dif
 
 Not all drivers are created equal. Depending on what your hardware does, you'll need to present the right "face" to the FreeBSD kernel. Think of driver families like professional specializations: a cardiologist and an orthopedic surgeon are both doctors, but they work very differently. Similarly, a character device driver and a network driver both interact with hardware, but they plug into different parts of the kernel.
 
-This section helps you **identify which family your driver belongs to** and understand the structural differences between them. We'll keep this at a recognition level, later chapters will dive into implementation.
+This section helps you **identify which family your driver belongs to** and understand the structural differences between them. We'll keep this at a recognition level, later chapters will cover implementation.
 
 ### Character Devices
 
@@ -891,7 +896,7 @@ Use this checklist to identify the right driver family for your hardware:
 **Mixed Models**:
 
 - Some devices (like `tun`) present both a control plane (character device) and a data plane (network interface or storage)
-- This is less common but powerful when needed
+- This is less common but useful when needed
 
 **Still unsure?**
 
@@ -1140,7 +1145,7 @@ These macros are the driver's "business card." They tell the kernel **what you a
 
 ```c
 /* Minimal pattern: pick the correct parent bus for your hardware */
-DRIVER_MODULE(mydriver, pci, mydriver_driver, 0, 0);
+DRIVER_MODULE(mydriver, pci, mydriver_driver, NULL, NULL);
 
 /*
  * Use the parent bus your device lives on: 'pci', 'usb', 'acpi', 'simplebus', etc.
@@ -1153,23 +1158,17 @@ DRIVER_MODULE(mydriver, pci, mydriver_driver, 0, 0);
 - **`mydriver`** - the driver name (shows up in logs and as the base of the unit name, like `mydriver0`).
 - **`pci`** - the **parent bus** where you attach (choose what matches your hardware: `pci`, `usb`, `acpi`, `simplebus`, ...).
 - **`mydriver_driver`** - your `driver_t` (declares method table and softc size).
-- **`0`** - **devclass** (pass `0` to let the kernel manage it automatically).
-- **`0`** - optional **event handler** for module load and unload notifications (usually `0` or `NULL` at first).
+- **`NULL`** - optional **module event handler** (called on `MOD_LOAD`/`MOD_UNLOAD`; use `NULL` unless you need module-level init).
+- **`NULL`** - optional **argument** passed to that event handler (use `NULL` when the handler is `NULL`).
 
 > **When to keep it minimal**
 >
-> Early in this chapter we are focused on the skeleton. Passing `0` for devclass and the event handler keeps things simple.
+> Early in this chapter we are focused on the skeleton. Passing `NULL` for both the event handler and its argument keeps things simple.
 > **Note:** pick the real parent bus for your device; `nexus` is the root bus and almost never the right choice for ordinary drivers.
 
-**Explicit devclass pattern (you will see this a lot too):**
-
-```
-static devclass_t mydriver_devclass;
-
-DRIVER_MODULE(mydriver, pci, mydriver_driver, mydriver_devclass, 0, 0);
-```
-
-Use an explicit `devclass_t` when you need tighter control over **unit numbering** and **aliases**, or when other code needs to **look up** your devclass by name.
+> **Historical note (pre-FreeBSD 13)**
+>
+> Older code you may find online sometimes shows a six-argument form such as `DRIVER_MODULE(name, bus, driver, devclass, evh, arg)` together with a separate `devclass_t` variable. Modern FreeBSD manages devclasses automatically, and the macro now takes exactly five arguments as shown above. If you copy a legacy example, drop the extra devclass argument before building.
 
 **What `DRIVER_MODULE` actually accomplishes**
 
@@ -1453,20 +1452,22 @@ mydriver_probe(device_t dev)
 }
 ```
 
-**Probe return values and priority**:
+**Probe return values and priority** (from `/usr/src/sys/sys/bus.h`):
 
-| Return Value          | Numeric Value | Meaning                                  |
-|-----------------------|---------------|------------------------------------------|
-| `BUS_PROBE_SPECIFIC`  | -20000        | Exactly matches this device variant      |
-| `BUS_PROBE_VENDOR`    | -10000        | Vendor-specific driver                   |
-| `BUS_PROBE_DEFAULT`   | 0             | Standard driver for this device class    |
-| `BUS_PROBE_GENERIC`   | 100           | Generic fallback (e.g., `ugen` for USB)  |
-| `BUS_PROBE_NOWILDCARD`| 50            | Don't match wildcards                    |
-| `ENXIO`               | 6             | Not our device                           |
+| Return Value            | Numeric Value   | Meaning                                           |
+|-------------------------|-----------------|---------------------------------------------------|
+| `BUS_PROBE_SPECIFIC`    | 0               | Exactly matches this device variant               |
+| `BUS_PROBE_VENDOR`      | -10             | Vendor-supplied driver                            |
+| `BUS_PROBE_DEFAULT`     | -20             | Standard driver for this device class             |
+| `BUS_PROBE_LOW_PRIORITY`| -40             | Works, but something else is probably better      |
+| `BUS_PROBE_GENERIC`     | -100            | Generic fallback (e.g., class-level match)        |
+| `BUS_PROBE_HOOVER`      | -1000000        | Catch-all for devices with no real driver (`ugen`)|
+| `BUS_PROBE_NOWILDCARD`  | -2000000000     | Only attach when the parent asks for me by name   |
+| `ENXIO`                 | 6 (positive)    | Not our device                                    |
 
-**Lower numbers win**. If multiple drivers return success, the kernel chooses the one with the lowest (most specific) value.
+**Closer to zero wins.** All of these priorities (except `ENXIO`) are zero or negative, and Newbus picks the driver whose return value is the **greatest** one, which means the one least negative, that is, the most specific match. `BUS_PROBE_SPECIFIC` (0) beats everything; `BUS_PROBE_DEFAULT` (-20) beats `BUS_PROBE_GENERIC` (-100); and anything non-negative is treated as an error.
 
-**Why this matters**: Allows specific drivers to override generic ones. Example: A vendor-optimized driver can beat a generic class driver by returning `BUS_PROBE_VENDOR`.
+**Why this matters**: The priority scheme lets a specialised driver override a generic one without either of them knowing about the other. A vendor-optimised driver returning `BUS_PROBE_VENDOR` (-10) will beat a base-OS driver returning `BUS_PROBE_DEFAULT` (-20) for the same device.
 
 **Rules for probe**:
 
@@ -1847,7 +1848,7 @@ Terminal 2:
 ```
 
 **What you'll see**:
-```
+```text
 Oct 14 12:34:56 freebsd kernel: em0: <Intel(R) PRO/1000 Network Connection> port 0xc000-0xc01f mem 0xf0000000-0xf001ffff at device 2.0 on pci0
 Oct 14 12:34:56 freebsd kernel: em0: Ethernet address: 00:0c:29:3a:4f:1e
 Oct 14 12:34:56 freebsd kernel: em0: netmap queues/slots: TX 1/1024, RX 1/1024
@@ -1856,7 +1857,7 @@ Oct 14 12:34:56 freebsd kernel: em0: netmap queues/slots: TX 1/1024, RX 1/1024
 The first line comes from the driver's attach function. You can see it detected the device, allocated resources, and initialized.
 
 **On unload**:
-```
+```text
 Oct 14 12:35:10 freebsd kernel: em0: detached
 ```
 
@@ -1875,7 +1876,7 @@ FreeBSD's `devmatch` utility shows unattached devices and suggests drivers:
 ```
 
 Example output:
-```
+```text
 pci0:0:2:0 needs if_em
 ```
 
@@ -1911,7 +1912,7 @@ The Newbus lifecycle follows a strict sequence:
 
 ## Character Device Entry Points: Your I/O Surface
 
-Now that you understand how drivers attach and detach, let's explore how they actually **do work**. For character devices, this means implementing the **cdevsw** (character device switch), a structure that routes user-space system calls to your driver functions.
+Now that you understand how drivers attach and detach, let's look at how they actually **do work**. For character devices, this means implementing the **cdevsw** (character device switch), a structure that routes user-space system calls to your driver functions.
 
 Think of cdevsw as a **menu of services** your driver offers. When a program opens `/dev/yourdevice` and calls `read()`, the kernel looks up your driver's `d_read` function and calls it. This section shows you how that routing works.
 
@@ -1953,12 +1954,11 @@ static struct cdevsw null_cdevsw = {
         .d_read =       (d_read_t *)nullop,
         .d_write =      null_write,
         .d_ioctl =      null_ioctl,
-        .d_kqfilter =   kqfilter,
         .d_name =       "null",
 };
 ```
 
-Notice what's missing: no `d_open` or `d_close`. If you don't implement a method, the kernel provides sensible defaults:
+Notice what's missing: no `d_open`, no `d_close`, no `d_poll`, no `d_kqfilter`. If you don't implement a method, the kernel provides sensible defaults:
 
 - Missing `d_open`  ->  Always succeeds
 - Missing `d_close`  ->  Always succeeds
@@ -2342,7 +2342,7 @@ Kqueue is more complex. For beginners, **implementing poll is sufficient**. Kque
 
 ### mmap: When Mapping Makes Sense
 
-Mmap allows user programs to **map device memory directly into their address space**. This is powerful but advanced.
+Mmap allows user programs to **map device memory directly into their address space**. This is useful but advanced.
 
 **When to support mmap**:
 
@@ -2462,6 +2462,8 @@ Character device entry points route user-space I/O to your driver:
 - **Permissions**: Set appropriate access controls with make_dev()
 
 **Next**, we'll look at **alternative surfaces** for network and storage drivers, which present very different interfaces.
+
+> **If you need a pause, this is a good place.** You have just crossed the halfway point of the chapter. Everything up to here, the big picture, the driver families, the softc and kobj method tables, the Newbus lifecycle, and the full character-device I/O surface, is enough foundation to revisit later as a single unit. The sections that follow shift focus: alternative surfaces for network and storage, a safe preview of resources and registers, device-node creation and destruction, module packaging, logging, and a guided tour of real tiny drivers. If your attention is still fresh, continue straight on. If it is flagging, close the book, write one or two sentences in your lab logbook about what clicked, and come back to this marker tomorrow. Neither choice is wrong.
 
 ## Alternative Surfaces: Network and Storage (Fast Orientation)
 
@@ -2765,7 +2767,7 @@ This section provided **recognition-level** understanding of alternative surface
 
 **Next**, we'll preview **resources and registers**, the vocabulary for hardware access.
 
-## Resources & Registers: A Safe Preview (No Deep Dive Yet)
+## Resources and Registers: A Safe Preview
 
 Drivers don't just manage data structures, they **talk to hardware**. This means claiming resources (memory regions, IRQs), reading/writing registers, setting up interrupts, and potentially using DMA. This section provides just enough vocabulary to recognize these patterns without drowning in implementation details. Think of it as learning to recognize tools in a workshop before you learn to use them.
 
@@ -3101,22 +3103,22 @@ if (sc->cdev != NULL) {
 }
 ```
 
-**The problem**: `destroy_dev()` is **synchronous**, it waits for all open file descriptors to close. This can block indefinitely if a program has your device open.
+**What `destroy_dev()` actually does**: It removes the node from `/dev`, blocks new callers from entering any of your `cdevsw` methods, and then **waits for threads currently executing inside your `d_open`, `d_read`, `d_write`, `d_ioctl`, and friends to leave**. Open file descriptors may still exist after it returns, but the kernel guarantees none of your methods are running or will ever run again for that `cdev`. Because it can sleep, `destroy_dev()` must be called from a sleepable context and **never from inside a `d_close` handler or while holding a mutex**.
 
-**Better approach: destroy_dev_sched()**
+**When you cannot call `destroy_dev()` directly: destroy_dev_sched()**
 
-For drivers that might be unloaded while in use:
+If you need to tear the node down from a context where you cannot sleep, or from inside a cdev method itself, schedule the destruction instead:
 
 ```c
 if (sc->cdev != NULL) {
-    destroy_dev_sched(sc->cdev);  /* Schedule for destruction */
+    destroy_dev_sched(sc->cdev);  /* Schedule for destruction in a safe context */
     sc->cdev = NULL;
 }
 ```
 
-This returns immediately and defers actual destruction until all users close the device.
+`destroy_dev_sched()` returns immediately; the kernel calls `destroy_dev()` on your behalf from a safe worker thread. For ordinary `DEVICE_DETACH` paths the plain `destroy_dev()` is the right choice and what you will use most often.
 
-**When to destroy**: Always in your **detach** function, before releasing other resources.
+**When to destroy**: Always in your **detach** function, before releasing other resources that the cdev methods might still touch.
 
 **Complete example pattern**:
 
@@ -3126,9 +3128,10 @@ mydriver_detach(device_t dev)
 {
     struct mydriver_softc *sc = device_get_softc(dev);
     
-    /* Destroy device node first */
+    /* Destroy device node first: no new or in-flight cdev methods
+     * can run after this returns. */
     if (sc->cdev != NULL) {
-        destroy_dev_sched(sc->cdev);
+        destroy_dev(sc->cdev);
         sc->cdev = NULL;
     }
     
@@ -3241,7 +3244,7 @@ A **kernel module** is compiled, relocatable code that the kernel can load at ru
 % make
 ```
 
-FreeBSD's build system (`/usr/share/mk/bsd.kmod.mk`) compiles your source and links it into a `.ko` file.
+FreeBSD's build system (`/usr/src/share/mk/bsd.kmod.mk`) compiles your source and links it into a `.ko` file. When you run `make`, the installed copy at `/usr/share/mk/bsd.kmod.mk` is the one actually consulted; the two files are kept in sync by the FreeBSD build.
 
 **Why modules matter**:
 
@@ -3322,6 +3325,8 @@ DECLARE_MODULE(mydriver, mydriver_mod, SI_SUB_DRIVERS, SI_ORDER_MIDDLE);
 MODULE_VERSION(mydriver, 1);
 ```
 
+`DECLARE_MODULE` is the lowest-level of these macros and works for any kernel module. For character-device pseudo-drivers, the kernel also provides `DEV_MODULE`, a thin wrapper that expands to `DECLARE_MODULE` with the right subsystem and order preset. You will see `DEV_MODULE(null, null_modevent, NULL);` in `/usr/src/sys/dev/null/null.c`, for example.
+
 **For Newbus drivers**: The `DRIVER_MODULE` macro handles most of this automatically. You typically don't need a separate module event handler unless you have global initialization beyond per-device state.
 
 **Example: Pseudo-device with module event handler**
@@ -3366,7 +3371,7 @@ DEV_MODULE(null, null_modevent, NULL);
 MODULE_VERSION(null, 1);
 ```
 
-This creates `/dev/null` and `/dev/zero` when loaded, destroys them when unloaded.
+This creates `/dev/full`, `/dev/null`, and `/dev/zero` when loaded, and destroys all three when unloaded.
 
 ### Declaring Dependencies & Versions
 
@@ -3619,7 +3624,7 @@ device_printf(dev, "Hardware error: status=0x%x\\n", status);
 
 **Output**:
 
-```
+```text
 mydriver0: Attached successfully
 mydriver0: Hardware error: status=0x42
 ```
@@ -4996,9 +5001,9 @@ This lifecycle management, explicit load and unload handlers, registration macro
 
 ##### A)  Map System Calls to `cdevsw` (Warm-up)
 
-1. Which function handles writes to `/dev/full`, and what errno value does it return? Quote the function name and the return statement. What does this error code mean to userspace applications? *Hint:* Lines 85-89.
+1. Which function handles writes to `/dev/full`, and what errno value does it return? Quote the function name and the return statement. What does this error code mean to userspace applications? *Hint:* look at `full_write`.
 
-2. Which function handles reads from both `/dev/zero` and `/dev/full`? Quote the relevant `.d_read` assignments from both `cdevsw` structures. Why is it correct for both devices to share the same read handler, what behavior do they have in common? *Hint:* Lines 58-64 (full_cdevsw), 74-81 (zero_cdevsw), 150-167 (zero_read).
+2. Which function handles reads from both `/dev/zero` and `/dev/full`? Quote the relevant `.d_read` assignments from both `cdevsw` structures. Why is it correct for both devices to share the same read handler, what behavior do they have in common? *Hint:* compare the `full_cdevsw` and `zero_cdevsw` structures and read `zero_read`.
 
 3. Create a table listing each `cdevsw`'s name and its read/write function assignments:
 
@@ -5008,15 +5013,15 @@ This lifecycle management, explicit load and unload handlers, registration macro
 | null_cdevsw | ? | ? | ? |
 | zero_cdevsw | ? | ? | ? |
 
-	Quote the line ranges used for each structure. *Hint:* Lines 58-81.
+	Quote each structure. *Hint:* search for the three `*_cdevsw` definitions at the top of the file.
 
 ##### B) Read Path Reasoning with `uiomove()`
 
-1. Locate the `KASSERT` that verifies this is a read operation. Quote the line and explain what would happen if this assertion failed. What does the `__func__` macro provide in the error message? *Hint:* Lines 156-157.
+1. Locate the `KASSERT` that verifies this is a read operation. Quote the line and explain what would happen if this assertion failed. What does the `__func__` macro provide in the error message? *Hint:* look at the top of `zero_read`.
 
-2. Explain the role of `uio->uio_resid` in the while loop condition. What does this field represent, and how does it change during the loop? Quote the while condition. *Hint:* Line 159.
+2. Explain the role of `uio->uio_resid` in the while loop condition. What does this field represent, and how does it change during the loop? Quote the while condition. *Hint:* inside `zero_read`.
 
-3. Why does the code limit each transfer to `ZERO_REGION_SIZE` rather than copying all requested bytes at once? What would be the problem with transferring 1MB in a single `uiomove()` call? Quote the if statement that implements this limit. *Hint:* Lines 161-162.
+3. Why does the code limit each transfer to `ZERO_REGION_SIZE` rather than copying all requested bytes at once? What would be the problem with transferring 1MB in a single `uiomove()` call? Quote the if statement that implements this limit. *Hint:* the clamp is the first thing inside the `zero_read` loop body.
 
 4. The code references two pre-allocated kernel resources: `zero_region` (a pointer) and `ZERO_REGION_SIZE` (a constant). Quote the lines where each is used. Then use grep to find where `ZERO_REGION_SIZE` is defined:
 
@@ -5024,11 +5029,11 @@ This lifecycle management, explicit load and unload handlers, registration macro
 % grep -r "define.*ZERO_REGION_SIZE" /usr/src/sys/amd64/include/
 ```
 
-	What is the value on your system? *Hint:* Lines 158 (zero_region), 161-162 (ZERO_REGION_SIZE).
+	What is the value on your system? *Hint:* `zero_region` is used inside `zero_read`, and `ZERO_REGION_SIZE` is its size clamp.
 
 ##### C) Write Path Contrasts
 
-1. Compare the implementations of `null_write` (lines 93-98) and `full_write` (lines 85-89). For each function, answer:
+1. Compare the implementations of `null_write` and `full_write`. For each function, answer:
 
 - What does it do with `uio->uio_resid`?
 - What value does it return?
@@ -5048,9 +5053,9 @@ This lifecycle management, explicit load and unload handlers, registration macro
 
 ##### D) Minimal `ioctl` Shape
 
-1. Create a comparison table of ioctl handling. For `null_ioctl` (lines 102-125) and `zero_ioctl` (lines 129-146), fill in:
+1. Create a comparison table of ioctl handling. For `null_ioctl` and `zero_ioctl`, fill in:
 
-```
+```text
 Commandnull_ioctl behaviorzero_ioctl behavior
 DIOCSKERNELDUMP??
 FIONBIO??
@@ -5060,11 +5065,11 @@ Unknown command??
 
 	For each entry, quote the relevant case statement and explain the behavior.
 
-2. The `FIOASYNC` case has special handling when enabling async I/O. Quote the conditional check and explain why these devices reject async I/O mode. *Hint:* Lines 117-120, 138-141.
+2. The `FIOASYNC` case has special handling when enabling async I/O. Quote the conditional check and explain why these devices reject async I/O mode. *Hint:* look at the `FIOASYNC` case in both `null_ioctl` and `zero_ioctl`.
 
 ##### E) Device Node Lifecycle
 
-1. During `MOD_LOAD`, three device nodes are created via `make_dev_credf()`. For each call (lines 177-182), identify:
+1. During `MOD_LOAD`, three device nodes are created via `make_dev_credf()`. For each call (in the `MOD_LOAD` arm of `null_modevent`), identify:
 
 - The device name (what appears in /dev/)
 - The cdevsw pointer (which function table)
@@ -5073,7 +5078,7 @@ Unknown command??
 
 	Quote one complete `make_dev_credf()` call and label each parameter.
 
-2. During `MOD_UNLOAD`, `destroy_dev()` is called three times (lines 186-188). Quote these lines and explain:
+2. During `MOD_UNLOAD`, `destroy_dev()` is called three times (in the `MOD_UNLOAD` arm of `null_modevent`). Quote these calls and explain:
 
 - Why do we need the global pointers (`full_dev`, `null_dev`, `zero_dev`)?
 - What would happen if we forgot to call `destroy_dev()` during unload?
@@ -5104,27 +5109,27 @@ Unknown command??
 % dd if=/dev/full bs=16 count=1 2>/dev/null | hexdump -C
 ```
 
-​	What output do you see? Look at the `full_cdevsw` structure (lines 58-64) which `.d_read` function does it use? 
+	What output do you see? Look at the `full_cdevsw` structure: which `.d_read` function does it use? 
 
-​	Why does `/dev/full` return zeros instead of an error?
+	Why does `/dev/full` return zeros instead of an error?
 
 ##### G) Module Lifecycle
 
-1. Look at the `null_modevent` switch statement (lines 173-196). List all the case labels and what each one does. Which cases actually perform work versus just returning success?
+1. Look at the `null_modevent` switch statement. List all the case labels and what each one does. Which cases actually perform work versus just returning success?
 
-2. Find the two macros at the end of the file (lines 201-202) that register this module. Quote them and explain:
+2. Find the two macros at the end of the file that register this module. Quote them and explain:
 
 - What does `DEV_MODULE` do?
 - What does `MODULE_VERSION` do?
 - Why do both use the name "null"?
 
-3. The `MAKEDEV_ETERNAL_KLD` flag is used in all three `make_dev_credf()` calls. What does this flag mean, and why is it appropriate for these devices? *Hint:* Lines 177-182, consider what happens if a process has /dev/null open when you try to unload the module.
+3. The `MAKEDEV_ETERNAL_KLD` flag is used in all three `make_dev_credf()` calls. What does this flag mean, and why is it appropriate for these devices? *Hint:* look at the `make_dev_credf()` calls inside `null_modevent`, and consider what happens if a process has /dev/null open when you try to unload the module.
 
 #### Stretch (thought experiment)
 
-**Stretch 1:** Examine `null_write` (lines 93-98). The function does two things: sets `uio->uio_resid = 0` and returns 0.
+**Stretch 1:** Examine `null_write`. The function does two things: sets `uio->uio_resid = 0` and returns 0.
 
-Thought experiment: If we changed line 98 to `return (EIO);` but kept line 95 unchanged, what would happen?
+Thought experiment: If we changed the `return (0);` to `return (EIO);` but kept the `uio->uio_resid = 0;` assignment unchanged, what would happen?
 
 - What would the kernel think about bytes written?
 - What would `write(2)` return to userspace?
@@ -5132,7 +5137,7 @@ Thought experiment: If we changed line 98 to `return (EIO);` but kept line 95 un
 
 	Quote the lines involved and explain the interaction between `uio_resid` and the return value.
 
-**Stretch 2:** In `zero_read` (lines 159-164), the code limits each transfer to `ZERO_REGION_SIZE`. Quote lines 161-162 where this limit is enforced.
+**Stretch 2:** In `zero_read`, the code limits each transfer to `ZERO_REGION_SIZE`. Quote the if statement where this limit is enforced.
 
 	Thought experiment: Suppose we removed this check and always did:
 
@@ -5151,7 +5156,7 @@ error = uiomove(zbuf, len, uio);
 
 #### Bridge to the next tour
 
-Before moving on: if you can match each user-visible behavior to specific line ranges in `null.c`, you've internalized the **character-device skeleton** we'll keep meeting. Next we'll look at **`led(4)`**, which remains small but adds a user-visible **control surface** (writes that change state). Keep watching for three things: **how the device node is created**, **how operations are routed**, and **how the driver declines unsupported actions cleanly**.
+Before moving on: if you can match each user-visible behavior to the right function in `null.c`, you've internalized the **character-device skeleton** we'll keep meeting. Next we'll look at **`led(4)`**, which remains small but adds a user-visible **control surface** (writes that change state). Keep watching for three things: **how the device node is created**, **how operations are routed**, and **how the driver declines unsupported actions cleanly**.
 
 ### Tour 2 - A tiny write-only control surface with timers: `led(4)`
 
@@ -5186,7 +5191,7 @@ In one file we get a practical pattern for **write-driven device control** backe
 
 ##### Headers and Subsystem Interface
 
-The LED driver begins with kernel headers and a crucial subsystem header that establishes its role as an infrastructure component used by other drivers. Unlike the null driver which stands alone, the LED driver provides services to hardware drivers that need to expose status indicators.
+The LED driver begins with kernel headers and a subsystem header that establishes its role as an infrastructure component used by other drivers. Unlike the null driver which stands alone, the LED driver provides services to hardware drivers that need to expose status indicators.
 
 ##### Standard Kernel Headers
 
@@ -5367,7 +5372,7 @@ All must be freed during `led_destroy()` to prevent memory leaks. The structure'
 
 The `ledsc` structure and the `/dev/led/name` device node are bidirectionally linked:
 
-```
+```text
 struct cdev (device node)
      ->  si_drv1
 struct ledsc
@@ -5628,7 +5633,7 @@ The period character '.' signals pattern end. Unlike most patterns which loop in
 
 **Decrement blinker count**: Reducing `blinkers` tracks that one fewer LED needs servicing. When this counter reaches zero (checked at function end), the timer stops scheduling itself.
 
-**Skip remaining code**: The `continue` jumps to the next LED in the list. Pattern advancement and looping (lines 81-83) don't execute for terminated patterns.
+**Skip remaining code**: The `continue` jumps to the next LED in the list. The pattern-advance and wrap-around code at the tail of `led_timeout` (the `sc->ptr++` step and the `*sc->ptr == '\0'` rewind) does not execute for terminated patterns.
 
 ##### Heartbeat Pattern: Second-Based Toggle
 
@@ -5880,7 +5885,7 @@ The return value 0 signals success. This function currently cannot fail, but ret
 
 **Setting initial pattern on inactive LED**:
 
-```
+```text
 Before: sc->ptr = NULL, sc->spec = NULL, blinkers = 0
 Call:   led_state(sc, &pattern_sb, 0)
 After:  sc->ptr = sc->str, sc->spec = pattern_sb, blinkers = 1
@@ -5889,7 +5894,7 @@ After:  sc->ptr = sc->str, sc->spec = pattern_sb, blinkers = 1
 
 **Replacing one pattern with another**:
 
-```
+```text
 Before: sc->ptr = old_str, sc->spec = old_sb, blinkers = 3
 Call:   led_state(sc, &new_sb, 0)
 After:  sc->ptr = new_str, sc->spec = new_sb, blinkers = 3
@@ -5898,7 +5903,7 @@ After:  sc->ptr = new_str, sc->spec = new_sb, blinkers = 3
 
 **Changing from pattern to static**:
 
-```
+```text
 Before: sc->ptr = pattern_str, sc->spec = pattern_sb, blinkers = 1
 Call:   led_state(sc, &NULL_ptr, 1)
 After:  sc->ptr = NULL, sc->spec = NULL, blinkers = 0
@@ -5908,7 +5913,7 @@ After:  sc->ptr = NULL, sc->spec = NULL, blinkers = 0
 
 **Setting static state on already-static LED**:
 
-```
+```text
 Before: sc->ptr = NULL, sc->spec = NULL, blinkers = 0
 Call:   led_state(sc, &NULL_ptr, 0)
 After:  sc->ptr = NULL, sc->spec = NULL, blinkers = 0
@@ -6322,7 +6327,7 @@ The check `if (sb != NULL)` handles both initial pattern installation (no previo
 
 The whole sequence from userspace write to LED state change (the flow below uses a theoretical device, to illustrate the flow):
 
-```
+```text
 User: echo "f" > /dev/led/disk0
      -> 
 led_write() called by kernel
@@ -6364,35 +6369,35 @@ The function has multiple error exits, each with proper cleanup:
 
 **Size validation failure**:
 
-```
+```text
 Check uio_resid > 512  ->  return EINVAL
 (nothing allocated yet, no cleanup needed)
 ```
 
 **Allocation failure**:
 
-```
+```text
 malloc() returns NULL  ->  kernel panics (M_WAITOK)
 (M_WAITOK means "wait for memory, never fail")
 ```
 
 **Copyin failure**:
 
-```
+```text
 uiomove() fails  ->  free(s)  ->  return EFAULT
 (temporary buffer freed, no other resources allocated)
 ```
 
 **Parse failure**:
 
-```
+```text
 led_parse() fails  ->  free(s)  ->  return EINVAL
 (temporary buffer freed, no string buffer created)
 ```
 
 **State installation success**:
 
-```
+```text
 led_state() succeeds  ->  sbuf_delete(old)  ->  return 0
 (old pattern freed, new pattern installed)
 ```
@@ -6485,7 +6490,7 @@ else error = ENOENT;
 
 The provided fragment omits several critical lines visible in the complete function:
 
-**Lock acquisition** (before line 251):
+**Lock acquisition** (before the `LIST_FOREACH` loop in `led_set`):
 
 ```c
 mtx_lock(&led_mtx);
@@ -6493,7 +6498,7 @@ mtx_lock(&led_mtx);
 
 The LED list must be locked before traversal to prevent concurrent modifications. If one thread is searching the list while another thread destroys an LED, the search might access freed memory. The mutex serializes list access.
 
-**Lock release and cleanup** (after line 255):
+**Lock release and cleanup** (after the state-install call in `led_set`):
 
 ```c
 mtx_unlock(&led_mtx);
@@ -6508,7 +6513,7 @@ After the state installation attempt, the mutex is released and the old pattern 
 
 Both `led_write` and `led_set` follow the same pattern:
 
-```
+```text
 Parse command  ->  Acquire lock  ->  Find LED  ->  Install state  ->  Release lock  ->  Cleanup
 ```
 
@@ -6574,7 +6579,7 @@ The function is thread-safe through mutex protection. Multiple threads can call 
 
 **Scenario**: Thread A sets "disk0" to "f" while Thread B sets "power" to "1".
 
-```
+```text
 Thread A                    Thread B
 Parse "f"  ->  "Aa"            Parse "1"  ->  state=1
 Lock led_mtx                (blocks on lock)
@@ -6682,7 +6687,7 @@ This minimalism contrasts with the null driver's more complete interface (which 
 
 A critical distinction from the null driver: this **single** `cdevsw` serves **all** LED devices. When the system has three LEDs registered:
 
-```
+```text
 /dev/led/disk0   ->  led_cdevsw
 /dev/led/power   ->  led_cdevsw
 /dev/led/status  ->  led_cdevsw
@@ -6938,7 +6943,7 @@ The two-lock design enables safe concurrent operations:
 
 **Scenario**: Thread A creates "disk0" while Thread B creates "power".
 
-```
+```text
 Thread A                    Thread B
 Allocate sc1                Allocate sc2
 Lock led_sx (exclusive)     (blocks on led_sx)
@@ -7119,14 +7124,14 @@ If an LED is destroyed while actively blinking, the function handles this cleanl
 
 **Before destruction**:
 
-```
+```text
 LED state: ptr = "AaAa", spec = sbuf, blinkers = 1
 Timer: scheduled, will fire in 0.1s
 ```
 
 **During destruction**:
 
-```
+```text
 Mutex locked
 dev->si_drv1 = NULL (breaks write path)
 blinkers--  (now 0)
@@ -7138,7 +7143,7 @@ sbuf_delete (frees pattern)
 
 **After destruction**:
 
-```
+```text
 LED state: freed
 Timer: stopped
 Device: removed from /dev
@@ -7152,7 +7157,7 @@ The two-phase locking (mutex then exclusive lock) prevents several race conditio
 
 **Race 1: Write vs. Destroy**
 
-```
+```text
 Thread A (write)                Thread B (destroy)
 Begin led_write()               Begin led_destroy()
                                 Lock led_mtx
@@ -7170,7 +7175,7 @@ The write operation safely detects the destroyed LED via the NULL check and retu
 
 **Race 2: Timer vs. Destroy**
 
-```
+```text
 Timer callback running          led_destroy() called
 Iterating LED list              Lock led_mtx (blocks)
 Process this LED                ...
@@ -7319,7 +7324,7 @@ The `SYSINIT` mechanism ensures proper initialization order:
 
 **Before LED init**:
 
-```
+```text
 Memory allocator running (malloc works)
 Lock primitives available (mtx_init, sx_init work)
 Timer subsystem operational (callout_init works)
@@ -7328,7 +7333,7 @@ Device filesystem ready (make_dev will work later)
 
 **During LED init**:
 
-```
+```text
 led_drvinit() called
  -> 
 Create unit allocator
@@ -7338,7 +7343,7 @@ Prepare timer infrastructure
 
 **After LED init**:
 
-```
+```text
 Hardware drivers attach
  -> 
 Call led_create()
@@ -7401,7 +7406,7 @@ This minimal initialization reflects good design: do the minimum necessary work 
 
 The full sequence from power-on to working LEDs:
 
-```
+```text
 1. Kernel starts
 2. Early boot (memory, interrupts, etc.)
 3. SYSINIT runs:
@@ -7441,7 +7446,7 @@ This design philosophy, initialize infrastructure early, create instances lazily
 
 ##### A) Structure and Global State
 
-1. Examine the `struct ledsc` definition (lines 30-42). This structure contains both device identity and pattern execution state. Create a table categorizing the fields:
+1. Examine the `struct ledsc` definition near the top of `led.c`. This structure contains both device identity and pattern execution state. Create a table categorizing the fields:
 
 | Field | Purpose | Category          |
 | ----- | ------- | ----------------- |
@@ -7452,7 +7457,7 @@ This design philosophy, initialize infrastructure early, create instances lazily
 
 	Quote the fields related to pattern execution (`str`, `ptr`, `count`, `last_second`) and explain the role of each in one sentence.
 
-2. Locate the global variables (lines 44-51). For each one, explain its purpose:
+2. Locate the file-scope statics that follow `struct ledsc` (`led_unit`, `led_mtx`, `led_sx`, `led_list`, `led_ch`, `blinkers`, and the `M_LED` `MALLOC_DEFINE`). For each one, explain its purpose:
 
 - `led_unit` - what does this allocate?
 - `led_mtx` vs. `led_sx` - why two locks? What does each protect?
@@ -7462,11 +7467,11 @@ This design philosophy, initialize infrastructure early, create instances lazily
 
 Quote the declaration lines.
 
-3. Examine the `led_cdevsw` structure (lines 272-276). Which operation is defined? Which operations are notably absent (compare to null.c)? What appears under `/dev` when LEDs are created?
+3. Examine the `led_cdevsw` structure. Which operation is defined? Which operations are notably absent (compare to null.c)? What appears under `/dev` when LEDs are created?
 
 ##### B) Write-to-Blink Path
 
-1. Trace the data flow in `led_write()` (lines 213-237):
+1. Trace the data flow in `led_write()`:
 
 - Find the size check - what's the limit and why?
 - Find the buffer allocation - why `uio_resid + 1`?
@@ -7476,7 +7481,7 @@ Quote the declaration lines.
 
 Quote each step and write one sentence explaining its purpose.
 
-2.  In `led_state()` (lines 89-112), trace two paths:
+2.  In `led_state()`, trace two paths:
 
 **Path 1** - Installing a pattern (sb != NULL):
 
@@ -7495,12 +7500,12 @@ Quote the key lines for each path.
 3. Explain the timer-to-pattern connection:
 
 - When `blinkers` goes from 0 -> 1, what must happen? (Hint: who schedules the timer?)
-- When `blinkers` goes from 1 -> 0, what must happen? (Hint: line 317-318)
+- When `blinkers` goes from 1 -> 0, what must happen? (Hint: look for `LIST_EMPTY(&led_list)` and the adjacent `callout_stop(&led_ch)` call in `led_destroy`.)
 - Why doesn't `led_state()` directly schedule the timer?
 
 ##### C) Timer Callback State Machine
 
-1. In `led_timeout()` (lines 54-87), explain the pattern interpreter:
+1. In `led_timeout()`, explain the pattern interpreter:
 
 Create a table showing what each code does:
 
@@ -7525,7 +7530,7 @@ Trace pattern "Ac" (on 0.1s, off 0.3s) through three timer ticks:
 - Tick 2: What happens?
 - Tick 3: What happens?
 
-3. Find the timer rescheduling logic (line 85-86):
+3. Find the timer rescheduling logic at the tail of `led_timeout` (the `if (blinkers > 0)` guard followed by `callout_reset(&led_ch, hz / 10, led_timeout, p)`):
 
 - What condition must be true for rescheduling?
 - What's the delay (`hz / 10` means what in seconds)?
@@ -7533,7 +7538,7 @@ Trace pattern "Ac" (on 0.1s, off 0.3s) through three timer ticks:
 
 ##### D) Pattern Parsing DSL
 
-1. For the flash command "f2" (lines 135-138):
+1. For the flash command "f2" (the `case 'f':` arm inside `led_parse`):
 
 - What does the digit '2' map to (i = ?)?
 - What two-character string is generated?
@@ -7542,7 +7547,7 @@ Trace pattern "Ac" (on 0.1s, off 0.3s) through three timer ticks:
 
 Quote the lines and calculate the blink rate.
 
-2. For the Morse command "m...---..." (lines 187-199):
+2. For the Morse command "m...---..." (the `case 'm':` arm inside `led_parse`):
 
 - What string is generated for '.' (dot)?
 - What string is generated for '-' (dash)?
@@ -7551,7 +7556,7 @@ Quote the lines and calculate the blink rate.
 
 Quote the `sbuf_cat()` calls and explain how this implements standard Morse timing (dot = 1 unit, dash = 3 units).
 
-3. For the digit command "d12" (lines 149-161):
+3. For the digit command "d12" (the `case 'd':` arm inside `led_parse`):
 
 - How is digit '1' represented in flashes?
 - How is digit '2' represented in flashes?
@@ -7562,7 +7567,7 @@ Quote the loop and explain the formula for flash count.
 
 ##### E) Dynamic Device Lifecycle
 
-1. In `led_create_state()` (lines 286-309), identify the initialization sequence:
+1. In `led_create_state()`, identify the initialization sequence:
 
 - What's allocated first and with what flags?
 - Which lock is acquired for device creation? Why exclusive?
@@ -7572,7 +7577,7 @@ Quote the loop and explain the formula for flash count.
 
 Quote each phase and explain the lock separation.
 
-2. In `led_destroy()` (lines 306-329), trace the cleanup:
+2. In `led_destroy()`, trace the cleanup:
 
 - Why is `dev->si_drv1` set to NULL immediately?
 - When is `blinkers` decremented?
@@ -7597,7 +7602,7 @@ Create a table mapping each `led_create()` allocation to its corresponding `led_
 
 Quote the LED lookup logic in both functions.
 
-2. Find the `led_cdevsw` declaration (lines 272-276) and explain why it's shared:
+2. Find the `led_cdevsw` declaration and explain why it's shared:
 
 - How many `cdevsw` structures exist for N LEDs?
 - How does `led_write()` know which LED it's writing to?
@@ -7605,7 +7610,7 @@ Quote the LED lookup logic in both functions.
 
 ##### G) System Integration
 
-1. Examine the initialization (lines 331-341):
+1. Examine the initialization (`led_drvinit` and its `SYSINIT` registration):
 
 - What does `SYSINIT` do and when does it run?
 - What are the four resources initialized in `led_drvinit()`?
@@ -7662,7 +7667,7 @@ echo "xyz" > /dev/led/SOME_LED_NAME
 
 #### Stretch (thought experiments)
 
-1. The timer self-rescheduling logic (line 85-86):
+1. The timer self-rescheduling logic (the `if (blinkers > 0)` guard plus `callout_reset(&led_ch, hz / 10, led_timeout, p)` at the tail of `led_timeout`):
 
 Suppose we removed the `if (blinkers > 0)` check and always called:
 
@@ -7678,7 +7683,7 @@ Trace what happens when:
 
 What's the symptom? Where's the wasted resource? Why does the current check prevent this?
 
-2. The write size limit (lines 220-221):
+2. The write size limit (the `if (uio->uio_resid > 512) return (EINVAL);` check in `led_write`):
 
 The code rejects writes over 512 bytes. Consider removing this check:
 
@@ -7705,11 +7710,13 @@ Explain why separating device structure operations (`led_sx`) from state operati
 
 If you can walk the path from **user `write()`** to a **timer-driven state machine** and back to **device teardown**, you've internalized the write-centric character-device shape with timers and sbuf-powered parsing. Next we'll look at a slightly different shape: a **network interface pseudo-device** that binds into the **ifnet** stack (`if_tuntap.c`). Keep your eyes on three things: how the driver **registers** with a larger subsystem, how **I/O is routed** through that subsystem's callbacks, and how **open/close/lifecycle** differs from the small `/dev` patterns you've just mastered.
 
+> **Checkpoint.** You have now walked through the full shape of a simple driver: the Newbus lifecycle, `cdevsw` entry points, `make_dev()` and devctl, module packaging with `bsd.kmod.mk`, and two real character drivers, the null/zero/full trio and `led(4)`. The rest of the chapter turns to drivers that plug into larger subsystems: the `tun(4)/tap(4)` pseudo-NIC that binds into the ifnet stack, the PCI-backed `uart(4)` glue driver, the synthesis that pulls four tours into one mental model, and the blueprints and labs that turn reading into practice. If you want to close the book and come back, this is a natural pause.
+
 ### Tour 3 - A pseudo-NIC that is also a character device: `tun(4)/tap(4)`:
 
 Open the file:
 
-```
+```console
 % cd /usr/src/sys/net
 % less if_tuntap.c
 ```
@@ -7801,7 +7808,7 @@ This initial fragment demonstrates a clever design pattern: **one driver impleme
 
 Let's see how it works:
 
-##### The `tuntap_driver` Structure (lines 270-278)
+##### The `tuntap_driver` Structure
 
 ```c
 struct tuntap_driver {
@@ -7840,7 +7847,7 @@ The `cdevsw` (character device switch) is FreeBSD's **function dispatch table** 
 
 ##### The Three Driver Instances
 
-##### 1. **TUN** (lines 279-295) - Layer 3 (IP) tunnel
+##### 1. **TUN** - Layer 3 (IP) tunnel
 
 ```c
 .ident_flags = 0              // No flags = plain TUN device
@@ -7851,7 +7858,7 @@ The `cdevsw` (character device switch) is FreeBSD's **function dispatch table** 
 - Packets are raw IP (no Ethernet headers)
 - Used by VPNs like OpenVPN in TUN mode
 
-##### 2. **TAP** (lines 296-312) - Layer 2 (Ethernet) tunnel
+##### 2. **TAP** - Layer 2 (Ethernet) tunnel
 
 ```c
 .ident_flags = TUN_L2         // Layer 2 flag
@@ -7862,7 +7869,7 @@ The `cdevsw` (character device switch) is FreeBSD's **function dispatch table** 
 - Packets include full Ethernet frames
 - Used by VMs, bridges, OpenVPN in TAP mode
 
-##### 3. **VMNET** (lines 313-329) - VMware compatibility
+##### 3. **VMNET** - VMware compatibility
 
 ```c
 .ident_flags = TUN_L2 | TUN_VMNET  // Layer 2 + VMware semantics
@@ -8184,7 +8191,7 @@ The `make_dev_args` structure configures every aspect of the device node:
 
 **Unit number**: `mda_unit` embeds the unit number into the device's minor number, allowing the kernel to distinguish `/dev/tun0` from `/dev/tun1`.
 
-**Private data**: `mda_si_drv1` is crucial, this field will become the `si_drv1` member of the created `struct cdev`, establishing the link from character device to driver state. Every subsequent operation on the device will retrieve the softc via this field.
+**Private data**: `mda_si_drv1` matters here: this field will become the `si_drv1` member of the created `struct cdev`, establishing the link from character device to driver state. Every subsequent operation on the device will retrieve the softc via this field.
 
 ##### Creating the Device Node
 
@@ -8505,7 +8512,7 @@ tuntap_softc
 tun0 (struct ifnet)
 ```
 
-Opening `/dev/tun0` with `open(2)` allows userspace to read and write packets. Transmitting packets to the `tun0` interface via `sendto(2)` or routing queues them for userspace to read. This bidirectional connection enables userspace VPN and virtualization software to implement custom network protocols while integrating seamlessly with the kernel's network stack.
+Opening `/dev/tun0` with `open(2)` allows userspace to read and write packets. Transmitting packets to the `tun0` interface via `sendto(2)` or routing queues them for userspace to read. This bidirectional connection enables userspace VPN and virtualization software to implement custom network protocols while plugging into the kernel's network stack.
 
 #### 3) `open(2)`: vnet context, mark open, link up
 
@@ -8927,7 +8934,7 @@ if (len > 0) {
 }
 ```
 
-For tap devices configured with virtio-net header mode (via the `TAPSVNETHDR` ioctl), packets are prefixed with a metadata header describing offload features. This optimization allows userspace (particularly QEMU/KVM) to leverage hardware offload capabilities:
+For tap devices configured with virtio-net header mode (via the `TAPSVNETHDR` ioctl), packets are prefixed with a metadata header describing offload features. This optimization allows userspace (particularly QEMU/KVM) to use hardware offload capabilities:
 
 The `tun_vhdrlen` field is zero for standard mode and non-zero (typically 10 or 12 bytes) when virtio headers are enabled. The code only processes headers if both the header is enabled (`len > 0`) and the userspace buffer has room (`uio->uio_resid`).
 
@@ -8959,7 +8966,7 @@ The `m_freem` call releases the mbuf back to the kernel's memory pool. This must
 ##### Data Flow Summary
 
 The complete path from network transmission to userspace read:
-```
+```text
 Application calls send()/sendto()
      -> 
 Kernel routing selects tun0 interface
@@ -9217,7 +9224,7 @@ mac_ifnet_create_mbuf(ifp, m);
 
 Two pieces of metadata are attached to the packet:
 
-**Receive interface**: `m_pkthdr.rcvif` records which interface received the packet. This seems counterintuitive; we're injecting a packet, not receiving one, but from the kernel's perspective, packets written to `/dev/tun0` are "received" on the `tun0` interface. This field is crucial for:
+**Receive interface**: `m_pkthdr.rcvif` records which interface received the packet. This seems counterintuitive; we're injecting a packet, not receiving one, but from the kernel's perspective, packets written to `/dev/tun0` are "received" on the `tun0` interface. This field is used for:
 
 - Firewall rules (ipfw, pf) that filter based on incoming interface
 - Routing decisions that consider packet source
@@ -9440,7 +9447,7 @@ The protocol family determines which network layer interrupt service routine (ne
 - **AF_INET**  ->  `NETISR_IP` - IPv4 processing
 - **AF_INET6**  ->  `NETISR_IPV6` - IPv6 processing
 
-The `#ifdef` guards are crucial: if the kernel was compiled without IPv4 or IPv6 support, those cases don't exist, and attempting to inject such packets results in `EAFNOSUPPORT` (address family not supported).
+The `#ifdef` guards are required: if the kernel was compiled without IPv4 or IPv6 support, those cases don't exist, and attempting to inject such packets results in `EAFNOSUPPORT` (address family not supported).
 
 Unsupported protocol families trigger immediate mbuf deallocation via `m_freem` and return an error. This prevents packets from leaking into the network stack with incorrect metadata that could cause crashes or security issues.
 
@@ -9944,7 +9951,7 @@ This shift from character device operations to bus attachment represents a criti
 
 Open the file:
 
-```
+```console
 % cd /usr/src/sys/dev/uart
 % less uart_bus_pci.c
 ```
@@ -10284,7 +10291,7 @@ The `static const` qualifiers indicate this data is read-only and internal to th
 
 Examining representative entries reveals the matching hierarchy and configuration diversity:
 
-**Simple wildcard match** (line 159):
+**Simple wildcard match** (Intel AMT SOL entry in `pci_ns8250_ids`):
 
 ```c
 { 0x8086, 0x108f, 0xffff, 0, "Intel AMT - SOL", 0x10 },
@@ -10297,7 +10304,7 @@ Examining representative entries reveals the matching hierarchy and configuratio
 
 This pattern matches Intel's AMT SOL controller regardless of which motherboard manufacturer integrated it.
 
-**OEM-specific match** (lines 93-95):
+**OEM-specific match** (adjacent HP Diva entries in `pci_ns8250_ids`):
 
 ```c
 { 0x103c, 0x1048, 0x103c, 0x1227, "HP Diva Serial [GSP] UART - Powerbar SP2", 0x10 },
@@ -10310,7 +10317,7 @@ This pattern matches Intel's AMT SOL controller regardless of which motherboard 
 
 This illustrates how one chipset spawns multiple table entries when OEMs configure it differently across product lines.
 
-**Non-standard clock frequency** (lines 87-88):
+**Non-standard clock frequency** (Dell Remote Access Card III entry in `pci_ns8250_ids`):
 
 ```c
 { 0x1028, 0x0008, 0xffff, 0, "Dell Remote Access Card III", 0x14,
@@ -10323,7 +10330,7 @@ This illustrates how one chipset spawns multiple table entries when OEMs configu
 
 Server management cards often use high clocks to support fast console redirection over network links.
 
-**Register address shifting** (lines 155-156):
+**Register address shifting** (Intel ValleyView LPIO1 HSUART entry in `pci_ns8250_ids`):
 
 ```c
 { 0x8086, 0x0f0a, 0xffff, 0, "Intel ValleyView LPIO1 HSUART#1", 0x10,
@@ -10336,7 +10343,7 @@ Server management cards often use high clocks to support fast console redirectio
 
 This accommodates SoC designs where the UART shares a large memory-mapped region with other peripherals, often with registers aligned to 32-bit boundaries for bus efficiency.
 
-**MSI incompatibility** (lines 153-154, 199-201):
+**MSI incompatibility** (Atom Processor S1200 entry in `pci_ns8250_ids`, combined with the `PCI_NO_MSI` handling in `uart_pci_attach`):
 
 ```c
 { 0x8086, 0x0c5f, 0xffff, 0, "Atom Processor S1200 UART",
@@ -10349,7 +10356,7 @@ This accommodates SoC designs where the UART shares a large memory-mapped region
 
 Such quirks typically arise from silicon errata or incomplete MSI implementation in integrated peripherals.
 
-**Multiple subsystem variants** (lines 131-140):
+**Multiple subsystem variants** (Timedia Technology entries in `pci_ns8250_ids`):
 
 ```c
 { 0x1409, 0x7168, 0x1409, 0x4025, "Timedia Technology Serial Port", 0x10,
@@ -10964,17 +10971,17 @@ The device description appears in boot messages, `dmesg`, and `pciconf -lv` outp
 
 For explicitly matched devices, `id->desc` contains the table-specified string. For generic devices, it's "Generic SimpleComm PCI device." The description is set unconditionally if present; even if a generic probe set one, the PCI-specific driver overrides it with more accurate information.
 
-Finally, the function returns the result from `uart_bus_probe`, which the kernel uses to select among competing drivers. For UARTs, this is typically zero (success, neutral priority) since NS8250 drivers are the only ones claiming these devices.
+Finally, the function returns the result from `uart_bus_probe`, which the kernel uses to select among competing drivers. For UARTs, this is typically `BUS_PROBE_DEFAULT` (-20), the standard priority for base-OS drivers, since NS8250 drivers are the only ones claiming these devices.
 
 ##### Probe Priority and Driver Selection
 
 The probe priority mechanism handles hardware claimed by multiple drivers. Consider a multi-function card with serial ports and network interfaces:
-- `uart_pci` might probe it (matches PCI class)
-- A vendor-specific driver might also probe it (matches vendor/device ID)
+- `uart_pci` might probe it (matches PCI class, returning `BUS_PROBE_DEFAULT` = -20)
+- A vendor-specific driver might also probe it (matching vendor/device ID exactly)
 
-The vendor driver should return a better (lower) priority like -1 or -10, winning the selection. The uart_pci driver returns 0, meaning "I can drive this, but I'm generic."
+The vendor driver should return a higher value (closer to zero), such as `BUS_PROBE_VENDOR` (-10) or `BUS_PROBE_SPECIFIC` (0), and Newbus will select it because its priority is **greater** than `BUS_PROBE_DEFAULT`. Remember: closer to zero wins.
 
-For most serial hardware, only uart_pci probes successfully, making priority moot. But the mechanism allows graceful coexistence with specialized drivers.
+For most serial hardware, only `uart_pci` probes successfully, making priority moot. But the mechanism allows graceful coexistence with specialised drivers.
 
 ##### The Complete Probe Flow
 
@@ -11371,7 +11378,7 @@ Each device gets an independent driver instance, all sharing the generic UART co
 
 With all pieces explained, the complete driver structure is:
 
-```
+```text
 uart_pci_methods[] ->  Method table (probe/attach/detach/resume)
       
 uart_pci_driver ->  Driver declaration (name, methods, softc size)
@@ -11389,33 +11396,33 @@ This architecture, method tables, layered initialization, bus-independent core l
 
 ##### A) Driver Skeleton & Registration
 
-1. Point to the `device_method_t` array and the `driver_t` structure. For each, identify what it declares and how they connect to each other. Quote the relevant lines. Which field in `driver_t` points to the method table? *Hint:*  Lines 52-65.
+1. Point to the `device_method_t` array and the `driver_t` structure. For each, identify what it declares and how they connect to each other. Quote the relevant lines. Which field in `driver_t` points to the method table? *Hint:* look for `uart_pci_methods[]` and the `uart_pci_driver` definition near the top of the file.
 
-2. Where is the `DRIVER_MODULE` macro and which bus does it target? What are the five parameters it receives? Quote it and explain each parameter. *Hint:* Line 366.
+2. Where is the `DRIVER_MODULE` macro and which bus does it target? What are the five parameters it receives? Quote it and explain each parameter. *Hint:* `DRIVER_MODULE(uart, pci, ...)` sits at the bottom of the file.
 
 ##### B) Device Identification and Matching
 
-1. In the `pci_ns8250_ids[]` table, find at least two Intel entries (vendor 0x8086) that demonstrate special handling: one with the `PCI_NO_MSI` flag and one with a non-standard clock frequency (`rclk`). Quote both complete entries and explain what each special parameter means for the hardware. *Hint:* Search for vendor 0x8086 entries around lines 153-158.
+1. In the `pci_ns8250_ids[]` table, find at least two Intel entries (vendor 0x8086) that demonstrate special handling: one with the `PCI_NO_MSI` flag and one with a non-standard clock frequency (`rclk`). Quote both complete entries and explain what each special parameter means for the hardware. *Hint:* grep the table for `0x8086` and look near the Atom and ValleyView HSUART rows.
 
-2. In `uart_pci_match()`, trace the two-phase matching logic. Where does the first loop match primary IDs (vendor/device)? Where does the second loop match subsystem IDs? What happens if an entry has `subven == 0xffff`? Quote the relevant lines (3-5 lines total). *Hint:* Lines 225-237, look for the wildcard check at line 230.
+2. In `uart_pci_match()`, trace the two-phase matching logic. Where does the first loop match primary IDs (vendor/device)? Where does the second loop match subsystem IDs? What happens if an entry has `subven == 0xffff`? Quote the relevant lines (3-5 lines total). *Hint:* work through the two `for` loops in `uart_pci_match` and note the `subven == 0xffff` wildcard check.
 
-3. Find an example in `pci_ns8250_ids[]` where the same vendor/device pair appears multiple times with different subsystem IDs. Quote 2-3 consecutive entries and explain why this duplication exists. *Hint:* HP Diva entries around lines 93-95, or Timedia around lines 131-140.
+3. Find an example in `pci_ns8250_ids[]` where the same vendor/device pair appears multiple times with different subsystem IDs. Quote 2-3 consecutive entries and explain why this duplication exists. *Hint:* the HP Diva block (vendor 0x103c, device 0x1048) and the Timedia 0x1409/0x7168 block in `pci_ns8250_ids`.
 
 ##### C) Probe Flow
 
-1. In `uart_pci_probe()`, show where the code sets `sc->sc_class` to `&uart_ns8250_class` after successful table matching, and where it then calls `uart_bus_probe()`. Quote both spots (2-3 lines each). *Hint:* Lines 292-295 for class assignment, 309-310 for bus probe call.
+1. In `uart_pci_probe()`, show where the code sets `sc->sc_class` to `&uart_ns8250_class` after successful table matching, and where it then calls `uart_bus_probe()`. Quote both spots (2-3 lines each). *Hint:* the class assignment sits on the success path after `uart_pci_match`, and the `uart_bus_probe` call is the final step before `uart_pci_probe` returns.
 
-2. What does `uart_pci_unique_console_match()` do when it finds a unique device that matches a console? Quote the assignment to `sc->sc_sysdev` and the `rclk` synchronization line. Why is clock synchronization necessary? *Hint:* Lines 272-273.
+2. What does `uart_pci_unique_console_match()` do when it finds a unique device that matches a console? Quote the assignment to `sc->sc_sysdev` and the `rclk` synchronization line. Why is clock synchronization necessary? *Hint:* focus on the tail of `uart_pci_unique_console_match`, where `sc->sc_sysdev` is set and `sc->sc_sysdev->bas.rclk` is copied into `sc->sc_bas.rclk`.
 
-3. In `uart_pci_probe()`, explain the fallback path for "Generic SimpleComm" devices. What PCI class, subclass, and progif values trigger this path? Why does the comment say "XXX rclk what to do"? Quote the conditional check and note what configuration is used. *Hint:* Lines 297-303, look at the `cid` structure at lines 282-286.
+3. In `uart_pci_probe()`, explain the fallback path for "Generic SimpleComm" devices. What PCI class, subclass, and progif values trigger this path? Why does the comment say "XXX rclk what to do"? Quote the conditional check and note what configuration is used. *Hint:* look for the local `cid` structure at the top of `uart_pci_probe` and the `pci_get_class/subclass/progif` check further down.
 
 ##### D) Attach and Detach
 
-1. In `uart_pci_attach()`, why does the function re-match the device against the ID table when probe already did matching? Quote the line. *Hint:* Line 340.
+1. In `uart_pci_attach()`, why does the function re-match the device against the ID table when probe already did matching? Quote the line. *Hint:* look for the `uart_pci_match` call near the top of `uart_pci_attach`.
 
-2. Quote the exact conditional that checks MSI eligibility (must prefer single-vector MSI) and the call that allocates it. What happens if MSI allocation fails? Quote 5-7 lines. *Hint:* Lines 341-347.
+2. Quote the exact conditional that checks MSI eligibility (must prefer single-vector MSI) and the call that allocates it. What happens if MSI allocation fails? Quote 5-7 lines. *Hint:* the `pci_msi_count`/`pci_alloc_msi` block sits just after the `uart_pci_match` call in `uart_pci_attach`.
 
-3. In `uart_pci_detach()`, quote the two critical operations: MSI release and delegation to generic detach. Why must MSI be released before calling `uart_bus_detach()`? Explain the order dependency. *Hint:* Lines 360-363.
+3. In `uart_pci_detach()`, quote the two critical operations: MSI release and delegation to generic detach. Why must MSI be released before calling `uart_bus_detach()`? Explain the order dependency. *Hint:* both the `pci_release_msi` call and the `uart_bus_detach` call appear in sequence inside `uart_pci_detach`.
 
 ##### E) Integration: Tracing Complete Flow
 
@@ -11469,7 +11476,7 @@ You've just walked a **tiny PCI glue** driver end-to-end. It **matches** devices
 
 You've now walked through four complete drivers, each demonstrating different aspects of FreeBSD's device driver architecture. These weren't arbitrary examples; they form a deliberate progression that reveals the patterns underlying all kernel drivers.
 
-### The Journey You've Completed
+### The Progression You've Completed
 
 **Tour 1: `/dev/null`, `/dev/zero`, `/dev/full`** (null.c)
 
@@ -12968,7 +12975,7 @@ good_unload(module_t mod, int type, void *data)
 
 **For locking issues**:
 
-```
+```console
 # In kernel config or loader.conf
 options WITNESS
 options WITNESS_SKIPSPIN
@@ -12980,7 +12987,7 @@ WITNESS detects lock order violations and reports them in dmesg.
 
 **For memory issues**:
 
-```
+```console
 # Track allocations
 vmstat -m | grep M_YOURTYPE
 
@@ -13306,15 +13313,15 @@ After completing all questions, compare with the answer key below. Don't peek be
 
 #### Part 1: Null Driver
 
-**A1**: Around line 85-95 (varies with FreeBSD version)
+**A1**: The `null_cdevsw` definition (the character-device switch table for `/dev/null`)
 
 **A2**: `null_write` function
 
-**A3**: Returns `0` (success) and the value of `uio->uio_resid` (consumes all input but discards it)
+**A3**: Sets `uio->uio_resid = 0` to mark all bytes consumed, then returns `0` (success). The data is discarded.
 
-**A4**: `null_modevent()` around line 120-140
+**A4**: `null_modevent()`, defined near the bottom of `null.c` just before the `DEV_MODULE` registration
 
-**A5**: `DECLARE_MODULE` macro (for non-newbus drivers)
+**A5**: `DEV_MODULE(null, null_modevent, NULL);` followed by `MODULE_VERSION(null, 1);`
 
 **A6**: Three device nodes: `/dev/null`, `/dev/zero` and `/dev/full`
 
@@ -13322,43 +13329,43 @@ After completing all questions, compare with the answer key below. Don't peek be
 
 #### Part 2: LED Driver
 
-**A8**: `struct led_softc` 
+**A8**: `struct ledsc` (note the compact "LED softc" name; not `led_softc`)
 
-**A9**: Near the middle of the file (around line 200-250)
+**A9**: `led_create()` is a thin wrapper around `led_create_state()`; both live together in `led.c`, just after the `led_cdevsw` definition
 
-**A10**: `/dev/led/` (LEDs appear as `/dev/led/name`)
+**A10**: `/dev/led/` (LEDs appear as `/dev/led/name`, created with `make_dev(..., "led/%s", name)`)
 
-**A11**: It converts the user's input string to LED control commands (like "on", "off", or patterns)
+**A11**: `led_write()` reads the user's buffer via `uiomove()`, passes it through `led_parse()` to turn a human-readable string like `"f3"` or `"m-.-"` into a compact pattern, then installs the pattern with `led_state()`.
 
-**A12**: Module event handler (no probe/attach - it's infrastructure, not hardware driver)
+**A12**: Neither. `led.c` is an infrastructure subsystem (no `probe`/`attach`, no module event handler). It initializes at boot via `SYSINIT(leddev, SI_SUB_DRIVERS, SI_ORDER_MIDDLE, led_drvinit, NULL)` near the end of the file and has no separate load/unload handler; hardware drivers call `led_create()`/`led_destroy()` to register their LEDs at runtime.
 
-**A13**: Yes, in `led_create()`: `malloc(sizeof(struct led_softc), M_LED, M_WAITOK | M_ZERO)`
+**A13**: Yes, in `led_create_state()`: `sc = malloc(sizeof *sc, M_LED, M_WAITOK | M_ZERO);`
 
 #### Part 3: Tun/Tap Driver
 
 **A14**: `struct tuntap_softc`
 
-**A15**: Yes - both `dev` (struct cdev *) and network interface members
+**A15**: Yes. The softc embeds an `ifnet` pointer (`tun_ifp`) and is linked to a `cdev` via `dev->si_drv1` and the softc's back-pointer.
 
-**A16**: Around line 400-450 (look for the cdevsw initialization)
+**A16**: There's no single `tun_cdevsw` variable. Three `struct cdevsw` definitions live inside the `tuntap_drivers[]` array (one each for `tun`, `tap`, and `vmnet`). They share the same handlers (`tunopen`, `tunread`, `tunwrite`, `tunioctl`, `tunpoll`, `tunkqfilter`) and differ only in their `.d_name` and flags.
 
-**A17**: `tuntap_open()` or similar (name may vary slightly)
+**A17**: `tunopen()` is assigned to `.d_open` in each `cdevsw` inside `tuntap_drivers[]`.
 
-**A18**: In the open or create function, using `if_alloc(IFT_PPP)` or `if_alloc(IFT_ETHER)`
+**A18**: In `tuncreate()`, the interface is created with `if_alloc(type)` where `type` is `IFT_ETHER` for `tap` and `IFT_PPP` for `tun`.
 
 #### Part 4: PCI UART Driver
 
 **A19**: `uart_pci_probe()`
 
-**A20**: PCI vendor ID and device ID (checks against a table of known UART chips)
+**A20**: It calls `uart_pci_match()` against the `pci_ns8250_ids` table to match known UART vendor/device IDs, and falls back to the PCI class code (`PCIC_SIMPLECOMM` with subclass `PCIS_SIMPLECOMM_UART`) for generic 16550-class parts.
 
-**A21**: At the end of the file
+**A21**: At the end of the file: `DRIVER_MODULE(uart, pci, uart_pci_driver, NULL, NULL);`
 
-**A22**: `pci` bus (the parent bus)
+**A22**: `pci` (the second argument to `DRIVER_MODULE`).
 
 **A23**: `uart_pci_methods[]`
 
-**A24**: Typically 3-5 methods (probe, attach, detach, and possibly others)
+**A24**: Four entries plus `DEVMETHOD_END`: `device_probe`, `device_attach`, `device_detach`, and `device_resume`.
 
 **If your answers differ significantly**: 
 
@@ -13384,7 +13391,7 @@ After completing all questions, compare with the answer key below. Don't peek be
 
 ### Lab Logbook Entry Template
 
-```
+```text
 Lab 1 Complete: [Date]
 
 Time taken: ___ minutes
@@ -13644,7 +13651,7 @@ ld -d -warn-common -r -d -o hello.ko hello.o
 
 **Common error messages**:
 
-```
+```text
 Error: "implicit declaration of function 'printf'"
 Fix: Check your includes - you need <sys/systm.h>
 
@@ -13682,7 +13689,7 @@ Fix: Usually means wrong includes or typo in function name
 
 **If you get an error**:
 
-```
+```text
 kldload: can't load ./hello.ko: module already loaded or in kernel
 Solution: The module is already loaded. Unload it first: sudo kldunload hello
 
@@ -13759,7 +13766,7 @@ Hello: Module unloaded. Goodbye!
 
 ### Behind the Scenes: What Just Happened?
 
-Let's trace the **complete journey** of your module:
+Let's trace the **complete life cycle** of your module:
 
 #### When you ran `kldload ./hello.ko`:
 
@@ -13905,7 +13912,7 @@ Without this macro, the kernel wouldn't know your module exists!
 
 ### Lab Logbook Entry Template
 
-```
+```text
 Lab 2 Complete: [Date]
 
 Time taken: ___ minutes
@@ -14624,7 +14631,7 @@ Hello from demo driver!
 
 **After 30 seconds**:
 
-```
+```text
 Done
 demo: Device closed (pid=1240)
 demo: Device /dev/demo destroyed
@@ -14647,14 +14654,14 @@ Let's trace `cat /dev/demo` from shell to driver and back:
 
 #### 1. Shell executes cat
 
-```
+```text
 User space:
   Shell forks, execs /bin/cat with argument "/dev/demo"
 ```
 
 #### 2. cat opens the file
 
-```
+```text
 User space:
   cat: fd = open("/dev/demo", O_RDONLY);
 
@@ -14677,7 +14684,7 @@ User space:
 
 #### 3. cat reads data
 
-```
+```text
 User space:
   cat: n = read(fd, buffer, 65536);
 
@@ -14710,7 +14717,7 @@ User space:
 
 #### 4. cat processes data
 
-```
+```text
 User space:
   cat: write(STDOUT_FILENO, buffer, 24);
   [Your terminal shows: Hello from demo driver!]
@@ -14718,7 +14725,7 @@ User space:
 
 #### 5. cat tries to read more
 
-```
+```text
 User space:
   cat: n = read(fd, buffer, 65536);  # Try to read more
   
@@ -14763,7 +14770,7 @@ But for our demo, the simple version is fine.
 
 #### 6. cat closes file
 
-```
+```text
 User space:
   cat: close(fd);
   
@@ -14791,7 +14798,7 @@ User space:
 
 #### Address space separation:
 
-```
+```text
 User space (cat process):
   Address 0x1000: cat's buffer[0]
   Address 0x1001: cat's buffer[1]
@@ -14941,7 +14948,7 @@ Use `0666` for world-accessible devices (appropriate for learning/testing).
 
 ### Lab Logbook Entry Template
 
-```
+```text
 Lab 3 Complete: [Date]
 
 Time taken: ___ minutes
@@ -15343,7 +15350,7 @@ case MOD_LOAD:
 
 **If malloc fails** (rare but possible):
 
-```
+```text
 panic: page fault while in kernel mode
 fault virtual address = 0x0
 fault code = supervisor write data
@@ -15594,7 +15601,7 @@ fail:
 
 ### Lab Logbook Entry Template
 
-```
+```text
 Lab 4 Complete: [Date]
 
 Time taken: ___ minutes
@@ -15759,6 +15766,29 @@ Take a moment to:
 - **Revisit any confusing sections** - Now that you've done the labs, re-reading makes more sense
 - **Browse one more driver** - Pick any from `/usr/src/sys/dev` and see how much you recognize
 
+### Looking Ahead
+
+Chapter 6 was the last foundational chapter of Part 1. You now have a complete mental model of how a FreeBSD driver is shaped, from the moment the bus enumerates a device, through probe, attach, operation, and detach, all the way out to `/dev` and `ifconfig`.
+
+The next chapter, **Chapter 7: Writing Your First Driver**, puts that model to work. You will build a pseudo-device called `myfirst`, attach it cleanly through Newbus, create a `/dev/myfirst0` node, expose a read-only sysctl, log lifecycle events, and detach without leaks. The goal is not a fancy driver, it is a disciplined one, the kind of skeleton every production driver grows from.
+
+Everything you practised in this chapter, the cdevsw shape, the probe/attach/detach rhythm, the unwinding pattern, the rule to always release resources in reverse order, will show up again in Chapter 7 as code you type yourself. Keep your lab logbook close, keep `/usr/src/sys/dev/null/null.c` bookmarked as a reference skeleton, and when you turn the page, you will already know most of what you are about to build.
+
+## Part 1 Checkpoint
+
+Part 1 has carried you from "what even is UNIX" to "I can read a small driver and name its pieces." Before Chapter 7 asks you to type and load a real module, pause and confirm that the foundation feels steady under your feet. Part 2 builds directly on every skill that the first six chapters gathered.
+
+By the end of Part 1 you should be able to install, configure, and snapshot a FreeBSD working lab, track its source tree under version control, and keep a disciplined logbook of what you changed and why. You should be able to drive the FreeBSD command line for ordinary development work, which means moving around the filesystem, inspecting processes, reading and adjusting permissions, installing packages, following logs, and writing short shell scripts that survive unusual filenames. You should also be able to read and write kernel-style C without flinching at its dialect, including types and qualifiers, bit flags, the preprocessor, pointers and arrays, function pointers, bounded strings, and the kernel-side allocators and logging helpers that replace `malloc(3)` and `printf(3)`. And you should be able to look at any driver under `/usr/src/sys/dev` and name its pieces: which function is the probe, which is the attach, which is the detach, where the softc lives, which entry points the character switch provides, and what resources the attach path is acquiring.
+
+If any of those still feels like a lookup rather than a habit, the labs that anchor them are worth a second pass:
+
+- Lab discipline and source navigation: the hands-on labs across Chapter 2 (shell, files, processes, scripting) and the install-and-snapshot walk-through in Chapter 3.
+- C for the kernel: Chapter 4 Lab 4 (Function Pointer Dispatch, a mini devsw) and Lab 5 (Fixed-Size Circular Buffer), both of which preview patterns you will meet again in every driver.
+- Kernel C dialect: Chapter 5 Lab 1 (Safe Memory Allocation and Cleanup) and Lab 2 (User-Kernel Data Exchange), which teach the two boundaries every driver crosses.
+- Driver anatomy: Chapter 6 Lab 1 (Explore the Driver Map), Lab 2 (Minimal Module with Logs Only), and Lab 3 (Create and Remove a Device Node).
+
+Part 2 will expect a working FreeBSD lab with `/usr/src` installed, a kernel you can build and boot, and the habit of reverting to a clean snapshot after each experiment. It will expect enough comfort with kernel C that a `struct cdevsw`, a `d_read` handler signature, or a labelled-goto cleanup pattern does not stop you. It will also expect the probe/attach/detach rhythm to be held firmly in mind, so that Chapter 7 can turn that rhythm into code you type yourself. If those three hold, you are ready to cross from recognition to authorship. If one wobbles, the quiet hour spent now saves a bewildering afternoon later.
+
 ## Challenge Exercises (Optional)
 
 These optional exercises deepen your understanding and build confidence. They're more open-ended than labs but still safe for beginners. Complete as many as you like before moving to Chapter 7.
@@ -15840,7 +15870,7 @@ These optional exercises deepen your understanding and build confidence. They're
 3. Verification: Use `man 4 <drivername>` to confirm your classification
 
 **Example entry**:
-```
+```text
 Driver: led
 File: sys/dev/led/led.c
 Classification: Character device
@@ -15916,7 +15946,7 @@ These challenges develop:
 - **Challenge 4**: Error handling discipline
 - **Challenge 5**: Dependency understanding
 
-**Optional**: Share your challenge results in the FreeBSD forums or mailing lists. The community loves seeing newcomers dive deep!
+**Optional**: Share your challenge results in the FreeBSD forums or mailing lists. The community loves seeing newcomers take on harder problems.
 
 ## Summary Reference Table - Driver Building Blocks at a Glance
 
