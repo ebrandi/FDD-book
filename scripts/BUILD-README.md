@@ -56,10 +56,10 @@ sudo apt install -y software-properties-common apt-transport-https ca-certificat
 ```bash
 # Download the latest pandoc version for Ubuntu
 cd /tmp
-wget https://github.com/jgm/pandoc/releases/latest/download/pandoc-3.1.11-1-amd64.deb
+wget  https://github.com/jgm/pandoc/releases/download/3.9.0.2/pandoc-3.9.0.2-1-amd64.deb
 
 # Install the downloaded package
-sudo dpkg -i pandoc-3.1.11-1-amd64.deb
+sudo dpkg -i pandoc-3.9.0.2-1-amd64.deb
 
 # If you get dependency errors, fix them
 sudo apt --fix-broken install -y
@@ -68,7 +68,7 @@ sudo apt --fix-broken install -y
 pandoc --version
 
 # Clean up
-rm -f pandoc-3.1.11-1-amd64.deb
+rm -f pandoc-3.9.0.2-1-amd64.deb
 ```
 
 #### 3. **LaTeX Distribution Installation** (with XeLaTeX support)
@@ -210,17 +210,17 @@ mkdir -p ~/.local/share/pandoc/templates
 # Navigate to the templates directory
 cd ~/.local/share/pandoc/templates
 
-# Download the latest Eisvogel template (version 3.2.0)
-wget https://github.com/Wandmalfarbe/pandoc-latex-template/releases/download/v3.2.0/Eisvogel-3.2.0.tar.gz
+# Download the latest Eisvogel template (version 3.4.0)
+wget https://github.com/Wandmalfarbe/pandoc-latex-template/releases/download/v3.4.0/Eisvogel-3.4.0.tar.gz
 
 # Extract the downloaded archive
-tar -xzf Eisvogel-3.2.0.tar.gz
+tar -xzf Eisvogel-3.4.0.tar.gz
 
 # Copy the main template file to the templates directory
-cp Eisvogel-3.2.0/eisvogel.latex ./
+cp Eisvogel-3.4.0/eisvogel.latex ./
 
 # Clean up temporary files
-rm -rf Eisvogel-3.2.0 Eisvogel-3.2.0.tar.gz
+rm -rf Eisvogel-3.4.0 Eisvogel-3.4.0.tar.gz
 
 # Verify the template is properly installed
 ls -la eisvogel.latex
@@ -595,14 +595,14 @@ ls -la eisvogel.latex
 cp eisvogel.latex eisvogel.latex.backup
 
 # Download latest version
-wget https://github.com/Wandmalfarbe/pandoc-latex-template/releases/latest/download/Eisvogel-3.2.0.tar.gz
+wget https://github.com/Wandmalfarbe/pandoc-latex-template/releases/download/v3.4.0/Eisvogel-3.4.0.tar.gz 
 
 # Extract and install
-tar -xzf Eisvogel-3.2.0.tar.gz
-cp Eisvogel-3.2.0/eisvogel.latex ./
+tar -xzf Eisvogel-3.4.0.tar.gz
+cp Eisvogel-3.4.0/eisvogel.latex ./
 
 # Clean up
-rm -rf Eisvogel-3.2.0 Eisvogel-3.2.0.tar.gz
+rm -rf Eisvogel-3.4.0 Eisvogel-3.4.0.tar.gz
 
 # Test the new template
 cd ~/your-project-directory
@@ -704,7 +704,7 @@ pandoc $(find content/ -name "*.md" | sort) \
     --to=html5 \
     --standalone \
     --embed-resources \
-    --highlight-style=tango \
+    --syntax-highlighting=tango \
     --toc \
     --toc-depth=2 \
     --number-sections \
@@ -713,7 +713,7 @@ pandoc $(find content/ -name "*.md" | sort) \
     --metadata date="DRAFT Version 1.0 - August, 30th 2025" \
     -o public/downloads/freebsd-device-drivers.html
 
-**Note**: The `--highlight-style=tango` option provides excellent C language syntax highlighting. Other available styles include: `pygments`, `kate`, `espresso`, `zenburn`, `monochrome`, `breezedark`, and `haddock`. You can list all available styles with `pandoc --list-highlight-styles`.
+**Note**: The `--syntax-highlighting=tango` option (new name for the deprecated `--highlight-style` flag in recent Pandoc releases) provides excellent C language syntax highlighting. Other available styles include: `pygments`, `kate`, `espresso`, `zenburn`, `monochrome`, `breezedark`, and `haddock`. You can list all available styles with `pandoc --list-highlight-styles`.
 ```
 
 ### HTML5 vs PDF Comparison
@@ -742,7 +742,7 @@ If you encounter issues:
 
 1. Check the troubleshooting section above
 2. Verify all prerequisites are installed
-3. Check the Eisvogel documentation in `Eisvogel-3.2.0/README.md`
+3. Check the Eisvogel documentation in `Eisvogel-3.4.0/README.md`
 
 The build system is designed to be robust and provide clear error messages to help resolve any issues quickly.
 

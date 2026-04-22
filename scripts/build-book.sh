@@ -55,7 +55,7 @@ cd "$ROOT_DIR"
 # Book information
 BOOK_TITLE="FreeBSD Device Drivers"
 BOOK_AUTHOR="Edson Brandi"
-BOOK_DATE="DRAFT Version 1.2 - November 1, 2025"
+BOOK_DATE="Version 2.0 - April, 22th 2026"
 
 # File paths
 TITLE_FILE="$SCRIPT_DIR/title.md"
@@ -312,7 +312,7 @@ build_pdf() {
         --variable code-block-font-size=\\footnotesize \
         --variable float-placement-figure="H" \
         --variable figure-placement="H" \
-        --highlight-style=tango \
+        --syntax-highlighting=tango \
         --variable linestretch=1.15 \
         --variable geometry:"inner=2cm,outer=2cm,top=2.5cm,bottom=2.5cm" \
         -o "$OUTPUT_DIR/freebsd-device-drivers.pdf" 2>&1
@@ -364,7 +364,7 @@ build_epub() {
         --toc \
         --toc-depth=2 \
         --number-sections \
-        --highlight-style=tango \
+        --syntax-highlighting=tango \
         --epub-chapter-level=1 \
         --verbose \
         -o "$OUTPUT_DIR/freebsd-device-drivers.epub" 2>&1
@@ -423,7 +423,7 @@ build_html() {
         --to=html5 \
         --standalone \
         --embed-resources \
-        --highlight-style=tango \
+        --syntax-highlighting=tango \
         --toc \
         --toc-depth=2 \
         --number-sections \
