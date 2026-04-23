@@ -4020,5 +4020,3 @@ kdump -f trace.out | grep -E 'CALL|RET|NAMI'
 **WITNESS**: A kernel lock-order verification system. Panics on lock-order violations when `options WITNESS` is set.
 
 **1.6-debug**: The driver version after Section 8. Carries the verbosity mask, sysctl, DPRINTF pattern, and SDT probes.
-
-

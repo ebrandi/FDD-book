@@ -4017,12 +4017,3 @@ For Chapter 17 the property that matters is protocol correctness: does the drive
 For later chapters and for your own future work, the properties that matter may be different. A performance test needs a simulation that preserves throughput behaviour. A power test needs a simulation that preserves idle and active states. A security test needs a simulation that can produce adversarial inputs.
 
 The skill Chapter 17 teaches is not "how to simulate this particular device". It is "how to identify what a simulation must preserve, and how to build one that preserves it". That skill is transferable, and it is the skill that will serve you across every driver you write.
-
-
-
----
-
-_End of Chapter 17._
-
-
-

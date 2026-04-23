@@ -4133,9 +4133,3 @@ Chapter 20's lesson is that multi-vector handling is an exercise in symmetry. Ea
 For this reader and for this book's future readers, the Chapter 20 multi-vector pattern is a permanent part of the `myfirst` driver's architecture and a permanent tool in the reader's toolkit. Chapter 21 assumes it: per-queue DMA rings, per-queue completion interrupts, per-queue CPU placement. The vocabulary is the vocabulary every high-performance FreeBSD driver shares; the patterns are the patterns the kernel's own test drivers use; the discipline is the discipline production drivers live by.
 
 The skill Chapter 20 teaches is not "how to allocate MSI-X for virtio-rng-pci". It is "how to design a multi-vector driver, allocate its vectors, place them on CPUs, route events per vector, and tear it all down cleanly". That skill applies across every multi-queue device the reader will ever work on.
-
-
-
----
-
-_End of Chapter 20._

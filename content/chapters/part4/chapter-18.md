@@ -4115,10 +4115,3 @@ A short glossary for readers who want a compact reminder of Chapter 18's vocabul
 **Subvendor / subsystem ID**: a second-level identification tuple that refines the primary vendor/device pair for distinct board designs.
 
 **Vendor ID**: the 16-bit manufacturer identifier assigned by the PCI-SIG.
-
-
-
----
-
-_End of Chapter 18._
-

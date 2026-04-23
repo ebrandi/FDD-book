@@ -4123,12 +4123,3 @@ Keep the discipline in Part 4. Hardware introduces new primitives (interrupt han
 The cost of the discipline is a small amount of extra work per chapter. The benefit is that the driver, at whatever stage of development, is always shippable. You can hand it to a colleague, and it will work. You can put it aside for six months, come back, and still understand what it does. You can add one more feature without fearing that something unrelated will break.
 
 That is the ultimate payoff of Part 3. Not just primitives; not just patterns; a working discipline.
-
-Part 4 begins now.
-
-Chapter 15 ends here. The driver is at v0.9-coordination. Part 4 opens with Chapter 16.
-
-
----
-
-_End of Chapter 15._

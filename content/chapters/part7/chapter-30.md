@@ -4054,4 +4054,3 @@ sudo kldunload mydriver
 These are the day-to-day commands. A quick-reference card like this, pinned to a wall or kept in a terminal tab, saves hours over the course of a project.
 
 With that, the chapter is complete.
-

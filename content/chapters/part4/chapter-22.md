@@ -4043,4 +4043,4 @@ For this reader and for this book's future readers, the Chapter 22 power-managem
 
 The skill Chapter 22 teaches is not "how to add suspend and resume methods to a single PCI driver". It is "how to think about a driver's lifecycle as attach, run, quiesce, sleep, wake, run, and eventually detach, rather than just attach, run, detach". That skill applies across every driver the reader will ever work on.
 
-Part 4 is complete. The `myfirst` driver is at `1.5-power`, structurally parallel to a production FreeBSD driver, and ready for the debugging, tooling, and specialisation chapters that follow in Parts 5 and 6. Chapter 23 starts there.
+Part 4 is complete. The `myfirst` driver is at `1.5-power`, structurally parallel to a production FreeBSD driver, and ready for the debugging, tooling, and specialisation chapters that follow in Parts 5 and 6.

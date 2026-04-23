@@ -4030,7 +4030,3 @@ Chapter 21's lesson is that DMA is disciplined, not magical. The `bus_dma(9)` AP
 For this reader and for this book's future readers, the Chapter 21 DMA pattern is a permanent part of the `myfirst` driver's architecture and a permanent tool in the reader's toolkit. Chapter 22 assumes it: suspend needs to quiesce DMA; resume needs to reinitialise it. Part 6's networking chapters assume it: every packet path uses DMA. Part 7's performance chapters (Chapter 33) assume it: every tuning measurement is against DMA throughput. The vocabulary is the vocabulary every high-performance FreeBSD driver shares; the patterns are the patterns production drivers live by; the discipline is the discipline that keeps coherent platforms coherent and non-coherent platforms correct.
 
 The skill Chapter 21 teaches is not "how to set up a single 4 KB DMA buffer". It is "how to think about memory ownership between the CPU and the device, how to describe a device's constraints to the kernel, and how to move data under a sync discipline that works portably on every platform FreeBSD supports". That skill applies across every DMA-capable device the reader will ever work on.
-
-
-
----

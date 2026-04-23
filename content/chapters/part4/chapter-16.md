@@ -4069,12 +4069,3 @@ When a driver misbehaves, the bug is often in a small set of recurring categorie
 **Fix**: Review detach ordering; drain all callouts and tasks before freeing `regs_buf`.
 
 Each of these bugs has a short diagnostic path and a well-defined fix. Keeping the list nearby during development catches most issues on first contact.
-
-
-
----
-
-_End of Chapter 16._
-
-
-

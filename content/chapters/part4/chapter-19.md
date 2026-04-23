@@ -4003,9 +4003,3 @@ A reader who has written the Chapter 19 driver has written one interrupt handler
 The skill Chapter 19 teaches is not "how to handle interrupts for the virtio-rnd device". It is "how to split work between primary context and thread context, how to respect the filter's constraints, how to tear down cleanly, and how to cooperate with other drivers on a shared line". Each of those is a transferable skill. Every driver in the FreeBSD tree exercises some of them; most drivers exercise all of them.
 
 For this reader and for this book's future readers, the Chapter 19 filter and task are a permanent part of the `myfirst` driver's architecture. Every later chapter assumes them. Every later chapter extends them. The driver's overall complexity will grow, but the interrupt path will remain what Chapter 19 made it: a narrow, fast, correctly-ordered piece of code that gets out of the way so the rest of the driver can do its job.
-
-
-
----
-
-_End of Chapter 19._
