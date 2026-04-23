@@ -58,6 +58,14 @@ If anything on this list is missing or misattributed, please open an issue at ht
 
 **GNU Bash, coreutils, and standard Unix tools.** The build script is a Bash script, and it relies on the usual cast of small, sharp Unix utilities. Thank you to the GNU project, to the many POSIX tool maintainers, and to everyone who keeps this foundation healthy.
 
+## Translation and Localization
+
+**Ollama.** The translation of the manuscript into Brazilian Portuguese (pt_BR) is driven by Ollama (https://ollama.com/), which makes it straightforward to run large language models locally. Running the translation pipeline on the author's own machine keeps the source text under local control, makes repeated iterations inexpensive, and allows experiments with prompts and passage boundaries without depending on an external service. Thank you to the Ollama maintainers and contributors for packaging this capability in such an approachable form.
+
+**Qwen language model.** The actual translation step is performed by the `qwen3.6:35b-a3b-bf16` model running under Ollama. Thank you to the Qwen team at Alibaba Cloud and to every researcher and engineer whose work made a model of this size and quality available for local use under a permissive license. The readability of the Brazilian Portuguese edition reflects directly on the capability of this model.
+
+**Python.** The translation workflow itself is driven by Python scripts that split the manuscript into translatable units, call the model through Ollama, reassemble the translated fragments, and keep the translated chapters in step with the English originals. Thank you to the Python Software Foundation and to the wider Python community for maintaining a language that is reliable, readable, and well suited to this kind of practical automation.
+
 ## Platform and Environment
 
 **FreeBSD.** The subject of the book and its deepest source of inspiration. Thank you to the FreeBSD Project, its core team, its committers, its documentation team, and the wider community of users and contributors. Every chapter is grounded in the real FreeBSD source tree, and every accurate claim in the book reflects the quality of that source.
