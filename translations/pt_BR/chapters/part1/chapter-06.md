@@ -14531,7 +14531,7 @@ Hello from demo driver!
 
 1. `cat` abriu `/dev/demo`  ->  `demo_open()` foi chamada
 2. `cat` chamou `read()`  ->  `demo_read()` foi chamada
-3. O driver copiou "Hello from demo driver!\n" para o buffer do `cat` via `uiomove()`
+3. O driver copiou "Hello from demo driver!\\n" para o buffer do `cat` via `uiomove()`
 4. `cat` imprimiu os dados recebidos na saída padrão
 5. `cat` fechou o arquivo  ->  `demo_close()` foi chamada
 

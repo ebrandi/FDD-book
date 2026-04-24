@@ -2,6 +2,8 @@
 
 This document explains how to build the FreeBSD Device Drivers book using the updated build system with the Eisvogel pandoc LaTeX template.
 
+The build system supports three languages out of the box: English (`en_US`), Brazilian Portuguese (`pt_BR`), and Spanish (`es_ES`). A single invocation of `./scripts/build-book.sh` with no arguments produces every supported format (PDF, EPUB, HTML5) in every supported language. Individual formats and languages can be selected with the `--pdf`, `--epub`, `--html`, `--all`, and `--lang` options described below.
+
 > [!WARNING]
 >
 > ## Note on my build environment    
@@ -110,6 +112,12 @@ sudo apt install -y texlive-amsmath texlive-amssymb texlive-amsthm
 
 # Install packages for bibliography
 sudo apt install -y texlive-bibtex-extra texlive-biblatex
+
+# Install hyphenation and language packs for the translated editions.
+# Required to build the Brazilian Portuguese (pt_BR) and Spanish (es_ES)
+# PDFs. Already included by texlive-full, so skip this line if you chose
+# the full installation above.
+sudo apt install -y texlive-lang-portuguese texlive-lang-spanish
 ```
 
 #### 4. **Font Installation** (Essential for Professional Typography)
@@ -333,7 +341,7 @@ echo "or run 'sudo fc-cache -fv' again to ensure the font cache is updated."
 
 ```
 ~/FDD-book/
-├── content/
+├── content/                 # English (en_US) — canonical manuscript
 │   ├── chapters/
 │   │   ├── part1/
 │   │   │   ├── chapter-01.md
@@ -345,6 +353,17 @@ echo "or run 'sudo fc-cache -fv' again to ensure the font cache is updated."
 │       ├── appendix-a.md
 │       ├── appendix-b.md
 │       └── ...
+├── translations/
+│   ├── pt_BR/               # Brazilian Portuguese edition
+│   │   ├── chapters/
+│   │   │   ├── part1/
+│   │   │   └── ...
+│   │   └── appendices/
+│   └── es_ES/               # Spanish edition
+│       ├── chapters/
+│       │   ├── part1/
+│       │   └── ...
+│       └── appendices/
 ├── scripts/
 │   ├── build-book.sh        # Main build script (updated for Eisvogel)
 │   ├── metadata.yaml        # Book metadata and Eisvogel configuration
@@ -352,6 +371,14 @@ echo "or run 'sudo fc-cache -fv' again to ensure the font cache is updated."
 ├── public/
     └── downloads/           # Output directory for generated files
 ```
+
+Each language build reads from its own chapters and appendices tree:
+
+| Language | Chapters                          | Appendices                          |
+|----------|-----------------------------------|-------------------------------------|
+| `en_US`  | `content/chapters/`               | `content/appendices/`               |
+| `pt_BR`  | `translations/pt_BR/chapters/`    | `translations/pt_BR/appendices/`    |
+| `es_ES`  | `translations/es_ES/chapters/`    | `translations/es_ES/appendices/`    |
 
 ## Building the Book
 
@@ -364,22 +391,26 @@ To build the complete book, run the script from the root directory:
 ./scripts/build-book.sh
 ```
 
-**Note**: All command-line options are case-insensitive. You can use `--PDF`, `--Pdf`, `--pdf`, or any mixed case variation.
+**Note**: All command-line options are case-insensitive. You can use `--PDF`, `--Pdf`, `--pdf`, or any mixed case variation. Language codes (`en_US`, `pt_BR`, `es_ES`) accept either `-` or `_` as the separator and are also case-insensitive, so `pt_BR`, `pt-BR`, `PT_br`, and `ptbr` all resolve to the same canonical code.
 
-The script will:
+With no arguments the script will:
 1. Check all prerequisites
-2. Discover all chapters and appendices automatically
-3. Build the PDF using the Eisvogel template
-4. Optionally build an EPUB version
-5. Optionally build an HTML5 version
-6. Place output files in the `public/downloads/` directory
+2. Discover all chapters and appendices automatically for every supported language
+3. Build the PDF for `en_US`, `pt_BR`, and `es_ES` using the Eisvogel template
+4. Build EPUB versions for all three languages
+5. Build HTML5 versions for all three languages
+6. Place output files in the `public/downloads/` directory, one per language × format (nine files in total)
+
+If a given language has no valid chapter files, that language is skipped with a clear error message, but the build continues for the remaining languages rather than aborting.
 
 ### Build Options
 
-The build script supports various command-line options:
+The build script supports format selection, language selection, and a dependency self-test.
+
+#### Format selection
 
 ```bash
-# Build specific formats
+# Build specific formats (in every language, unless --lang is also given)
 ./scripts/build-book.sh --pdf          # Build PDF only
 ./scripts/build-book.sh --epub         # Build EPUB only
 ./scripts/build-book.sh --html         # Build HTML5 only
@@ -388,17 +419,45 @@ The build script supports various command-line options:
 ./scripts/build-book.sh --pdf --html   # Build PDF and HTML5
 ./scripts/build-book.sh --epub --html  # Build EPUB and HTML5
 
-# Build all formats
+# Build all formats (this is the default when no format flag is given)
 ./scripts/build-book.sh --all
 
-# Test dependencies
+# Test dependencies without building anything
 ./scripts/build-book.sh --test
 
 # Show help
 ./scripts/build-book.sh --help
 ```
 
-**Case-Insensitive Options**: All options work with any case combination (e.g., `--PDF`, `--Pdf`, `--pdf` all work the same).
+#### Language selection
+
+Use `--lang CODE` (or `--lang=CODE`) to restrict the build to one or more languages. The flag may be repeated. When `--lang` is omitted, every supported language is built.
+
+| Code    | Language                      |
+|---------|-------------------------------|
+| `en_US` | English (original manuscript) |
+| `pt_BR` | Brazilian Portuguese          |
+| `es_ES` | Spanish                       |
+| `all`   | Every supported language      |
+
+```bash
+# Build every format in Brazilian Portuguese only
+./scripts/build-book.sh --lang pt_BR
+
+# Build every format in Brazilian Portuguese and Spanish
+./scripts/build-book.sh --lang pt_BR --lang es_ES
+
+# Build the English PDF only
+./scripts/build-book.sh --pdf --lang en_US
+
+# Build the Spanish EPUB and HTML5 only
+./scripts/build-book.sh --epub --html --lang es_ES
+
+# Equivalent to running with no arguments (all formats, all languages)
+./scripts/build-book.sh --all --lang all
+```
+
+**Case- and separator-insensitive**: flag names and language codes both accept any case combination (`--PDF`, `--Pdf`, `--pdf` all work the same). Language codes additionally accept `-` or `_` as the separator, so `pt_BR`, `pt-BR`, `PT_br`, `Pt-Br`, and `ptbr` all resolve to the canonical `pt_BR`.
 
 ### Content Filtering
 
@@ -410,9 +469,24 @@ The build system automatically filters out markdown files with less than 20 line
 
 ### Output Files
 
-- **PDF**: `public/downloads/freebsd-device-drivers.pdf`
-- **EPUB**: `public/downloads/freebsd-device-drivers.epub` (if requested)
-- **HTML5**: `public/downloads/freebsd-device-drivers.html` (if requested)
+Every generated file is named with the canonical language code suffix so that the three editions can sit side by side in the same output directory. A full build produces nine files (three formats × three languages) under `public/downloads/`:
+
+**English (en_US):**
+- **PDF**: `public/downloads/freebsd-device-drivers-en_US.pdf`
+- **EPUB**: `public/downloads/freebsd-device-drivers-en_US.epub`
+- **HTML5**: `public/downloads/freebsd-device-drivers-en_US.html`
+
+**Brazilian Portuguese (pt_BR):**
+- **PDF**: `public/downloads/freebsd-device-drivers-pt_BR.pdf`
+- **EPUB**: `public/downloads/freebsd-device-drivers-pt_BR.epub`
+- **HTML5**: `public/downloads/freebsd-device-drivers-pt_BR.html`
+
+**Spanish (es_ES):**
+- **PDF**: `public/downloads/freebsd-device-drivers-es_ES.pdf`
+- **EPUB**: `public/downloads/freebsd-device-drivers-es_ES.epub`
+- **HTML5**: `public/downloads/freebsd-device-drivers-es_ES.html`
+
+Each build also sets the appropriate Pandoc/LaTeX `lang` metadata (`en-US`, `pt-BR`, or `es-ES`) so that hyphenation, quotation marks, and other locale-sensitive typography are handled correctly for the chosen language.
 
 ## Eisvogel Template Features
 
@@ -695,11 +769,13 @@ The build system uses Pandoc's default CSS for optimal code highlighting:
 
 ### HTML5 Generation Command
 
-To generate HTML5 manually (without the build script):
+The normal way to produce HTML5 is the build script (`./scripts/build-book.sh --html` builds every language, `./scripts/build-book.sh --html --lang pt_BR` builds a single language). If you ever need to invoke Pandoc by hand, the input source tree and the `lang` metadata change with the target language.
+
+**English (en_US):**
 
 ```bash
 # From the root directory
-pandoc $(find content/ -name "*.md" | sort) \
+pandoc scripts/title.md $(find content/chapters content/appendices -name "*.md" | sort) \
     --metadata-file=scripts/metadata.yaml \
     --to=html5 \
     --standalone \
@@ -710,11 +786,47 @@ pandoc $(find content/ -name "*.md" | sort) \
     --number-sections \
     --metadata title="FreeBSD Device Drivers" \
     --metadata author="Edson Brandi" \
-    --metadata date="DRAFT Version 1.0 - August, 30th 2025" \
-    -o public/downloads/freebsd-device-drivers.html
+    --metadata lang="en-US" \
+    -o public/downloads/freebsd-device-drivers-en_US.html
+```
+
+**Brazilian Portuguese (pt_BR):**
+
+```bash
+pandoc scripts/title.md $(find translations/pt_BR/chapters translations/pt_BR/appendices -name "*.md" | sort) \
+    --metadata-file=scripts/metadata.yaml \
+    --to=html5 \
+    --standalone \
+    --embed-resources \
+    --syntax-highlighting=tango \
+    --toc \
+    --toc-depth=2 \
+    --number-sections \
+    --metadata title="FreeBSD Device Drivers" \
+    --metadata author="Edson Brandi" \
+    --metadata lang="pt-BR" \
+    -o public/downloads/freebsd-device-drivers-pt_BR.html
+```
+
+**Spanish (es_ES):**
+
+```bash
+pandoc scripts/title.md $(find translations/es_ES/chapters translations/es_ES/appendices -name "*.md" | sort) \
+    --metadata-file=scripts/metadata.yaml \
+    --to=html5 \
+    --standalone \
+    --embed-resources \
+    --syntax-highlighting=tango \
+    --toc \
+    --toc-depth=2 \
+    --number-sections \
+    --metadata title="FreeBSD Device Drivers" \
+    --metadata author="Edson Brandi" \
+    --metadata lang="es-ES" \
+    -o public/downloads/freebsd-device-drivers-es_ES.html
+```
 
 **Note**: The `--syntax-highlighting=tango` option (new name for the deprecated `--highlight-style` flag in recent Pandoc releases) provides excellent C language syntax highlighting. Other available styles include: `pygments`, `kate`, `espresso`, `zenburn`, `monochrome`, `breezedark`, and `haddock`. You can list all available styles with `pandoc --list-highlight-styles`.
-```
 
 ### HTML5 vs PDF Comparison
 
