@@ -223,6 +223,33 @@ collect_build_files() {
         fi
     done < <(filter_markdown_files "$appendices_dir" "$show_warnings")
 
+    # Warn about files missing a top-level H1. Pandoc silently demotes the
+    # whole file into a subsection of the previous chapter when this happens,
+    # which means a chapter or appendix can disappear from the table of
+    # contents without any error from the build itself.
+    local missing_h1=0
+    local f
+    for f in "${BUILD_FILES[@]}"; do
+        [ "$f" = "$TITLE_FILE" ] && continue
+        # Match a top-level H1 line: starts with exactly one '#' followed by
+        # a space. Skip YAML front matter so '#' inside metadata is ignored.
+        if ! awk '
+            BEGIN { in_fm = 0; seen_fm = 0 }
+            NR == 1 && /^---[[:space:]]*$/ { in_fm = 1; seen_fm = 1; next }
+            in_fm && /^---[[:space:]]*$/ { in_fm = 0; next }
+            in_fm { next }
+            /^# / { found = 1; exit }
+            END { exit (found ? 0 : 1) }
+        ' "$f"; then
+            echo "   ⚠ Missing top-level H1 heading: $f" >&2
+            echo "     Pandoc will fold this file into the previous chapter as a subsection." >&2
+            missing_h1=$((missing_h1 + 1))
+        fi
+    done
+    if [ "$missing_h1" -gt 0 ]; then
+        echo "   ⚠ $missing_h1 file(s) lack an H1 heading; the resulting book will have fewer top-level parts than expected." >&2
+    fi
+
     if [ "$BUILD_FILES_CHAPTERS" -eq 0 ]; then
         return 1
     fi

@@ -10,7 +10,7 @@ translator: "Tradução para Português do Brasil assistida por IA usando o mode
 estimatedReadTime: 25
 language: "pt-BR"
 ---
-## Apêndice D: Conceitos de Sistema Operacional
+# Apêndice D: Conceitos de Sistema Operacional
 
 ## Como Usar Este Apêndice
 
