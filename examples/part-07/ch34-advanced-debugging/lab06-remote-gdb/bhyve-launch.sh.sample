@@ -1,0 +1,37 @@
+#!/bin/sh
+#
+# bhyve-launch.sh.sample - sample bhyve launch script for Chapter 34
+#                          Lab 6 (remote GDB stub debugging).
+#
+# Adjust the VM name, disk image, and network settings for your
+# environment. The important piece is the serial line: -l
+# com1,/dev/nmdmXA gives the host a matching /dev/nmdmXB that you
+# can open from kgdb.
+#
+# This is a sample. Do not copy it blindly.
+
+VMNAME=bugdemo-debug
+DISK=/vms/bugdemo-debug.img
+MEM=2G
+CPUS=2
+
+# The null-modem pair. XA is the guest side; XB is what the host
+# reads from.
+NMDM_GUEST=/dev/nmdm34A
+NMDM_HOST=/dev/nmdm34B
+
+bhyve \
+    -c ${CPUS} \
+    -m ${MEM} \
+    -H -w \
+    -s 0,hostbridge \
+    -s 1,lpc \
+    -s 2,virtio-blk,${DISK} \
+    -s 3,virtio-net,tap0 \
+    -l com1,${NMDM_GUEST} \
+    -l bootrom,/usr/local/share/uefi-firmware/BHYVE_UEFI.fd \
+    ${VMNAME}
+
+echo "Serial device on the host: ${NMDM_HOST}"
+echo "Attach with: kgdb /boot/kernel/kernel"
+echo "Then in kgdb: target remote ${NMDM_HOST}"

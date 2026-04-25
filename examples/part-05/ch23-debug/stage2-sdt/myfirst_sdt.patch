@@ -1,0 +1,72 @@
+--- a/myfirst.c
++++ b/myfirst.c
+@@ -1,3 +1,5 @@
++#include <sys/sdt.h>
++
+ /*
+  * myfirst driver - Chapter 23 Stage 2: add SDT probes
+  */
+
++SDT_PROVIDER_DEFINE(myfirst);
++SDT_PROBE_DEFINE2(myfirst, , , open,
++    "struct myfirst_softc *", "int");
++SDT_PROBE_DEFINE2(myfirst, , , close,
++    "struct myfirst_softc *", "int");
++SDT_PROBE_DEFINE4(myfirst, , , io,
++    "struct myfirst_softc *", "int", "size_t", "off_t");
++
+ static int
+ myfirst_open(struct cdev *dev, int flags, int devtype, struct thread *td)
+ {
+ 	struct myfirst_softc *sc = dev->si_drv1;
+ 	int error = 0;
+
+ 	device_printf(sc->sc_dev,
+ 	    "open entry: pid=%d flags=0x%x\n",
+ 	    td->td_proc->p_pid, flags);
+
++	SDT_PROBE2(myfirst, , , open, sc, flags);
++
+ 	mtx_lock(&sc->sc_mtx);
+
+ static int
+ myfirst_close(struct cdev *dev, int flags, int devtype, struct thread *td)
+ {
+ 	struct myfirst_softc *sc = dev->si_drv1;
+
+ 	device_printf(sc->sc_dev,
+ 	    "close entry: pid=%d\n", td->td_proc->p_pid);
+
++	SDT_PROBE2(myfirst, , , close, sc, flags);
++
+ 	mtx_lock(&sc->sc_mtx);
+
+ static int
+ myfirst_read(struct cdev *dev, struct uio *uio, int ioflag)
+ {
+ 	struct myfirst_softc *sc = dev->si_drv1;
+ 	int error;
+
+ 	device_printf(sc->sc_dev,
+ 	    "read: resid=%zu off=%jd\n",
+ 	    (size_t)uio->uio_resid, (intmax_t)uio->uio_offset);
+
++	SDT_PROBE4(myfirst, , , io, sc, 0,
++	    (size_t)uio->uio_resid, uio->uio_offset);
++
+ 	error = myfirst_read_impl(sc, uio);
+
+ static int
+ myfirst_write(struct cdev *dev, struct uio *uio, int ioflag)
+ {
+ 	struct myfirst_softc *sc = dev->si_drv1;
+ 	int error;
+
+ 	device_printf(sc->sc_dev,
+ 	    "write: resid=%zu off=%jd\n",
+ 	    (size_t)uio->uio_resid, (intmax_t)uio->uio_offset);
+
++	SDT_PROBE4(myfirst, , , io, sc, 1,
++	    (size_t)uio->uio_resid, uio->uio_offset);
++
+ 	error = myfirst_write_impl(sc, uio);

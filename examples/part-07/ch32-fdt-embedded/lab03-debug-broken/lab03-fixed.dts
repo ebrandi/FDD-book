@@ -1,0 +1,37 @@
+/*
+ * lab03-fixed.dts - Reference corrected overlay for Lab 3
+ *
+ * Fixes applied:
+ *   - fragment@0 compatible corrected to "freebsd,fdthello"
+ *   - fragment@0 status set to "okay"
+ *   - fragment@1 reg corrected to include size cell
+ */
+
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "brcm,bcm2711";
+
+	fragment@0 {
+		target-path = "/soc";
+		__overlay__ {
+			hello@20000 {
+				compatible = "freebsd,fdthello";
+				reg = <0x20000 0x100>;
+				status = "okay";
+			};
+		};
+	};
+
+	fragment@1 {
+		target-path = "/soc";
+		__overlay__ {
+			hello@30000 {
+				compatible = "freebsd,fdthello";
+				reg = <0x30000 0x100>;
+				status = "okay";
+			};
+		};
+	};
+};

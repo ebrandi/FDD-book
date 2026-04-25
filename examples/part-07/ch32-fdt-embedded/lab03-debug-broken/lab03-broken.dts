@@ -1,0 +1,48 @@
+/*
+ * lab03-broken.dts - Deliberately broken overlay for debugging practice
+ *
+ * Companion source for Chapter 32, Section 6 and Lab 3 of
+ * "FreeBSD Device Drivers: From First Steps to Kernel Mastery."
+ *
+ * This overlay contains three distinct bugs that prevent the
+ * fdthello driver from attaching.  Identify and fix each one.
+ *
+ * Bug 1: fragment@0 has a typo in the compatible string.
+ *        "free-bsd,fdthello"  (extra hyphen)
+ * Bug 2: fragment@0 node is disabled via status = "disabled".
+ * Bug 3: fragment@1 has a malformed reg property with only one cell
+ *        when the parent declares #address-cells = <1> and
+ *        #size-cells = <1>.
+ *
+ * Each bug produces a distinct symptom.  Work through the debugging
+ * checklist in Chapter 32, Section 6 and the lab writeup to find them.
+ */
+
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "brcm,bcm2711";
+
+	fragment@0 {
+		target-path = "/soc";
+		__overlay__ {
+			hello@20000 {
+				compatible = "free-bsd,fdthello";
+				reg = <0x20000 0x100>;
+				status = "disabled";
+			};
+		};
+	};
+
+	fragment@1 {
+		target-path = "/soc";
+		__overlay__ {
+			hello@30000 {
+				compatible = "freebsd,fdthello";
+				reg = <0x30000>;
+				status = "okay";
+			};
+		};
+	};
+};

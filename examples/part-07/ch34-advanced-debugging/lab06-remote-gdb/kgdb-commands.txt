@@ -1,0 +1,42 @@
+kgdb remote-session command reference
+=====================================
+
+Connect / disconnect
+--------------------
+target remote /dev/ttyXX     attach to a running kernel's GDB stub
+detach                       let the kernel resume
+quit                         exit kgdb
+
+Inspect state
+-------------
+bt                           backtrace of the current thread
+info threads                 list all kernel threads
+thread N                     switch to thread N
+frame N                      switch to frame N in the current thread
+up / down                    move up or down one frame
+print expr                   evaluate expr in the current frame
+print *sc                    dereference a struct pointer named sc
+print /x expr                print in hex
+list                         show source at the current frame
+
+Breakpoints and watchpoints
+---------------------------
+break function               break on entry to function
+break file.c:42              break at file.c line 42
+watch expr                   break when expr changes value
+rwatch expr                  break when expr is read
+info breakpoints             list all breakpoints
+delete N                     delete breakpoint number N
+continue                     resume execution
+
+Stepping
+--------
+next                         step one source line, skipping calls
+step                         step one source line, into calls
+nexti / stepi                step one machine instruction
+finish                       run to the end of the current function
+
+Modules
+-------
+add-kld /path/to/module.ko   load a module's symbols
+info sharedlibrary           list modules known to kgdb

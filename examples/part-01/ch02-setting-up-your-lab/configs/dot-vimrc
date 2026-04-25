@@ -1,0 +1,13 @@
+" ~/.vimrc - minimal Vim setup for FreeBSD driver work
+"
+" Companion for Chapter 2, section "Configuring Vim for Syntax
+" Highlighting". Copy this to ~/.vimrc (note the leading dot, which
+" is not legal in this repository's filenames, hence the "dot-vimrc"
+" name here).
+
+syntax on
+set number
+set tabstop=8
+set shiftwidth=8
+set autoindent
+set background=dark

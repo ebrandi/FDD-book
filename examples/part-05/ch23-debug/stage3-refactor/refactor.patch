@@ -1,0 +1,172 @@
+--- a/myfirst.c
++++ b/myfirst.c
+@@ -1,10 +1,20 @@
+ /*
+- * myfirst driver - Chapter 23 Stage 2: SDT probes added
++ * myfirst driver - version 1.6-debug
++ *
++ * Added in this revision:
++ *   - DPRINTF macro with 8 verbosity classes
++ *   - sysctl dev.myfirst.0.debug.mask for runtime control
++ *   - SDT probes for open, close, io (carried over from Stage 2)
++ *   - Entry/exit/error pattern across all methods
+  */
+
+-#include <sys/sdt.h>
++#include "myfirst_debug.h"
+
+-/* SDT provider and probes now live in myfirst_debug.c */
++static const char myfirst_version[] = "myfirst 1.6-debug";
+
+ struct myfirst_softc {
+ 	device_t	 sc_dev;
+ 	struct mtx	 sc_mtx;
+ 	struct cdev	*sc_cdev;
++	uint32_t	 sc_debug;	/* debug class bitmask */
++	struct sysctl_ctx_list	sc_sysctl_ctx;
++	struct sysctl_oid	*sc_sysctl_tree;
+ 	/* ... other fields ... */
+ };
+
+@@ -60,25 +70,38 @@
+ static int
+ myfirst_attach(device_t dev)
+ {
+ 	struct myfirst_softc *sc = device_get_softc(dev);
+
+ 	sc->sc_dev = dev;
++	sc->sc_debug = 0;
+ 	mtx_init(&sc->sc_mtx, "myfirst", NULL, MTX_DEF);
+
++	DPRINTF(sc, MYF_DBG_INIT, "attach: %s loaded\n", myfirst_version);
++
++	sysctl_ctx_init(&sc->sc_sysctl_ctx);
++	sc->sc_sysctl_tree = SYSCTL_ADD_NODE(&sc->sc_sysctl_ctx,
++	    SYSCTL_CHILDREN(device_get_sysctl_tree(sc->sc_dev)),
++	    OID_AUTO, "debug",
++	    CTLFLAG_RW, 0, "debug and tracing controls");
++	SYSCTL_ADD_U32(&sc->sc_sysctl_ctx,
++	    SYSCTL_CHILDREN(sc->sc_sysctl_tree),
++	    OID_AUTO, "mask",
++	    CTLFLAG_RW, &sc->sc_debug, 0,
++	    "debug class bitmask (see myfirst_debug.h)");
++
+ 	/* ... cdev create, resource allocation, etc. ... */
+
+ 	return (0);
+ }
+
+@@ -100,6 +123,8 @@
+ static int
+ myfirst_detach(device_t dev)
+ {
+ 	struct myfirst_softc *sc = device_get_softc(dev);
+
++	DPRINTF(sc, MYF_DBG_INIT, "detach entry\n");
++	sysctl_ctx_free(&sc->sc_sysctl_ctx);
+ 	destroy_dev(sc->sc_cdev);
+ 	mtx_destroy(&sc->sc_mtx);
+ 	return (0);
+ }
+
+@@ -130,9 +155,13 @@
+ static int
+ myfirst_open(struct cdev *dev, int flags, int devtype, struct thread *td)
+ {
+ 	struct myfirst_softc *sc = dev->si_drv1;
+ 	int error = 0;
+
+-	device_printf(sc->sc_dev, "open entry: pid=%d flags=0x%x\n",
++	DPRINTF(sc, MYF_DBG_OPEN, "open: pid=%d uid=%d flags=0x%x\n",
+-	    td->td_proc->p_pid, flags);
++	    td->td_proc->p_pid, td->td_ucred->cr_uid, flags);
+
+ 	SDT_PROBE2(myfirst, , , open, sc, flags);
+
+@@ -145,17 +174,20 @@
+ out:
+ 	mtx_unlock(&sc->sc_mtx);
+
+-	device_printf(sc->sc_dev, "open ok: count=%d\n", sc->sc_open_count);
++	if (error != 0)
++		DPRINTF(sc, MYF_DBG_OPEN, "open failed: error=%d\n", error);
++	else
++		DPRINTF(sc, MYF_DBG_OPEN, "open ok: count=%d\n",
++		    sc->sc_open_count);
+
+ 	return (error);
+ }
+
+ static int
+ myfirst_close(struct cdev *dev, int flags, int devtype, struct thread *td)
+ {
+ 	struct myfirst_softc *sc = dev->si_drv1;
+
+-	device_printf(sc->sc_dev, "close entry: pid=%d\n",
++	DPRINTF(sc, MYF_DBG_OPEN, "close: pid=%d flags=0x%x\n",
+-	    td->td_proc->p_pid);
++	    td->td_proc->p_pid, flags);
+
+ 	SDT_PROBE2(myfirst, , , close, sc, flags);
+
+@@ -164,7 +196,7 @@
+ 	if (sc->sc_open_count > 0)
+ 		sc->sc_open_count--;
++	DPRINTF(sc, MYF_DBG_OPEN, "close ok: count=%d\n", sc->sc_open_count);
+ 	mtx_unlock(&sc->sc_mtx);
+
+-	device_printf(sc->sc_dev, "close ok: count=%d\n", sc->sc_open_count);
+ 	return (0);
+ }
+
+@@ -172,18 +204,20 @@
+ static int
+ myfirst_read(struct cdev *dev, struct uio *uio, int ioflag)
+ {
+ 	struct myfirst_softc *sc = dev->si_drv1;
+ 	int error;
+
+-	device_printf(sc->sc_dev, "read: resid=%zu off=%jd\n",
++	DPRINTF(sc, MYF_DBG_IO, "read: pid=%d resid=%zu off=%jd\n",
+-	    (size_t)uio->uio_resid, (intmax_t)uio->uio_offset);
++	    curthread->td_proc->p_pid,
++	    (size_t)uio->uio_resid, (intmax_t)uio->uio_offset);
+
+ 	SDT_PROBE4(myfirst, , , io, sc, 0,
+ 	    (size_t)uio->uio_resid, uio->uio_offset);
+
+ 	error = myfirst_read_impl(sc, uio);
+
+-	device_printf(sc->sc_dev, "read ok: error=%d\n", error);
++	if (error != 0)
++		DPRINTF(sc, MYF_DBG_IO, "read failed: error=%d\n", error);
+ 	return (error);
+ }
+
+@@ -191,14 +225,16 @@
+ static int
+ myfirst_write(struct cdev *dev, struct uio *uio, int ioflag)
+ {
+ 	struct myfirst_softc *sc = dev->si_drv1;
+ 	int error;
+
+-	device_printf(sc->sc_dev, "write: resid=%zu off=%jd\n",
++	DPRINTF(sc, MYF_DBG_IO, "write: pid=%d resid=%zu off=%jd\n",
+-	    (size_t)uio->uio_resid, (intmax_t)uio->uio_offset);
++	    curthread->td_proc->p_pid,
++	    (size_t)uio->uio_resid, (intmax_t)uio->uio_offset);
+
+ 	SDT_PROBE4(myfirst, , , io, sc, 1,
+ 	    (size_t)uio->uio_resid, uio->uio_offset);
+
+ 	error = myfirst_write_impl(sc, uio);
+
+-	device_printf(sc->sc_dev, "write ok: error=%d\n", error);
++	if (error != 0)
++		DPRINTF(sc, MYF_DBG_IO, "write failed: error=%d\n", error);
+ 	return (error);
+ }
+
+@@ -230,4 +266,4 @@
+-MODULE_VERSION(myfirst, 15);
++MODULE_VERSION(myfirst, 16);

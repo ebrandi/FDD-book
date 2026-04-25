@@ -1,0 +1,37 @@
+# Example jail.conf(5) snippets for Chapter 30 labs.
+#
+# Copy relevant blocks into /etc/jail.conf (or into a per-jail include),
+# edit paths and names, and manage the jails with service jail.
+
+# A simple non-VNET jail that uses the custom jaildev ruleset from Lab 3.
+testjail {
+	path = "/jails/test";
+	host.hostname = "testjail";
+	ip4 = inherit;
+	devfs_ruleset = 100;
+	exec.start = "/bin/sh /etc/rc";
+	exec.stop = "/bin/sh /etc/rc.shutdown";
+	persist;
+}
+
+# A VNET jail with an epair interface moved in.  Complements Lab 4.
+vnet-test {
+	path = "/jails/vnet-test";
+	host.hostname = "vnet-test";
+	vnet;
+	vnet.interface = "epair0b";
+	devfs_ruleset = 5;        # devfsrules_jail_vnet
+	persist;
+}
+
+# A "services" jail that sees only a custom service device.
+myservice {
+	path = "/jails/myservice";
+	host.hostname = "myservice";
+	devfs_ruleset = 101;
+	allow.raw_sockets = 0;
+	allow.mount = 0;
+	exec.start = "/bin/sh /etc/rc";
+	exec.stop = "/bin/sh /etc/rc.shutdown";
+	persist;
+}

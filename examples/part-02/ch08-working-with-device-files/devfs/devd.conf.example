@@ -1,0 +1,15 @@
+# Example /etc/devd.conf rule for the Chapter 8 myfirst driver.
+#
+# Copy the notify block to /etc/devd.conf (or a fragment under
+# /usr/local/etc/devd/ if your system prefers fragment files) and run
+# "service devd restart" to install. See devd.conf(5) for details.
+#
+# Each time /dev/myfirst/0 appears or disappears, devd will log a
+# message via logger(1) tagged "myfirst". Watch /var/log/messages.
+
+notify 100 {
+        match "system"      "DEVFS";
+        match "subsystem"   "CDEV";
+        match "cdev"        "myfirst/0";
+        action              "/usr/bin/logger -t myfirst event=$type";
+};

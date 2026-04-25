@@ -1,0 +1,33 @@
+/*
+ * edled.dts - Overlay for the edled driver on Raspberry Pi 4
+ *
+ * Companion overlay for Chapter 32, Section 7 of
+ * "FreeBSD Device Drivers: From First Steps to Kernel Mastery."
+ *
+ * Adds an edled@0 node under /soc that references GPIO 18 as its
+ * LED output.  Wire an LED with a current-limiting resistor between
+ * GPIO 18 (pin 12 on the header) and ground.
+ *
+ * The third cell of leds-gpios is the flag word:
+ *   0 = active high (pin drives 3.3V when active)
+ *   1 = active low  (pin drives 0V when active)
+ */
+
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "brcm,bcm2711";
+
+	fragment@0 {
+		target-path = "/soc";
+		__overlay__ {
+			edled0: edled@0 {
+				compatible = "example,edled";
+				status = "okay";
+				leds-gpios = <&gpio 18 0>;
+				label = "lab-indicator";
+			};
+		};
+	};
+};

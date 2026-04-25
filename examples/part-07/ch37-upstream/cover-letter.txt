@@ -1,0 +1,88 @@
+To: freebsd-hackers@FreeBSD.org
+Subject: New driver: FooCorp FC100 sensor boards
+
+Hello,
+
+I am proposing a new driver, mydev(4), for FooCorp FC100
+PCI-attached environmental sensor boards. The boards are
+documented in the FC100 Programmer's Reference Manual v1.4 from
+FooCorp, which is publicly available. I have two hardware units
+to test against (one rev 1.0 and one rev 1.1) and I have
+additionally verified FC200 compatibility mode against a third
+unit.
+
+What the driver provides
+------------------------
+
+The driver implements probe/attach/detach through the standard
+Newbus framework and exposes a character device at /dev/mydevN
+for userland interaction. Userland programs can read sampled
+sensor data by open(2)/read(2) on the device node. The sampling
+interval is tunable via sysctl.
+
+The driver is organised as:
+
+ * sys/dev/mydev/mydev.c     - main driver source
+ * sys/dev/mydev/mydev.h     - internal header
+ * sys/dev/mydev/mydevreg.h  - hardware register definitions
+ * sys/modules/mydev/Makefile - loadable module Makefile
+ * share/man/man4/mydev.4    - manual page
+
+The total diff is approximately 620 lines of C and 95 lines of
+mdoc.
+
+Hardware supported
+------------------
+
+ * FooCorp FC100 rev 1.0
+ * FooCorp FC100 rev 1.1
+ * FooCorp FC200 in FC100-compatibility mode
+
+Testing performed
+-----------------
+
+ * Runs cleanly on amd64 and arm64.
+ * mandoc -Tlint share/man/man4/mydev.4 is silent.
+ * /usr/src/tools/build/checkstyle9.pl is clean against every
+   .c and .h file.
+ * make universe completed without warnings against this driver
+   on the last full run.
+ * kldload/kldunload cycle repeated 50 times on amd64 without
+   leaks (confirmed with vmstat -m) or panics.
+ * A small userland test program that opens /dev/mydev0, reads
+   1000 samples, and exits has been run under witness(4) and
+   produces no warnings.
+
+Design questions I would welcome feedback on
+--------------------------------------------
+
+ * Is a character device the right primary interface for a
+   sensor driver of this shape, or would a sysctl tree be more
+   idiomatic? I chose the character-device interface because
+   the board also supports streaming mode, but I have not yet
+   implemented streaming and am open to reconsidering.
+ * The sysctl hierarchy uses hw.mydev.unit.interval_ms for the
+   sampling interval. I would welcome naming feedback.
+ * The driver uses a single BAR and a single IRQ. MSI-X is not
+   supported by the hardware. If that constraint affects the
+   review, please flag it.
+
+Review routing
+--------------
+
+I intend to open a Phabricator review once any early feedback
+from this list has been incorporated. The working branch lives
+at https://github.com/<me>/freebsd-src/tree/mydev-driver for
+anyone who would like to read the code before it appears in
+Phabricator.
+
+I am new to the FreeBSD contribution process. I have read
+CONTRIBUTING.md and the relevant sections of Chapter 37 of
+"FreeBSD Device Drivers: From First Steps to Kernel Mastery,"
+and I have done my best to follow the project's conventions.
+If I have missed anything obvious, I would rather hear about it
+now than in review.
+
+Thanks for reading. I look forward to the feedback.
+
+Your Name <you@example.com>

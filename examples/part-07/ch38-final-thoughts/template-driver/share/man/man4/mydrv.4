@@ -1,0 +1,68 @@
+.\"-
+.\" SPDX-License-Identifier: BSD-2-Clause
+.\"
+.\" Copyright (c) 2026 Your Name <you@example.com>
+.\"
+.\" Redistribution and use in source and binary forms, with or
+.\" without modification, are permitted provided that the
+.\" following conditions are met:
+.\" 1. Redistributions of source code must retain the above
+.\"    copyright notice, this list of conditions and the
+.\"    following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above
+.\"    copyright notice, this list of conditions and the
+.\"    following disclaimer in the documentation and/or other
+.\"    materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHORS ``AS IS'' AND ANY
+.\" EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+.\" THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+.\" PARTICULAR PURPOSE ARE DISCLAIMED.
+.\"
+.Dd April 20, 2026
+.Dt MYDRV 4
+.Os
+.Sh NAME
+.Nm mydrv
+.Nd short description of the driver
+.Sh SYNOPSIS
+To compile the driver into the kernel, place the following line
+in your kernel configuration file:
+.Bd -ragged -offset indent
+.Cd "device mydrv"
+.Ed
+.Pp
+Alternatively, to load the driver as a module at boot, place
+the following line in
+.Xr loader.conf 5 :
+.Bd -literal -offset indent
+mydrv_load="YES"
+.Ed
+.Sh DESCRIPTION
+Describe what the driver does and what sort of device it
+supports.
+Keep each sentence on its own line as required by
+.Xr style.mdoc 5 .
+.Sh HARDWARE
+The
+.Nm
+driver supports the following hardware:
+.Bl -bullet -compact
+.It
+Vendor Product, model number
+.El
+.Sh FILES
+.Bl -tag -width ".Pa /dev/mydrv0" -compact
+.It Pa /dev/mydrv0
+character-device node for the first attached instance
+.El
+.Sh SEE ALSO
+.Xr pci 4 ,
+.Xr style 9
+.Sh HISTORY
+The
+.Nm
+driver first appeared in
+.Fx 14.3 .
+.Sh AUTHORS
+.An Your Name Aq Mt you@example.com

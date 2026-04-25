@@ -1,0 +1,28 @@
+# Sample crontab entries for Chapter 3's "Scheduling and Automation"
+# section. These are illustrative lines from the chapter, collected
+# here so the reader can copy/paste them into `crontab -e`.
+#
+# Cron format (five time fields + command):
+#
+#   .----------------- minute        (0 - 59)
+#   |  .-------------- hour          (0 - 23)
+#   |  |  .----------- day of month  (1 - 31)
+#   |  |  |  .-------- month         (1 - 12)
+#   |  |  |  |  .----- day of week   (0 - 6, Sun = 0)
+#   |  |  |  |  |
+#   *  *  *  *  *  command
+
+# Run every day at midnight
+0 0 * * * /usr/bin/date >> /home/dev/midnight.log
+
+# Run every 15 minutes
+*/15 * * * * /home/dev/scripts/check_disk.sh
+
+# Run every Monday at 8 AM
+0 8 * * 1 echo "Weekly meeting" >> /home/dev/reminder.txt
+
+# Run at 3:30 AM on the first of every month
+30 3 1 * * /usr/local/bin/backup.sh
+
+# Daily backup with output captured (stderr folded into the log file)
+0 0 * * * /home/dev/backup.sh >> /home/dev/backup.log 2>&1

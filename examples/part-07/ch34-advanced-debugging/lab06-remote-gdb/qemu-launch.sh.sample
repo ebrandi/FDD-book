@@ -1,0 +1,26 @@
+#!/bin/sh
+#
+# qemu-launch.sh.sample - sample QEMU launch script for Chapter 34
+#                         Lab 6 (remote GDB stub debugging).
+#
+# The key flag is -serial pty, which makes QEMU allocate a
+# pseudo-terminal on the host and print its path on startup. Open
+# that path from kgdb with "target remote <path>".
+#
+# This is a sample. Adjust for your environment.
+
+VMNAME=bugdemo-debug
+DISK=/vms/bugdemo-debug.qcow2
+MEM=2G
+CPUS=2
+
+qemu-system-x86_64 \
+    -name ${VMNAME} \
+    -m ${MEM} \
+    -smp ${CPUS} \
+    -enable-kvm \
+    -drive file=${DISK},if=virtio \
+    -netdev user,id=net0 \
+    -device virtio-net-pci,netdev=net0 \
+    -serial pty \
+    -display none

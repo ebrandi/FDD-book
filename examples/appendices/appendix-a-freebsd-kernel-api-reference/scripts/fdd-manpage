@@ -1,0 +1,106 @@
+#!/bin/sh
+#
+# fdd-manpage: open the right section 9 manual page for a FreeBSD kernel API,
+# with a small mapping from common shorthand names to their canonical pages.
+#
+# Companion to Appendix A of "FreeBSD Device Drivers: From First Steps
+# to Kernel Mastery".
+#
+# Usage:
+#   fdd-manpage <api-name>
+#
+# Examples:
+#   fdd-manpage mtx            -> man 9 mutex
+#   fdd-manpage bus_space      -> man 9 bus_space
+#   fdd-manpage uiomove        -> man 9 uio
+#   fdd-manpage make_dev_s     -> man 9 make_dev
+
+set -eu
+
+if [ $# -ne 1 ]; then
+	printf 'usage: %s <api-name>\n' "$(basename "$0")" >&2
+	exit 64
+fi
+
+name=$1
+
+# Short names or alternate spellings that do not match a manual page
+# one-to-one. Add new mappings here as the appendix grows.
+case "$name" in
+	mtx|mtx_init|mtx_lock|mtx_unlock|mtx_destroy|mtx_assert)
+		page="mutex" ;;
+	cv|cv_init|cv_wait|cv_signal|cv_broadcast|cv_destroy)
+		page="condvar" ;;
+	uiomove|uio_read|uio_write)
+		page="uio" ;;
+	copyin|copyout|copyinstr)
+		page="copy" ;;
+	fueword|fuword|subyte|suword)
+		page="fetch" ;;
+	make_dev|make_dev_s|destroy_dev)
+		page="make_dev" ;;
+	sysctl_handle_int|sysctl_handle_long|sysctl_handle_string)
+		page="sysctl" ;;
+	SYSCTL_ADD_NODE|SYSCTL_ADD_INT|SYSCTL_ADD_PROC)
+		page="sysctl_add_oid" ;;
+	SYSCTL_NODE|SYSCTL_INT|SYSCTL_LONG|SYSCTL_STRING|SYSCTL_PROC)
+		page="sysctl" ;;
+	TASK_INIT|taskqueue_create|taskqueue_enqueue|taskqueue_drain)
+		page="taskqueue" ;;
+	callout_init|callout_reset|callout_stop|callout_drain)
+		page="callout" ;;
+	rm_init|rm_rlock|rm_wlock|rm_destroy)
+		page="rmlock" ;;
+	sx_init|sx_slock|sx_xlock|sx_destroy)
+		page="sx" ;;
+	atomic_*|atomic)
+		page="atomic" ;;
+	epoch_alloc|epoch_enter|epoch_exit|epoch_wait)
+		page="epoch" ;;
+	bus_space_read_1|bus_space_read_2|bus_space_read_4|bus_space_read_8)
+		page="bus_space" ;;
+	bus_space_write_1|bus_space_write_2|bus_space_write_4|bus_space_write_8)
+		page="bus_space" ;;
+	bus_space_barrier)
+		page="bus_space" ;;
+	bus_dma_tag_create|bus_dmamap_create|bus_dmamap_load|bus_dmamap_sync|bus_dmamap_unload)
+		page="bus_dma" ;;
+	bus_dmamem_alloc|bus_dmamem_free|bus_dma_tag_destroy|bus_dmamap_destroy)
+		page="bus_dma" ;;
+	bus_setup_intr|bus_teardown_intr)
+		page="BUS_SETUP_INTR" ;;
+	bus_alloc_resource|bus_alloc_resource_any)
+		page="bus_alloc_resource" ;;
+	bus_release_resource)
+		page="bus_release_resource" ;;
+	rman_get_start|rman_get_end|rman_get_size|rman_get_bustag|rman_get_bushandle)
+		page="rman" ;;
+	MALLOC_DEFINE|MALLOC_DECLARE|free|realloc)
+		page="malloc" ;;
+	contigfree)
+		page="contigmalloc" ;;
+	DEVMETHOD|DEVMETHOD_END|device_method_t)
+		page="DRIVER_MODULE" ;;
+	device_get_softc|device_get_parent|device_get_unit|device_get_nameunit)
+		page="device" ;;
+	device_printf)
+		page="device_printf" ;;
+	selrecord|selwakeup|selinfo)
+		page="selrecord" ;;
+	knote|knlist_init|knlist_add|knlist_remove)
+		page="kqueue" ;;
+	EVENTHANDLER_DECLARE|EVENTHANDLER_REGISTER|EVENTHANDLER_DEREGISTER|EVENTHANDLER_INVOKE)
+		page="EVENTHANDLER" ;;
+	CTR0|CTR1|CTR2|CTR3|CTR4|CTR5|CTR6)
+		page="ktr" ;;
+	SDT_PROVIDER_DEFINE|SDT_PROVIDER_DECLARE|SDT_PROBE|SDT_PROBE_DEFINE)
+		page="SDT" ;;
+	MPASS|CTASSERT)
+		page="KASSERT" ;;
+	priv_check|priv_check_cred)
+		page="priv" ;;
+	*)
+		page="$name" ;;
+esac
+
+exec man 9 "$page"

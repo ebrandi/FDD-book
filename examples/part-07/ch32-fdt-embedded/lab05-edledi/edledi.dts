@@ -1,0 +1,36 @@
+/*
+ * edledi.dts - Overlay for the edledi driver on Raspberry Pi 4
+ *
+ * Companion overlay for Chapter 32, Lab 5 of
+ * "FreeBSD Device Drivers: From First Steps to Kernel Mastery."
+ *
+ * Adds an edledi@0 node that uses:
+ *   - GPIO 18 as the LED output (header pin 12)
+ *   - GPIO 23 as the button input (header pin 16), with a pull-up
+ *     and an interrupt on either edge.
+ *
+ * Wire the button between GPIO 23 and ground.  The internal pull-up
+ * keeps the line high when the button is released; pressing shorts
+ * it to ground and triggers the interrupt.
+ */
+
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "brcm,bcm2711";
+
+	fragment@0 {
+		target-path = "/soc";
+		__overlay__ {
+			edledi0: edledi@0 {
+				compatible = "example,edledi";
+				status = "okay";
+				leds-gpios = <&gpio 18 0>;
+				button-gpios = <&gpio 23 1>;
+				interrupt-parent = <&gpio>;
+				interrupts = <23 3>;
+			};
+		};
+	};
+};

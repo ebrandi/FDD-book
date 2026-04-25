@@ -1,0 +1,25 @@
+# Example /etc/jail.conf fragment for the Chapter 8 Lab 8.7 jail.
+#
+# Creates a small jail that references ruleset 100 from
+# /etc/devfs.rules (see devfs.rules.example). Used to verify that
+# /dev/myfirst/0 is visible inside the jail when the ruleset unhides
+# it and invisible when it does not.
+#
+# Before using this fragment:
+#   1. Create /jails/myfirstjail and populate it with a base install.
+#      One quick way is "bsdinstall jail /jails/myfirstjail".
+#   2. Install the ruleset from devfs.rules.example into
+#      /etc/devfs.rules and run "service devfs restart".
+#   3. Start the jail with "service jail start myfirstjail".
+
+myfirstjail {
+        path = "/jails/myfirstjail";
+        host.hostname = "myfirstjail.example.com";
+
+        mount.devfs;
+        devfs_ruleset = 100;
+
+        exec.start = "/bin/sh";
+        exec.stop  = "/bin/sh -c 'exit'";
+        persist;
+}

@@ -1,0 +1,33 @@
+# Example devfs rulesets for Chapter 30 labs.
+#
+# Copy the relevant rules into /etc/devfs.rules (creating the file if it
+# does not exist), then reload with:
+#
+#   sudo service devfs restart
+#
+# These rulesets use numbers in the 100 range to avoid conflict with the
+# kernel's defaults (1, 2, 3, 4, 5).
+
+[devfsrules_jaildev=100]
+add include $devfsrules_hide_all
+add include $devfsrules_unhide_basic
+add path 'jaildev' unhide
+
+[devfsrules_myservice=101]
+add include $devfsrules_hide_all
+add include $devfsrules_unhide_basic
+add include $devfsrules_unhide_login
+add path 'myservice*' unhide
+add path 'log' unhide
+
+# Example: a jail that should be able to use tun0 specifically but not
+# any other tunnel device.  Useful for VPN or network-service jails.
+[devfsrules_tun0jail=102]
+add include $devfsrules_jail
+add path 'tun0' unhide
+
+# Example: a jail that runs packet-capture tools (tcpdump, dhclient).
+# Starts from the VNET jail ruleset and ensures bpf is visible.
+[devfsrules_capturejail=103]
+add include $devfsrules_jail_vnet
+add path 'bpf*' unhide

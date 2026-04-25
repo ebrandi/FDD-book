@@ -1,0 +1,18 @@
+# Makefile.user - build the myfirstctl(8) user-space companion.
+#
+# Use this Makefile from the same directory that holds the public
+# header myfirst_ioctl.h.  The companion has no library dependencies
+# beyond libc.
+
+PROG=	myfirstctl
+SRCS=	myfirstctl.c
+NO_MAN=	yes
+
+CFLAGS+=	-I${.CURDIR}
+
+# We do not install the binary by default; readers run it from the
+# build directory.  Override BINDIR if you want to install it under
+# /usr/local/sbin or similar.
+BINDIR?=	/usr/local/sbin
+
+.include <bsd.prog.mk>

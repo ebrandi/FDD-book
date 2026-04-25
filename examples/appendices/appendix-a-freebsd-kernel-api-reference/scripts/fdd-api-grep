@@ -1,0 +1,76 @@
+#!/bin/sh
+#
+# fdd-api-grep: search the FreeBSD source tree for uses of a kernel API,
+# restricted to places where drivers are most likely to show realistic
+# patterns.
+#
+# Companion to Appendix A of "FreeBSD Device Drivers: From First Steps
+# to Kernel Mastery".
+#
+# Usage:
+#   fdd-api-grep <api-name>
+#
+# The script greps for the name under the directories listed in
+# SEARCH_PATHS, relative to $FDD_SRC or /usr/src if unset. It limits
+# output to C source and header files to keep results readable.
+#
+# Examples:
+#   fdd-api-grep bus_space_write_4
+#   fdd-api-grep make_dev_s
+#   fdd-api-grep EVENTHANDLER_INVOKE
+#
+# Environment:
+#   FDD_SRC   root of the FreeBSD source tree (default: /usr/src)
+
+set -eu
+
+if [ $# -ne 1 ]; then
+	printf 'usage: %s <api-name>\n' "$(basename "$0")" >&2
+	exit 64
+fi
+
+pattern=$1
+root=${FDD_SRC:-/usr/src}
+
+if [ ! -d "$root/sys" ]; then
+	printf '%s: cannot find sys/ under %s\n' \
+	    "$(basename "$0")" "$root" >&2
+	printf 'Set FDD_SRC to the root of your FreeBSD source tree.\n' >&2
+	exit 66
+fi
+
+# Directories most likely to show realistic driver-side usage.
+SEARCH_PATHS="
+	$root/sys/dev
+	$root/sys/net
+	$root/sys/cam
+	$root/sys/kern
+	$root/sys/vm
+	$root/sys/sys
+"
+
+found=0
+for dir in $SEARCH_PATHS; do
+	if [ -d "$dir" ]; then
+		found=1
+		break
+	fi
+done
+
+if [ $found -eq 0 ]; then
+	printf '%s: none of the expected subdirectories exist under %s\n' \
+	    "$(basename "$0")" "$root" >&2
+	exit 66
+fi
+
+# Use grep with --include to restrict output. Fall back gracefully if
+# the system grep lacks those flags (rare on modern FreeBSD).
+if grep --version 2>/dev/null | grep -q 'GNU'; then
+	grep -rn --include='*.[ch]' "$pattern" $SEARCH_PATHS 2>/dev/null
+else
+	for dir in $SEARCH_PATHS; do
+		[ -d "$dir" ] || continue
+		find "$dir" \( -name '*.c' -o -name '*.h' \) \
+		    -exec grep -Hn "$pattern" {} +
+	done
+fi

@@ -1,0 +1,23 @@
+# /boot/loader.conf snippet for the Chapter 24 myfirst driver.
+#
+# Append the lines below to /boot/loader.conf to load myfirst
+# automatically at boot and to set its initial debug mask.
+
+# Load the module on boot.
+myfirst_load="YES"
+
+# Initial debug mask, applied before the dev.myfirst.<unit>.debug.mask
+# sysctl OID becomes accessible.  The bit values are documented in
+# myfirst_debug.h:
+#
+#   MYF_DBG_INIT  0x01   probe/attach/detach
+#   MYF_DBG_OPEN  0x02   open/close lifecycle
+#   MYF_DBG_IO    0x04   read/write paths
+#   MYF_DBG_IOCTL 0x08   ioctl handling
+#   MYF_DBG_INTR  0x10   interrupt handler
+#   MYF_DBG_DMA   0x20   DMA mapping/sync
+#   MYF_DBG_PWR   0x40   power-management events
+#   MYF_DBG_MEM   0x80   malloc/free trace
+#
+# 0x06 enables OPEN and IO; 0xff enables every defined class.
+hw.myfirst.debug_mask_default="0x06"

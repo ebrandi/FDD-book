@@ -1,0 +1,15 @@
+# Example /etc/devfs.rules fragment for the Chapter 8 myfirst driver.
+#
+# devfs.rules defines named rulesets that a jail can reference in
+# jail.conf through devfs_ruleset = N. See devfs(8) and
+# devfs.rules(5) for the full format.
+#
+# The ruleset below makes everything under /dev/myfirst/ visible
+# inside a jail, with group-readable/writable access for the
+# operator group. It is suitable for a lab jail that needs to run
+# probe_myfirst against the driver running on the host.
+
+[myfirst_lab=10]
+add path 'myfirst'   unhide
+add path 'myfirst/*' unhide
+add path 'myfirst/*' mode 0660 group operator

@@ -1,0 +1,32 @@
+# GENERIC-DEBUG.sample
+#
+# A sample debug kernel config. On FreeBSD 14.3, the stock
+# GENERIC-DEBUG is equivalent to this; you can use it directly
+# by specifying KERNCONF=GENERIC-DEBUG when building.
+#
+# For memguard work in Lab 5, you can add:
+#     options     DEBUG_MEMGUARD
+# to this file and build with KERNCONF pointing to this copy.
+
+include         GENERIC
+include         "std.debug"
+
+# Uncomment for Lab 5:
+# options       DEBUG_MEMGUARD
+
+# Uncomment if you want to see even more verbose boot output:
+# options       VERBOSE_SYSINIT
+
+# Notes:
+#
+# std.debug already enables:
+#   INVARIANTS, INVARIANT_SUPPORT, WITNESS, WITNESS_SKIPSPIN,
+#   MALLOC_DEBUG_MAXZONES=8, ALT_BREAK_TO_DEBUGGER, DEADLKRES,
+#   BUF_TRACKING, and makeoptions DEBUG=-g.
+#
+# GENERIC already enables:
+#   KDB, KDB_TRACE, DDB, GDB, EKCD, KDTRACE_FRAME, KDTRACE_HOOKS,
+#   DDB_CTF.
+#
+# With the two combined you have the standard debug kernel used
+# throughout Chapter 34.

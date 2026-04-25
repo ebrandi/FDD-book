@@ -1,0 +1,27 @@
+/*
+ * fdthello-overlay.dts - Overlay that adds an fdthello DT node
+ *
+ * Companion overlay for Chapter 32, Section 5 of
+ * "FreeBSD Device Drivers: From First Steps to Kernel Mastery."
+ *
+ * Targets the /soc node of a Raspberry Pi 4 base tree and adds a
+ * fdthello@20000 child that matches the driver from Lab 1.
+ */
+
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "brcm,bcm2711";
+
+	fragment@0 {
+		target-path = "/soc";
+		__overlay__ {
+			hello@20000 {
+				compatible = "freebsd,fdthello";
+				reg = <0x20000 0x100>;
+				status = "okay";
+			};
+		};
+	};
+};

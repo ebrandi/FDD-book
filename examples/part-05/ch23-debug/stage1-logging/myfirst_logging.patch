@@ -1,0 +1,86 @@
+--- a/myfirst.c
++++ b/myfirst.c
+@@ -1,5 +1,6 @@
+ /*
+- * myfirst driver - version 1.5-power
++ * myfirst driver - version 1.5-power (Chapter 23 Stage 1: unconditional
++ * logging at key points)
+  */
+
+ static int
+ myfirst_open(struct cdev *dev, int flags, int devtype, struct thread *td)
+ {
+ 	struct myfirst_softc *sc = dev->si_drv1;
+ 	int error = 0;
+
++	device_printf(sc->sc_dev,
++	    "open entry: pid=%d flags=0x%x\n",
++	    td->td_proc->p_pid, flags);
++
+ 	mtx_lock(&sc->sc_mtx);
+ 	if (sc->sc_open_count >= MYFIRST_MAX_OPENS) {
+ 		error = EBUSY;
+ 		goto out;
+ 	}
+ 	sc->sc_open_count++;
+ out:
+ 	mtx_unlock(&sc->sc_mtx);
++
++	if (error != 0)
++		device_printf(sc->sc_dev, "open failed: error=%d\n", error);
++	else
++		device_printf(sc->sc_dev, "open ok: count=%d\n",
++		    sc->sc_open_count);
++
+ 	return (error);
+ }
+
+ static int
+ myfirst_close(struct cdev *dev, int flags, int devtype, struct thread *td)
+ {
+ 	struct myfirst_softc *sc = dev->si_drv1;
+
++	device_printf(sc->sc_dev,
++	    "close entry: pid=%d\n", td->td_proc->p_pid);
++
+ 	mtx_lock(&sc->sc_mtx);
+ 	if (sc->sc_open_count > 0)
+ 		sc->sc_open_count--;
+ 	mtx_unlock(&sc->sc_mtx);
+
++	device_printf(sc->sc_dev, "close ok: count=%d\n", sc->sc_open_count);
++
+ 	return (0);
+ }
+
+ static int
+ myfirst_read(struct cdev *dev, struct uio *uio, int ioflag)
+ {
+ 	struct myfirst_softc *sc = dev->si_drv1;
+ 	int error;
+
++	device_printf(sc->sc_dev,
++	    "read: resid=%zu off=%jd\n",
++	    (size_t)uio->uio_resid, (intmax_t)uio->uio_offset);
++
+ 	error = myfirst_read_impl(sc, uio);
++
++	device_printf(sc->sc_dev, "read ok: error=%d\n", error);
+ 	return (error);
+ }
+
+ static int
+ myfirst_write(struct cdev *dev, struct uio *uio, int ioflag)
+ {
+ 	struct myfirst_softc *sc = dev->si_drv1;
+ 	int error;
+
++	device_printf(sc->sc_dev,
++	    "write: resid=%zu off=%jd\n",
++	    (size_t)uio->uio_resid, (intmax_t)uio->uio_offset);
++
+ 	error = myfirst_write_impl(sc, uio);
++
++	device_printf(sc->sc_dev, "write ok: error=%d\n", error);
+ 	return (error);
+ }

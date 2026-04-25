@@ -1,0 +1,23 @@
+# Example /etc/devfs.conf entries for the Chapter 8 myfirst driver.
+#
+# devfs.conf applies each line once, when a matching node appears
+# under /dev. See devfs.conf(5) for the full syntax. To apply changes
+# on a running system:
+#
+#     sudo service devfs restart
+#
+# These entries make sense against the Chapter 7 baseline driver that
+# creates /dev/myfirst0 with mode 0600 under root:wheel. They turn that
+# node into a root:operator 0660 node and add a /dev/myfirst-primary
+# symlink pointing at it.
+
+own     myfirst0        root:operator
+perm    myfirst0        0660
+link    myfirst0        myfirst-primary
+
+# If you are using the Chapter 8 structured-name driver that creates
+# /dev/myfirst/0, use these entries instead:
+
+# own     myfirst/0       root:operator
+# perm    myfirst/0       0660
+# link    myfirst/0       myfirst-primary
