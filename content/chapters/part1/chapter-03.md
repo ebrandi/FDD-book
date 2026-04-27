@@ -531,7 +531,7 @@ Lists all files that start with `host` and end with `.conf`.
 % ls host?.conf
 ```
 
-Matches files like `host1.conf`, `hostA.conf`, but not `hosts.conf`.
+Matches files like `host1.conf`, `hostA.conf`, but not `host.conf`.
 
 #### Editing on the command line (tcsh)
 
