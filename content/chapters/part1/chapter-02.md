@@ -791,7 +791,7 @@ From this point on, whenever this book cites a file such as `/usr/src/sys/kern/k
 Clone it with Git:
 
 ```console
-% sudo git clone --branch releng/14.3 --depth 1 https://git.FreeBSD.org/src.git src /usr/src
+% sudo git clone --branch releng/14.3 --depth 1 https://git.FreeBSD.org/src.git /usr/src
 ```
 
 This will take a few minutes and download several gigabytes. When finished, you'll have the full kernel source tree available.
