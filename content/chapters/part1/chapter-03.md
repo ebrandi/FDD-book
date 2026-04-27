@@ -886,7 +886,7 @@ This adds execute permission (`+x`) for the user (`u`).
 **Octal mode**
 
 ```sh
-% chmod 755 script.sh
+% chmod 750 script.sh
 ```
 
 Here, numbers represent permissions:
@@ -895,7 +895,7 @@ Here, numbers represent permissions:
 - 5 = r-x
 - 0 = ---
 
-So `755` means: owner = rwx, group = r-x, others = r-x.
+So `750` means: owner = rwx, group = r-x, others = ---.
 
 ### Changing Ownership
 
