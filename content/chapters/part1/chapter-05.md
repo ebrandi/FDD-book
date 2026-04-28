@@ -628,6 +628,10 @@ Let's create a kernel module that demonstrates memory allocation patterns:
 #include <sys/malloc.h>
 #include <vm/uma.h>
 
+/*
+ * Define a new memory type with the type M_DEMO, the name "demo",
+ * and the description "Memory demo allocations"
+ */
 MALLOC_DEFINE(M_DEMO, "demo", "Memory demo allocations");
 
 static uma_zone_t demo_zone;
@@ -729,10 +733,17 @@ FreeBSD provides excellent tools for debugging memory issues:
 
 **vmstat -z**: Show UMA zone statistics.
 
+We can reload the kernel module to test the memory allocations using vmstat. To find the memory allocations specific to memory_demo.ko, we can use the human readable names we defined in the `MALLOC_DEFINE()` macro and `uma_zcreate` function respectively:
 ```bash
-% vmstat -m | grep M_DEMO
-% vmstat -z | head -20
+% sudo kldload ./memory_demo.ko
+% vmstat -m | grep demo
+            demo    0     0    3 512,1024,2048          
+% vmstat -z | grep demo_objects
+demo_objects:            36,      0,       0,     303,       1,   0,   0,   0
+% sudo kldunload memory_demo
 ```
+The command `vmstat -m` returns several values. The first is the malloc string tag we assigned using `MALLOC_DEFINE()`. The second value is number of currently live allocations and the third value the currently allocated bytes, both of which are zero as the allocated memory for the three pointers was freed soon after allocation inside of the `MOD_LOAD` case. The fourth value is the total number of allocations made over the lifetime of this memory type. Finally we will be presented the sizes of the allocations that have been made, the three presented matching the different sizes passed to `malloc()` in `memory_demo.c`.  
+Similarly, the command `vmstat -z` will report on the memory used in UMA zones. The first number presented is the size in bytes. The second is the limit, currently 0 indicating no limit has been set. The third value is the number of currently allocated objects, again zero as the object was freed soon after allocation inside of the `MOD_LOAD` case. The fourth value is the number of items sitting inside of the free cache ready to use. This number reflects the UMA's internal memory allocator pre-populating zones rather than the number of live instances of `demo_object`. The fifth value is the total number of allocations made. Finally, the last three values represent allocation failures, sleeps, and cross-domain frees, all of which are zero in this example.
 
 ### **Safe String and Memory Operations in Kernel Space**
 
