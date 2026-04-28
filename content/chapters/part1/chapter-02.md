@@ -347,7 +347,7 @@ To get started execute VirtualBox App in your computer and in the main screen se
 
 ![image-20250823192233281](https://freebsd.edsonbrandi.com/images/image-20250823192233281.png)
 
-30. **Create a User**: The installer will ask you to type the user information and to answer some basic questions, you should choose your desired **username** and **password**, you can **accept the default answers** for all questions except for the question ***"Invite USER into other groups?"***, to this question you need answer "**wheel**", this is the group in FreeBSD that will allow you to use the command `su`to become root during a normal session.
+30. **Create a User**: The installer will ask you to type the user information and to answer some basic questions, you should choose your desired **username** and **password**, you can **accept the default answers** for all questions except for the question ***"Invite USER into other groups?"***, to this question you need answer "**wheel**", this is the group in FreeBSD that will allow you to use the command `su` to become root during a normal session.
 
 ![image-20250823192452683](https://freebsd.edsonbrandi.com/images/image-20250823192452683.png)
 
