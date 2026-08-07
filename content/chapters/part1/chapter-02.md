@@ -649,6 +649,7 @@ You have two simple approaches. Pick the one you prefer; both are fine for a lab
    # sysrc firewall_enable="YES"
    # sysrc firewall_type="workstation"
    # sysrc firewall_myservices="22/tcp"
+   # sysrc firewall_allowservices="any"
    # sysrc firewall_logdeny="YES"
    # service ipfw start
    ```
