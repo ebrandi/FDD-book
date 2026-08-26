@@ -1,4 +1,8 @@
-/*-
+/*
+ * Copyright (c) 2026 Edson Brandi
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ *
  * Chapter 21 Stage 4: myfirst_dma.c
  *
  * Consolidated DMA subsystem for the myfirst driver. Moves the DMA

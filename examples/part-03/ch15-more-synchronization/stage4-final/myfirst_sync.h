@@ -1,7 +1,7 @@
-/*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
+/*
  * Copyright (c) 2026 Edson Brandi
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  * myfirst_sync.h: the named synchronisation vocabulary of the
  * myfirst driver at Chapter 15 Stage 4.

@@ -1,7 +1,7 @@
-/*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
+/*
  * Copyright (c) 2026 Edson Brandi
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  * cb_test.c: simple sanity tests for the cbuf userland implementation.
  */

@@ -1,7 +1,7 @@
-/*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
+/*
  * Copyright (c) 2026 Edson Brandi
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  * myfirst_hw.c -- Chapter 16 Stage 4 hardware access layer.
  *

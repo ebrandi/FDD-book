@@ -1,7 +1,7 @@
-/*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
+/*
  * Copyright (c) 2025 Your Name
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
  * All rights reserved.
  *
  * Stage 4 of Chapter 8: multiple cdevs plus destroy_dev_drain.

@@ -1,7 +1,7 @@
-/*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
+/*
  * Copyright (c) 2026 Edson Brandi
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  * myfirst_hw_pci.c -- Chapter 18 addition to the Chapter 16
  * hardware layer. Provides myfirst_hw_attach_pci(), which binds an

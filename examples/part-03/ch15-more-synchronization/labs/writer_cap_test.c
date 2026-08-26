@@ -1,7 +1,7 @@
-/*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
+/*
  * Copyright (c) 2026 Edson Brandi
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  * writer_cap_test: start N concurrent writers that open /dev/myfirst
  * and write a short burst.  Used to stress the writer-cap semaphore

@@ -238,10 +238,10 @@ Ahora crea `myfirst.c`, el código fuente real del driver. Esta primera versión
 Aquí está el esqueleto:
 
 ```c
-/*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
+/*
  * Copyright (c) 2025 Your Name
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
  * All rights reserved.
  */
 

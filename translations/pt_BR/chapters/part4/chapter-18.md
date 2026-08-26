@@ -501,10 +501,10 @@ Os valores de prioridade são negativos por convenção, de modo que o valor num
 Juntando tudo, aqui está o driver do Estágio 1 do Capítulo 18, apresentado como um único arquivo autocontido que evolui a partir do esqueleto do Capítulo 17. O nome do arquivo é `myfirst_pci.c`; ele é novo no Capítulo 18 e fica ao lado dos arquivos existentes `myfirst.c`, `myfirst_hw.c` e `myfirst_sim.c`.
 
 ```c
-/*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
+/*
  * Copyright (c) 2026 Edson Brandi
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  * myfirst_pci.c -- Chapter 18 Stage 1 PCI probe/attach skeleton.
  *
@@ -597,10 +597,10 @@ MODULE_VERSION(myfirst, 1);
 O header complementar, `myfirst_pci.h`:
 
 ```c
-/*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
+/*
  * Copyright (c) 2026 Edson Brandi
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  * myfirst_pci.h -- Chapter 18 PCI interface for the myfirst driver.
  */
@@ -2643,11 +2643,11 @@ Ler esse arquivo depois de escrever o driver do Capítulo 18 é um exercício cu
 ### O Topo do Arquivo
 
 ```c
-/*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
+/*
  * Copyright (c) 2006 Marcel Moolenaar All rights reserved.
  * Copyright (c) 2001 M. Warner Losh <imp@FreeBSD.org>
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
  ...
  */
 

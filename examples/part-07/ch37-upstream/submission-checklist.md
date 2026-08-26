@@ -23,15 +23,16 @@ every box with full confidence.
 
 ## Copyright Headers
 
-- [ ] Every `.c` and `.h` file starts in column 1 with `/*-`.
-- [ ] Every file has an `SPDX-License-Identifier:` line
-  immediately after the opening marker.
+- [ ] Every `.c` and `.h` file starts in column 1 with `/*`.
+- [ ] Every file has at least one `Copyright (c) YEAR Name` line
+  immediately after the opening.
+- [ ] Every file has an `SPDX-License-Identifier:` line after the
+  copyright lines.
 - [ ] The SPDX code matches the licence text that follows.
-- [ ] Every file has at least one `Copyright (c) YEAR Name` line.
 - [ ] The licence text matches one of the approved templates
   documented in Section 3 of Chapter 37.
-- [ ] The manual page uses `.\"-` (with a dash) as its opening
-  marker, not `.\"`.
+- [ ] The manual page uses `.\"` comment lines for its header,
+  with the same copyright-then-SPDX order.
 
 ## Code Style
 

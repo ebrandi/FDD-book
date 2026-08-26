@@ -500,10 +500,10 @@ FreeBSD定义几个探测优先级层级,定义在`/usr/src/sys/sys/bus.h`:
 综上所述,这是第18章第1阶段驱动程序,作为单个自包含文件呈现,从第17章骨架中生长。文件名是`myfirst_pci.c`;它在第18章是新的,与现有的`myfirst.c`、`myfirst_hw.c`和`myfirst_sim.c`并存。
 
 ```c
-/*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
+/*
  * Copyright (c) 2026 Edson Brandi
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  * myfirst_pci.c -- 第18章第1阶段PCI探测/附加骨架。
  *
@@ -596,10 +596,10 @@ MODULE_VERSION(myfirst, 1);
 伴随头文件`myfirst_pci.h`:
 
 ```c
-/*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
+/*
  * Copyright (c) 2026 Edson Brandi
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  * myfirst_pci.h -- myfirst驱动程序的第18章PCI接口。
  */
@@ -2622,11 +2622,11 @@ make
 ### 文件顶部
 
 ```c
-/*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
+/*
  * Copyright (c) 2006 Marcel Moolenaar All rights reserved.
  * Copyright (c) 2001 M. Warner Losh <imp@FreeBSD.org>
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
  ...
  */
 

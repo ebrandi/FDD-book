@@ -1,4 +1,8 @@
-/*-
+/*
+ * Copyright (c) 2026 Edson Brandi
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ *
  * Chapter 21 Stage 4: public DMA API for the myfirst driver.
  *
  * The DMA subsystem manages a single 4 KB host-visible buffer that

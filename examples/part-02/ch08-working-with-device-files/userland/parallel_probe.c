@@ -1,4 +1,6 @@
-/*-
+/*
+ * Copyright (c) 2026 Edson Brandi
+ *
  * SPDX-License-Identifier: BSD-2-Clause
  *
  * parallel_probe: open a device node multiple times from a single

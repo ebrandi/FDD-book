@@ -1,4 +1,8 @@
-/*-
+/*
+ * Copyright (c) 2026 Edson Brandi
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ *
  * Chapter 21 Stage 1: additions to myfirst.h.
  *
  * Append these declarations to myfirst.h after the Chapter 20 softc

@@ -696,10 +696,10 @@ macros in earlier chapters; here we are focusing on how they
 arrange themselves on the page.
 
 ```c
-/*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
+/*
  * Copyright (c) 2026 Your Name <you@example.com>
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  * Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the
@@ -785,9 +785,9 @@ MODULE_VERSION(mydev, 1);
 MODULE_DEPEND(mydev, pci, 1, 1, 1);
 ```
 
-Several things are worth noticing. The copyright header uses the
-`/*-` opening marker, which the automatic licence-harvesting
-script recognises. The SPDX line names the licence explicitly.
+Several things are worth noticing. The copyright header opens
+with a plain `/*` comment, states the copyright first, and then
+names the licence explicitly with the SPDX line.
 The indentation is tabs, not spaces, as mandated by `style(9)`.
 The function declarations are tab-separated, also per `style(9)`.
 The `DRIVER_MODULE` and related macros appear at the bottom, in
@@ -888,14 +888,13 @@ as a panic message.
 
 #### Copyright Header Form
 
-The copyright header uses the `/*-` opening marker. This marker
-is magic. An automated tool harvests licences from the tree by
-looking for multi-line comments that start in column 1 with `/*-`.
-Using the marker flags the block as a licence; using a regular
-`/*` does not. Immediately after `/*-`, the next significant line
-should be `SPDX-License-Identifier:` followed by the SPDX licence
-code, such as `BSD-2-Clause`. Then come one or more `Copyright`
-lines. Then the licence text.
+The copyright header is a multi-line comment starting in column 1
+with a plain `/*`. Older files open with `/*-`, a marker that a
+licence-harvesting tool once relied on; `style(9)` no longer asks
+for the dash in new code. The first significant lines are one or
+more `Copyright` lines. After the copyright lines comes
+`SPDX-License-Identifier:` followed by the SPDX licence code,
+such as `BSD-2-Clause`. Then, optionally, the licence text.
 
 #### Function Declarations and Definitions
 
@@ -1204,9 +1203,10 @@ this as a quick self-check before moving on to Section 3.
 - File names that do not match the driver. If the driver is
   `mydev`, the main source file is `mydev.c`, not `main.c` or
   `driver.c`.
-- Missing or incorrect copyright header. The header uses `/*-` as
-  the opening marker, the SPDX identifier comes first, and the
-  licence text matches one of the project's accepted licences.
+- Missing or incorrect copyright header. The header opens with
+  `/*`, the copyright lines come first, the SPDX identifier
+  follows them, and the licence text matches one of the project's
+  accepted licences.
 - Spaces instead of tabs. `style(9)` is explicit about tabs, and
   the style checker will flag space indentation immediately.
 - Missing parentheses on `return` expressions. A recurring small
@@ -1351,10 +1351,10 @@ has a specific structure, documented in `style(9)`. Let us walk
 through a complete header and examine every part.
 
 ```c
-/*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
+/*
  * Copyright (c) 2026 Your Name <you@example.com>
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  * Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the
@@ -1382,22 +1382,23 @@ through a complete header and examine every part.
  */
 ```
 
-The opening `/*-` is not a typo. The dash after the star is
-significant. An automated script in the tree harvests licence
-information from files by looking for multi-line comments that
-start in column 1 with the sequence `/*-`. Using `/*-` flags the
-block as a licence; using plain `/*` does not. `style(9)` is
-explicit: if you want the tree's licence harvester to pick up
-your licence correctly, use `/*-` for the opening line.
+The opening is a plain `/*` in column 1. You will still see `/*-`
+at the top of many files in the tree: the dash was a marker for an
+automated licence-harvesting script, and for years `style(9)`
+required it. The current `style(9)` has dropped that requirement,
+so new code opens the header with `/*` and relies on the SPDX line
+to identify the licence.
 
-Immediately after the opening is the SPDX-License-Identifier
-line. SPDX is a standardised vocabulary for describing licences
-in machine-readable form. The line tells the harvester which
-licence the file is under, and it does so in a form that cannot be
+Immediately after the opening come the copyright lines, then the
+SPDX-License-Identifier line. SPDX is a standardised vocabulary
+for describing licences in machine-readable form. The line names
+the licence the file is under in a form that cannot be
 misinterpreted. Use `BSD-2-Clause` for a two-clause BSD licence,
 `BSD-3-Clause` for a three-clause BSD licence. For other licences,
 consult the SPDX identifier list at `https://spdx.org/licenses/`.
-Do not invent identifiers.
+Do not invent identifiers. Note the order: `style(9)` says to
+write the copyright lines before the SPDX identifier. Older files
+have it the other way around; new code should not.
 
 The copyright line names the year and the copyright holder. Use
 your full legal name, or the name of your employer if you are
@@ -1466,11 +1467,11 @@ The convention in the tree for derivative works is to preserve
 the original copyright line and add your own as a separate line:
 
 ```c
-/*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
+/*
  * Copyright (c) 1998 Original Author <original@example.com>
  * Copyright (c) 2026 Your Name <you@example.com>
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  * [licence text]
  */
@@ -1546,17 +1547,17 @@ never prepared for submission, you will need to add the proper
 header to each file. The steps are:
 
 1. Decide on the licence. For a new driver, use BSD-2-Clause.
-2. Write the SPDX identifier line.
-3. Write the copyright line with your name, email, and the year
+2. Write the copyright line with your name, email, and the year
    of first creation.
+3. Write the SPDX identifier line after the copyright line.
 4. Paste in the standard BSD-2-Clause licence text.
-5. Verify that the opening is `/*-` and the file starts in
+5. Verify that the opening is `/*` and the file starts in
    column 1.
 6. Verify that there is a single blank line after the closing
    `*/`.
 7. Repeat for each file: the `.c` files, the `.h` files, the
-   manual page (where the licence appears as `.\" -` style
-   comments rather than `/*-` style), and any other files that
+   manual page (where the licence appears as `.\"` style
+   comments rather than `/*` style), and any other files that
    contain substantial content.
 
 For the Makefile, as noted earlier, a licence header is
@@ -1568,8 +1569,8 @@ shown in Section 2 is trivial enough that no header is required.
 There is no single automated tool that validates every aspect of
 a FreeBSD copyright header. The `checkstyle9.pl` script catches
 some kinds of formatting errors near the header. The licence
-harvester in the tree works on the `/*-` marker and the SPDX
-line. The most reliable validation, however, is to compare your
+tooling in the tree works on the SPDX line. The most reliable
+validation, however, is to compare your
 header directly against a known-good header from a recent commit
 in the tree, such as the header in
 `/usr/src/sys/dev/null/null.c` or any recently added driver.
@@ -1586,8 +1587,8 @@ saves enormous amounts of time. The FreeBSD Project accepts
 BSD-2-Clause, BSD-3-Clause, and a few other permissive licences
 for historical files. New contributions should default to
 BSD-2-Clause. The copyright header uses a specific form, opening
-with `/*-`, followed by an SPDX identifier, followed by one or
-more copyright lines, followed by the standard licence text. Code
+with `/*`, followed by one or more copyright lines, followed by
+an SPDX identifier, followed by the standard licence text. Code
 derived from other projects carries its original licence
 obligations forward, and derivative work must preserve the
 original attributions. Code you did not write yourself requires
@@ -1696,10 +1697,10 @@ hypothetical `mydev` driver. Save it as `mydev.4`, run
 the kind of manual page you can adapt to your own driver.
 
 ```text
-.\"-
-.\" SPDX-License-Identifier: BSD-2-Clause
 .\"
 .\" Copyright (c) 2026 Your Name <you@example.com>
+.\"
+.\" SPDX-License-Identifier: BSD-2-Clause
 .\"
 .\" Redistribution and use in source and binary forms, with or
 .\" without modification, are permitted provided that the
@@ -1808,8 +1809,9 @@ with `.\"`. These are mdoc comments. They are not rendered in the
 manual page output. They exist to carry the copyright header and
 any notes to future editors.
 
-The opening marker is `.\"-` with a dash, equivalent to the `/*-`
-in C files. The licence harvester recognises it.
+The opening line is a plain `.\"`, equivalent to the `/*` opening
+in C files. As in C files, the copyright line comes first and the
+SPDX identifier follows it.
 
 The `.Dd` macro sets the document date. It is formatted as month,
 day, year with full month name. The project's mdoc style is to
@@ -3609,14 +3611,14 @@ Steps:
    `.c` file, each `.h` file, and the manual page.
 2. For each file, check the existing header. If it is missing or
    malformed, replace it with a known-good template.
-3. Use `/*-` as the opening of the header in `.c` and `.h` files.
-   Use `.\"-` as the opening in the manual page.
-4. Include the SPDX-License-Identifier line with the appropriate
-   licence, typically `BSD-2-Clause`.
-5. Add your name and email to the Copyright line.
+3. Use `/*` as the opening of the header in `.c` and `.h` files.
+   Use `.\"` as the opening in the manual page.
+4. Add your name and email to the Copyright line.
+5. Include the SPDX-License-Identifier line, after the Copyright
+   line, with the appropriate licence, typically `BSD-2-Clause`.
 6. Include the standard licence text.
-7. Verify that the file starts in column 1 with the `/*-` or
-   `.\"-` opening.
+7. Verify that the file starts in column 1 with the `/*` or
+   `.\"` opening.
 
 Success criterion: every file has a correctly-formatted header
 that matches the conventions of files already in the tree.

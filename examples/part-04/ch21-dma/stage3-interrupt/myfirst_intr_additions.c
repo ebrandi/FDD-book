@@ -1,4 +1,8 @@
-/*-
+/*
+ * Copyright (c) 2026 Edson Brandi
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ *
  * Chapter 21 Stage 3: interrupt filter and task additions.
  *
  * Extends the Chapter 20 rx filter and task to handle

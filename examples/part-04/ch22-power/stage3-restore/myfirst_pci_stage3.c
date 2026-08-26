@@ -1,4 +1,8 @@
-/*-
+/*
+ * Copyright (c) 2026 Edson Brandi
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ *
  * Chapter 22 Stage 3: restore helper and rewritten resume/shutdown
  * for the myfirst driver.
  *
