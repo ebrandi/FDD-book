@@ -1,7 +1,7 @@
-/*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
+/*
  * Copyright (c) 2026 Edson Brandi
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  * config_writer.c: stress the Chapter 12 driver's configuration
  * sysctls by toggling debug_level and soft_byte_limit at high

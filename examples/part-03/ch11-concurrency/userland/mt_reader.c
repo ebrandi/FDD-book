@@ -1,7 +1,7 @@
-/*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
+/*
  * Copyright (c) 2026 Edson Brandi
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  * mt_reader.c: multiple threads reading from one descriptor of
  * /dev/myfirst.  Exercises the driver's handling of multiple

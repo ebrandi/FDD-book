@@ -495,7 +495,7 @@ Chapter 16's file layout was `myfirst.c` for the driver lifecycle, `myfirst_hw.c
 Create `myfirst_sim.c` alongside the Chapter 16 files. The first version is small:
 
 ```c
-/*-
+/*
  * myfirst_sim.c -- Chapter 17 simulated hardware backend.
  *
  * Adds a callout that drives autonomous register changes, a
@@ -3873,10 +3873,10 @@ If you want to go deeper into the topics Chapter 17 touched, the following are g
 The complete `myfirst_sim.h` as it stands at the end of Chapter 17, for quick reference. The source is also in `examples/part-04/ch17-simulating-hardware/stage5-final/myfirst_sim.h`.
 
 ```c
-/*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
+/*
  * Copyright (c) 2026 Edson Brandi
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  * myfirst_sim.h -- Chapter 17 simulation API.
  *

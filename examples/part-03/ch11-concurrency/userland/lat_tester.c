@@ -1,7 +1,7 @@
-/*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
+/*
  * Copyright (c) 2026 Edson Brandi
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  * lat_tester.c: measure read latency against /dev/myfirst and print
  * a simple bucketed histogram.  Useful for observing the cost of

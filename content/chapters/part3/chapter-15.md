@@ -3614,10 +3614,10 @@ The `myfirst` driver at the end of Chapter 15 uses every primitive Part 3 introd
 The companion source under `examples/part-03/ch15-more-synchronization/stage4-final/` includes the complete `myfirst_sync.h`. For reference, here is a full version that can be used as a template.
 
 ```c
-/*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
+/*
  * Copyright (c) 2026 Edson Brandi
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  * myfirst_sync.h: the named synchronisation vocabulary of the
  * myfirst driver.

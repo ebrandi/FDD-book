@@ -1,4 +1,8 @@
-/*-
+/*
+ * Copyright (c) 2026 Edson Brandi
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ *
  * Chapter 21 Stage 3: interrupt-driven DMA transfer helper.
  *
  * Replaces the Stage 2 polling helper with a condition-variable-based

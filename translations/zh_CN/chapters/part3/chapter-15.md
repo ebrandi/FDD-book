@@ -3601,10 +3601,10 @@ $ grep -c 'mtx_init\|mtx_lock\|mtx_unlock' /usr/src/sys/dev/ale/if_ale.c
 `examples/part-03/ch15-more-synchronization/stage4-final/` 下的配套源代码包含完整的 `myfirst_sync.h`。作为参考，这是一个可用作模板的完整版本。
 
 ```c
-/*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
+/*
  * Copyright (c) 2026 Edson Brandi
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  * myfirst_sync.h: the named synchronisation vocabulary of the
  * myfirst driver.

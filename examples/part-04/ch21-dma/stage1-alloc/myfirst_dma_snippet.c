@@ -1,4 +1,8 @@
-/*-
+/*
+ * Copyright (c) 2026 Edson Brandi
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ *
  * Chapter 21 Stage 1 snippet: DMA allocation and teardown.
  *
  * This file contains only the Chapter 21 Stage 1 additions to
