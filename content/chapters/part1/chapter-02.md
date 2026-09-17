@@ -427,30 +427,6 @@ Once FreeBSD boots, follow the same installer steps described above, where we ch
 
 After installation completes, remove the USB stick and reboot. FreeBSD will now boot from the hard drive.
 
-### First Boot
-
-After installation, you'll see the FreeBSD boot menu:
-
-![image-20250823213050882](https://freebsd.edsonbrandi.com/images/image-20250823213050882.png)
-
-Followed by the login prompt:
-
-![image-20250823212856938](https://freebsd.edsonbrandi.com/images/image-20250823212856938.png)
-
-Congratulations! Your FreeBSD lab machine is now alive and ready for configuration.
-
-### Installing FreeBSD in VirtualBox (Step by Step)
-
-If you don't already have **VirtualBox** installed, you'll need to set it up before creating your FreeBSD VM. VirtualBox is available for Windows, macOS, Linux, and even Solaris hosts. Download the latest version from the official website:
-
-https://www.virtualbox.org/wiki/Downloads
-
-Choose the package that matches your host operating system (for example, Windows hosts or macOS hosts), download it, and follow the installer. The installation is straightforward and only takes a few minutes. Once it's complete, launch VirtualBox, and you'll then be ready to create your first FreeBSD virtual machine.
-
-Now that you are ready, let's go through the VirtualBox process, since that's the easiest entry point for most readers. The steps are similar in VMware or bhyve.
-
-To get started execute VirtualBox App in your computer and in the main screen select **Home** in the left column, and than click in **New**, and follow the steps below:
-
 ### Installing FreeBSD in qemu (Step by Step)
 
 QEMU can run operating systems and programs for a variety of machines and architectures, using full-system emulation, user-mode emulation or virtualization.  If you enjoy working at a shell prompt and qemu is available on your system, you may prefer it. If you don't already have **qemu** installed, you'll need to set it up before creating your FreeBSD VM. **qemu** is available for Windows, macOS, and Linux. You may download the latest version from the official website:
@@ -500,11 +476,11 @@ The following example creates a 64-bit x86 machine with 4 GB of RAM, 2 CPU cores
 			  -device e1000,netdev=net0
 ```
 
-Follow the step by step instructions in the VirtualBox FreeBSD installation sectoin above to install and configure your FreeBSD lab to the qemu image.
+Follow the step by step instructions in the VirtualBox FreeBSD installation section above to install and configure your FreeBSD lab to the qemu image.
 
 After you install FreeBSD, power down the live install image using the qemu 'Machine' menu.
 
-![image-20260916-qemu-poweroff.png](../../images/image-20260916-qemu-poweroff.png)
+![image-20260916-qemu-poweroff.png](content/images/image-20260916-qemu-poweroff.png)
 
 4. **Boot the FreeBSD VM**
 
@@ -569,6 +545,19 @@ Later on in this guide, you will be shown how to enable SSH in the FreeBSD guest
 ```
 
 Change 'fbsd-user-name' with the account name you setup when you installed FreeBSD.
+
+### First Boot
+
+After installation, you'll see the FreeBSD boot menu:
+
+![image-20250823213050882](https://freebsd.edsonbrandi.com/images/image-20250823213050882.png)
+
+Followed by the login prompt:
+
+![image-20250823212856938](https://freebsd.edsonbrandi.com/images/image-20250823212856938.png)
+
+Congratulations! Your FreeBSD lab machine is now alive and ready for configuration.
+
 
 ### Wrapping Up
 
