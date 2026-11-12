@@ -1,4 +1,6 @@
-/*-
+/*
+ * Copyright (c) 2026 Edson Brandi
+ *
  * SPDX-License-Identifier: BSD-2-Clause
  *
  * hold_myfirst: open /dev/myfirst/0 and sleep. Used for Challenge 2 to

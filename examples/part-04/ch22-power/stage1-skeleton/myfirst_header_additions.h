@@ -1,4 +1,8 @@
-/*-
+/*
+ * Copyright (c) 2026 Edson Brandi
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ *
  * Chapter 22 Stage 1: header additions.
  *
  * Append these fields to struct myfirst_softc in myfirst.h.

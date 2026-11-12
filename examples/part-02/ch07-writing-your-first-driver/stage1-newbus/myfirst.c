@@ -1,7 +1,7 @@
-/*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
+/*
  * Copyright (c) 2025 Your Name
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
  * All rights reserved.
  *
  * Stage 1 of Chapter 7: minimal Newbus pseudo-device.

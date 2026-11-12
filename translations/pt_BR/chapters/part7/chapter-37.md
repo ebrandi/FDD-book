@@ -292,10 +292,10 @@ encontrar. Você já viu a mecânica de cada um desses macros em capítulos
 anteriores; aqui estamos focando em como eles se organizam na página.
 
 ```c
-/*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
+/*
  * Copyright (c) 2026 Your Name <you@example.com>
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  * Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the
@@ -381,9 +381,9 @@ MODULE_VERSION(mydev, 1);
 MODULE_DEPEND(mydev, pci, 1, 1, 1);
 ```
 
-Vale notar algumas coisas. O cabeçalho de copyright usa o marcador de
-abertura `/*-`, que o script de coleta automática de licenças reconhece.
-A linha SPDX nomeia a licença explicitamente. A indentação usa tabs, não
+Vale notar algumas coisas. O cabeçalho de copyright abre com um comentário
+`/*` simples, declara primeiro o copyright e, em seguida, nomeia a licença
+explicitamente com a linha SPDX. A indentação usa tabs, não
 espaços, conforme exigido pelo `style(9)`. As declarações de funções são
 separadas por tabs, também conforme o `style(9)`. Os macros `DRIVER_MODULE`
 e relacionados aparecem no final, na ordem que o sistema de build espera.
@@ -483,14 +483,13 @@ mensagem de panic.
 
 #### Formato do Cabeçalho de Copyright
 
-O cabeçalho de copyright usa o marcador de abertura `/*-`. Esse marcador
-é especial. Uma ferramenta automatizada coleta licenças da árvore procurando
-comentários de múltiplas linhas que começam na coluna 1 com `/*-`. Usar esse
-marcador sinaliza o bloco como uma licença; usar um `/*` comum não faz isso.
-Imediatamente após `/*-`, a próxima linha significativa deve ser
-`SPDX-License-Identifier:` seguido do código de licença SPDX, como
-`BSD-2-Clause`. Depois vêm uma ou mais linhas de `Copyright`. Em seguida,
-o texto da licença.
+O cabeçalho de copyright é um comentário de múltiplas linhas que começa na
+coluna 1 com um `/*` simples. Arquivos mais antigos abrem com `/*-`, um
+marcador do qual uma ferramenta de coleta de licenças dependia no passado;
+o `style(9)` não exige mais o traço em código novo. As primeiras linhas
+significativas são uma ou mais linhas de `Copyright`. Depois das linhas de
+copyright vem `SPDX-License-Identifier:` seguido do código de licença SPDX,
+como `BSD-2-Clause`. Em seguida, opcionalmente, o texto da licença.
 
 #### Declarações e Definições de Funções
 
@@ -779,9 +778,10 @@ autoavaliação rápida antes de avançar para a Seção 3.
 - Nomes de arquivos que não correspondem ao driver. Se o driver se chama
   `mydev`, o arquivo de código-fonte principal é `mydev.c`, não `main.c` ou
   `driver.c`.
-- Cabeçalho de copyright ausente ou incorreto. O cabeçalho usa `/*-` como
-  marcador de abertura, o identificador SPDX vem primeiro, e o texto da
-  licença corresponde a uma das licenças aceitas pelo projeto.
+- Cabeçalho de copyright ausente ou incorreto. O cabeçalho abre com `/*`,
+  as linhas de copyright vêm primeiro, o identificador SPDX vem depois
+  delas, e o texto da licença corresponde a uma das licenças aceitas pelo
+  projeto.
 - Espaços em vez de tabs. O `style(9)` é explícito sobre tabs, e o
   verificador de estilo vai sinalizar a indentação com espaços imediatamente.
 - Parênteses ausentes em expressões `return`. Um pequeno erro recorrente
@@ -897,10 +897,10 @@ Se você estiver portando ou adaptando código de outro projeto de código abert
 O cabeçalho de copyright no topo de cada arquivo de código-fonte na árvore tem uma estrutura específica, documentada em `style(9)`. Vamos percorrer um cabeçalho completo e examinar cada parte.
 
 ```c
-/*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
+/*
  * Copyright (c) 2026 Your Name <you@example.com>
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  * Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the
@@ -928,9 +928,9 @@ O cabeçalho de copyright no topo de cada arquivo de código-fonte na árvore te
  */
 ```
 
-O `/*-` de abertura não é um erro de digitação. O traço após o asterisco é significativo. Um script automatizado na árvore coleta informações de licença dos arquivos procurando por comentários de múltiplas linhas que começam na coluna 1 com a sequência `/*-`. Usar `/*-` marca o bloco como uma licença; usar simplesmente `/*` não faz isso. O `style(9)` é explícito: se você quiser que o coletor de licenças da árvore identifique sua licença corretamente, use `/*-` na linha de abertura.
+A abertura é um `/*` simples na coluna 1. Você ainda verá `/*-` no topo de muitos arquivos da árvore: o traço era um marcador para um script automatizado de coleta de licenças, e por anos o `style(9)` o exigiu. O `style(9)` atual abandonou essa exigência, então código novo abre o cabeçalho com `/*` e conta com a linha SPDX para identificar a licença.
 
-Imediatamente após a abertura está a linha SPDX-License-Identifier. SPDX é um vocabulário padronizado para descrever licenças de forma legível por máquinas. Essa linha informa ao coletor sob qual licença o arquivo está, de uma forma que não pode ser mal interpretada. Use `BSD-2-Clause` para uma licença BSD de duas cláusulas, `BSD-3-Clause` para uma licença BSD de três cláusulas. Para outras licenças, consulte a lista de identificadores SPDX em `https://spdx.org/licenses/`. Não invente identificadores.
+Imediatamente após a abertura vêm as linhas de copyright e, em seguida, a linha SPDX-License-Identifier. SPDX é um vocabulário padronizado para descrever licenças de forma legível por máquinas. Essa linha declara sob qual licença o arquivo está, de uma forma que não pode ser mal interpretada. Use `BSD-2-Clause` para uma licença BSD de duas cláusulas, `BSD-3-Clause` para uma licença BSD de três cláusulas. Para outras licenças, consulte a lista de identificadores SPDX em `https://spdx.org/licenses/`. Não invente identificadores. Note a ordem: o `style(9)` manda escrever as linhas de copyright antes do identificador SPDX. Arquivos mais antigos têm a ordem inversa; código novo não deve tê-la.
 
 A linha de copyright indica o ano e o titular dos direitos. Use seu nome legal completo, ou o nome do seu empregador caso você esteja contribuindo com trabalho realizado no âmbito de um emprego, seguido de um endereço de e-mail estável o suficiente para que possam entrar em contato com você anos mais tarde. Se você estiver contribuindo como pessoa física, use seu e-mail pessoal em vez de um endereço temporário.
 
@@ -960,11 +960,11 @@ Qualquer código que você copie ou adapte de outro projeto carrega consigo a li
 A convenção na árvore para trabalhos derivados é preservar a linha de copyright original e adicionar a sua como uma linha separada:
 
 ```c
-/*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
+/*
  * Copyright (c) 1998 Original Author <original@example.com>
  * Copyright (c) 2026 Your Name <you@example.com>
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  * [licence text]
  */
@@ -1000,24 +1000,24 @@ Se você é funcionário de uma empresa e está contribuindo com trabalho realiz
 Se você está adaptando um driver que já escreveu, mas nunca preparou para envio, precisará adicionar o cabeçalho adequado a cada arquivo. Os passos são:
 
 1. Decida a licença. Para um driver novo, use BSD-2-Clause.
-2. Escreva a linha do identificador SPDX.
-3. Escreva a linha de copyright com seu nome, e-mail e o ano de criação inicial.
+2. Escreva a linha de copyright com seu nome, e-mail e o ano de criação inicial.
+3. Escreva a linha do identificador SPDX depois da linha de copyright.
 4. Cole o texto padrão da licença BSD-2-Clause.
-5. Verifique se a abertura é `/*-` e se o arquivo começa na coluna 1.
+5. Verifique se a abertura é `/*` e se o arquivo começa na coluna 1.
 6. Verifique se há uma única linha em branco após o `*/` de fechamento.
-7. Repita para cada arquivo: os arquivos `.c`, os arquivos `.h`, a página de manual (onde a licença aparece como comentários no estilo `.\" -` em vez de comentários no estilo `/*-`), e quaisquer outros arquivos que contenham conteúdo substancial.
+7. Repita para cada arquivo: os arquivos `.c`, os arquivos `.h`, a página de manual (onde a licença aparece como comentários no estilo `.\"` em vez de comentários no estilo `/*`), e quaisquer outros arquivos que contenham conteúdo substancial.
 
 Para o Makefile, como mencionado anteriormente, um cabeçalho de licença é convencionalmente omitido para arquivos triviais. O Makefile do módulo apresentado na Seção 2 é simples o suficiente para que nenhum cabeçalho seja necessário.
 
 ### Validando o Cabeçalho
 
-Não existe uma única ferramenta automatizada que valide todos os aspectos de um cabeçalho de copyright do FreeBSD. O script `checkstyle9.pl` detecta alguns tipos de erros de formatação próximos ao cabeçalho. O coletor de licenças da árvore trabalha com o marcador `/*-` e a linha SPDX. A validação mais confiável, no entanto, é comparar seu cabeçalho diretamente com um cabeçalho conhecido e correto de um commit recente na árvore, como o cabeçalho em `/usr/src/sys/dev/null/null.c` ou em qualquer driver adicionado recentemente.
+Não existe uma única ferramenta automatizada que valide todos os aspectos de um cabeçalho de copyright do FreeBSD. O script `checkstyle9.pl` detecta alguns tipos de erros de formatação próximos ao cabeçalho. O ferramental de licenças da árvore trabalha com a linha SPDX. A validação mais confiável, no entanto, é comparar seu cabeçalho diretamente com um cabeçalho conhecido e correto de um commit recente na árvore, como o cabeçalho em `/usr/src/sys/dev/null/null.c` ou em qualquer driver adicionado recentemente.
 
 Crie um pequeno hábito: quando você abrir um novo arquivo de código-fonte, cole um cabeçalho conhecido e correto como primeira ação. Isso evita o erro fácil de esquecer o cabeçalho completamente e também garante que o formato esteja certo desde o início.
 
 ### Encerrando a Seção 3
 
-O licenciamento é um dos pontos em que acertar desde o início economiza uma quantidade enorme de tempo. O FreeBSD Project aceita BSD-2-Clause, BSD-3-Clause e algumas outras licenças permissivas para arquivos históricos. Novas contribuições devem usar BSD-2-Clause como padrão. O cabeçalho de copyright usa uma forma específica, abrindo com `/*-`, seguido de um identificador SPDX, seguido de uma ou mais linhas de copyright, seguido pelo texto padrão da licença. Código derivado de outros projetos carrega suas obrigações de licença originais para frente, e trabalhos derivados devem preservar as atribuições originais. Código que você mesmo não escreveu requer a permissão e a atribuição do autor.
+O licenciamento é um dos pontos em que acertar desde o início economiza uma quantidade enorme de tempo. O FreeBSD Project aceita BSD-2-Clause, BSD-3-Clause e algumas outras licenças permissivas para arquivos históricos. Novas contribuições devem usar BSD-2-Clause como padrão. O cabeçalho de copyright usa uma forma específica, abrindo com `/*`, seguido de uma ou mais linhas de copyright, seguido de um identificador SPDX, seguido pelo texto padrão da licença. Código derivado de outros projetos carrega suas obrigações de licença originais para frente, e trabalhos derivados devem preservar as atribuições originais. Código que você mesmo não escreveu requer a permissão e a atribuição do autor.
 
 Com a parte legal resolvida, podemos nos voltar para a página de manual. Todo driver na árvore é acompanhado de uma página de manual, e escrever uma boa página é um dos pontos em que contribuidores de primeira viagem mais frequentemente subestimam o esforço necessário. A Seção 4 percorre as convenções e fornece um modelo que você pode adaptar.
 
@@ -1073,10 +1073,10 @@ Nem toda seção é necessária para todo driver. Para um driver simples, `NAME`
 A seguir, uma página de manual completa e funcional da seção 4 para um driver hipotético `mydev`. Salve-a como `mydev.4`, execute `mandoc -Tlint` sobre ela e você verá que ela passa sem erros. Este é o tipo de página de manual que você pode adaptar para o seu próprio driver.
 
 ```text
-.\"-
-.\" SPDX-License-Identifier: BSD-2-Clause
 .\"
 .\" Copyright (c) 2026 Your Name <you@example.com>
+.\"
+.\" SPDX-License-Identifier: BSD-2-Clause
 .\"
 .\" Redistribution and use in source and binary forms, with or
 .\" without modification, are permitted provided that the
@@ -1177,7 +1177,7 @@ Vamos percorrer as partes que são mais frequentemente mal compreendidas.
 
 O bloco de cabeçalho no topo é um conjunto de linhas de comentário que começam com `.\"`. São comentários mdoc. Eles não são renderizados na saída da página de manual. Eles existem para conter o cabeçalho de copyright e quaisquer notas para editores futuros.
 
-O marcador de abertura é `.\"-` com um traço, equivalente ao `/*-` em arquivos C. O coletor de licenças o reconhece.
+A linha de abertura é um `.\"` simples, equivalente à abertura `/*` em arquivos C. Como nos arquivos C, a linha de copyright vem primeiro e o identificador SPDX vem em seguida.
 
 A macro `.Dd` define a data do documento. É formatada como mês, dia, ano com o nome completo do mês. O estilo mdoc do projeto é atualizar `.Dd` sempre que o conteúdo da página de manual mudar de forma significativa. Não atualize a data para mudanças triviais como correções de espaço em branco, mas atualize-a para qualquer mudança semântica.
 
@@ -2272,11 +2272,11 @@ Passos:
 
 1. Identifique todos os arquivos do driver que precisam de cabeçalho: cada arquivo `.c`, cada arquivo `.h` e a página de manual.
 2. Para cada arquivo, verifique o cabeçalho existente. Se estiver ausente ou malformado, substitua por um template conhecido e correto.
-3. Use `/*-` como abertura do cabeçalho em arquivos `.c` e `.h`. Use `.\"-` como abertura na página de manual.
-4. Inclua a linha `SPDX-License-Identifier` com a licença adequada, normalmente `BSD-2-Clause`.
-5. Adicione seu nome e e-mail na linha Copyright.
+3. Use `/*` como abertura do cabeçalho em arquivos `.c` e `.h`. Use `.\"` como abertura na página de manual.
+4. Adicione seu nome e e-mail na linha Copyright.
+5. Inclua a linha `SPDX-License-Identifier` com a licença adequada, normalmente `BSD-2-Clause`, depois da linha de copyright.
 6. Inclua o texto padrão da licença.
-7. Verifique que o arquivo começa na coluna 1 com a abertura `/*-` ou `.\"-`.
+7. Verifique que o arquivo começa na coluna 1 com a abertura `/*` ou `.\"`.
 
 Critério de sucesso: todos os arquivos têm um cabeçalho corretamente formatado que corresponde às convenções dos arquivos já presentes na árvore.
 

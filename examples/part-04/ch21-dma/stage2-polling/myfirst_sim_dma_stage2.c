@@ -1,4 +1,8 @@
-/*-
+/*
+ * Copyright (c) 2026 Edson Brandi
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ *
  * Chapter 21 Stage 2: simulated DMA engine.
  *
  * This snippet shows the Stage 2 additions to myfirst_sim.c. It

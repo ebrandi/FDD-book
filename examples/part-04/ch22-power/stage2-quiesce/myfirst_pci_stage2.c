@@ -1,4 +1,8 @@
-/*-
+/*
+ * Copyright (c) 2026 Edson Brandi
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ *
  * Chapter 22 Stage 2: quiesce helpers and rewritten suspend for
  * the myfirst driver.
  *

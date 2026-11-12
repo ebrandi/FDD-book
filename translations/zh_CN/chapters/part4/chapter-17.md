@@ -519,7 +519,7 @@ language: "zh-CN"
 在第16章文件旁边创建 `myfirst_sim.c`。第一个版本很小：
 
 ```c
-/*-
+/*
  * myfirst_sim.c -- 第17章模拟硬件后端。
  *
  * 添加一个驱动自主寄存器变化的定时器，一个
@@ -3825,10 +3825,10 @@ led_timeout(void *p)
 
 这是第17章末尾完整的 `myfirst_sim.h` 文件，供快速参考。该源码也位于 `examples/part-04/ch17-simulating-hardware/stage5-final/myfirst_sim.h` 中。
 ```c
-/*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
+/*
  * Copyright (c) 2026 Edson Brandi
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  * myfirst_sim.h -- Chapter 17 simulation API.
  *

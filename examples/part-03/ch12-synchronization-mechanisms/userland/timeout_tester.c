@@ -1,7 +1,7 @@
-/*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
+/*
  * Copyright (c) 2026 Edson Brandi
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  * timeout_tester.c: verify that the Chapter 12 driver's bounded
  * read returns EAGAIN after approximately the configured timeout

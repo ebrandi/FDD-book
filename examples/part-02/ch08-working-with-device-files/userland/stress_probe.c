@@ -1,4 +1,6 @@
-/*-
+/*
+ * Copyright (c) 2026 Edson Brandi
+ *
  * SPDX-License-Identifier: BSD-2-Clause
  *
  * stress_probe: loop open() and close() on a device node many times.

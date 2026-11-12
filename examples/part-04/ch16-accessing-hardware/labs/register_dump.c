@@ -1,4 +1,6 @@
-/*-
+/*
+ * Copyright (c) 2026 Edson Brandi
+ *
  * SPDX-License-Identifier: BSD-2-Clause
  *
  * register_dump.c -- Chapter 16 user-space register dump tool.

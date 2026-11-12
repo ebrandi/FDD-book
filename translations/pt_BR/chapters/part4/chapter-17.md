@@ -495,7 +495,7 @@ O layout de arquivos do Capítulo 16 era `myfirst.c` para o ciclo de vida do dri
 Crie `myfirst_sim.c` ao lado dos arquivos do Capítulo 16. A primeira versão é pequena:
 
 ```c
-/*-
+/*
  * myfirst_sim.c -- Chapter 17 simulated hardware backend.
  *
  * Adds a callout that drives autonomous register changes, a
@@ -3871,10 +3871,10 @@ Se você quiser aprofundar nos temas abordados pelo Capítulo 17, os recursos a 
 O `myfirst_sim.h` completo no estado em que se encontra ao final do Capítulo 17, para consulta rápida. O código-fonte também está disponível em `examples/part-04/ch17-simulating-hardware/stage5-final/myfirst_sim.h`.
 
 ```c
-/*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
+/*
  * Copyright (c) 2026 Edson Brandi
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  * myfirst_sim.h -- Chapter 17 simulation API.
  *

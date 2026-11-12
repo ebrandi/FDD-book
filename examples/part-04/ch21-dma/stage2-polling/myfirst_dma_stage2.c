@@ -1,4 +1,8 @@
-/*-
+/*
+ * Copyright (c) 2026 Edson Brandi
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
+ *
  * Chapter 21 Stage 2: DMA transfer helper (polling-based).
  *
  * This snippet shows the Stage 2 addition to myfirst.c. It assumes

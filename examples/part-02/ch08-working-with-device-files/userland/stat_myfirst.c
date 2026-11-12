@@ -1,4 +1,6 @@
-/*-
+/*
+ * Copyright (c) 2026 Edson Brandi
+ *
  * SPDX-License-Identifier: BSD-2-Clause
  *
  * stat_myfirst: print stat(2) metadata for one or more device-file

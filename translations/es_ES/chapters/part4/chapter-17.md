@@ -495,7 +495,7 @@ La distribución de archivos del capítulo 16 era `myfirst.c` para el ciclo de v
 Crea `myfirst_sim.c` junto a los archivos del capítulo 16. La primera versión es pequeña:
 
 ```c
-/*-
+/*
  * myfirst_sim.c -- Chapter 17 simulated hardware backend.
  *
  * Adds a callout that drives autonomous register changes, a
@@ -3869,10 +3869,10 @@ Si quieres profundizar en los temas que tocó el capítulo 17, los siguientes so
 El `myfirst_sim.h` completo tal como queda al final del capítulo 17, para consulta rápida. El código fuente también está disponible en `examples/part-04/ch17-simulating-hardware/stage5-final/myfirst_sim.h`.
 
 ```c
-/*-
- * SPDX-License-Identifier: BSD-2-Clause
- *
+/*
  * Copyright (c) 2026 Edson Brandi
+ *
+ * SPDX-License-Identifier: BSD-2-Clause
  *
  * myfirst_sim.h -- Chapter 17 simulation API.
  *
