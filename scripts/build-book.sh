@@ -550,7 +550,7 @@ build_pdf() {
         --variable code-block-font-size=\\footnotesize \
         --variable float-placement-figure="H" \
         --variable figure-placement="H" \
-        --syntax-highlighting=tango \
+        --highlight-style=tango \
         --variable linestretch=1.15 \
         --variable geometry:"inner=2cm,outer=2cm,top=2.5cm,bottom=2.5cm" \
         "${font_args[@]}" \
@@ -597,7 +597,7 @@ build_epub() {
         --toc \
         --toc-depth=2 \
         --number-sections \
-        --syntax-highlighting=tango \
+        --highlight-style=tango \
         --split-level=1 \
         --verbose \
         -o "$output_file" 2>&1
@@ -645,7 +645,7 @@ build_html() {
         --to=html5 \
         --standalone \
         --embed-resources \
-        --syntax-highlighting=tango \
+        --highlight-style=tango \
         --toc \
         --toc-depth=2 \
         --number-sections \

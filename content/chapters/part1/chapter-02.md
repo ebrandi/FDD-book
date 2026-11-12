@@ -109,7 +109,9 @@ A **virtual machine** is a piece of software that lets you run FreeBSD as if it 
 
 - **VirtualBox** (free and cross-platform, great for beginners).
 - **VMware Workstation / Fusion** (commercial, polished, widely used).
-- **bhyve** (FreeBSD's native hypervisor, ideal if you want to run FreeBSD *on* FreeBSD).
+- **bhyve** (FreeBSD's native hypervisor, ideal if you want to run FreeBSD *on*
+  FreeBSD).
+- **qemu** (A generic machine emulator and virtualizer)  
 
 Why developers love VMs for kernel work:
 
@@ -425,6 +427,125 @@ Once FreeBSD boots, follow the same installer steps described above, where we ch
 
 After installation completes, remove the USB stick and reboot. FreeBSD will now boot from the hard drive.
 
+### Installing FreeBSD in qemu (Step by Step)
+
+QEMU can run operating systems and programs for a variety of machines and architectures, using full-system emulation, user-mode emulation or virtualization.  If you enjoy working at a shell prompt and qemu is available on your system, you may prefer it. If you don't already have **qemu** installed, you'll need to set it up before creating your FreeBSD VM. **qemu** is available for Windows, macOS, and Linux. You may download the latest version from the official website:
+
+https://www.qemu.org/download/
+
+or install using your operating system's package manager.
+
+For linux:
+```console
+% sudo apt install qemu
+```
+
+For FreeBSD:
+```console
+% pkg install qemu
+```
+
+Now that you have installed qemu, you are ready to create your FreeBSD lab.
+
+1. **Create a directory for your laboratory**
+```console
+% mkdir ~/vm
+% cd ~/vm
+```
+
+2. **Create a disk image for the VM**
+
+It is recommended to create a disk image with 30GB or more ram.
+
+```console
+% qemu-img create -f qcow2 freebsd.img 50G
+```
+
+3. **Boot the FreeBSD Installer inside the VM**
+
+The following example creates a 64-bit x86 machine with 4 GB of RAM, 2 CPU cores, an emulated network device, and port forwarding so you can ssh into your image from a terminal in your host operating system.
+
+```console
+% qemu-system-x86_64 \
+              -m 4096 \
+              -smp 2 \
+			  -cdrom FreeBSD-14.3-RELEASE-amd64-disc1.iso \
+              -boot c \
+              -drive file=freebsd.img,format=qcow2,if=virtio \
+              -netdev user,id=net0,hostfwd=tcp::2222-:22 \
+			  -device e1000,netdev=net0
+```
+
+Follow the step by step instructions in the VirtualBox FreeBSD installation section above to install and configure your FreeBSD lab to the qemu image.
+
+After you install FreeBSD, power down the live install image using the qemu 'Machine' menu.
+
+![image-20260916-qemu-poweroff.png](content/images/image-20260916-qemu-poweroff.png)
+
+4. **Boot the FreeBSD VM**
+
+The command to boot the FreeBSD VM is similar to the one used for installation, but we exclude the install iso image and we do not supply the '-boot' directive so that the machine boots from the virtual drive that qemu-img created in step 1.
+
+```console
+% qemu-system-x86_64 \
+              -m 4096 \
+              -smp 2 \
+              -drive file=freebsd.img,format=qcow2,if=virtio \
+              -netdev user,id=net0,hostfwd=tcp::2222-:22 \
+			  -device e1000,netdev=net0
+```
+
+You can save the following script in your 'vm' folder and make it executable so that you don't have type the command every time you start your vm.
+
+```sh
+#!/bin/sh
+
+# Path to your VM disk image
+IMG="/home/username/vm/freebsd.img"
+
+# Amount of RAM
+RAM=4096
+
+# Number of CPUs
+CPUS=2
+
+# Path to QEMU executable (adjust if necessary)
+QEMU=qemu-system-x86_64
+
+# Network: user mode NAT + SSH forward
+# Forward host port 2222 to guest port 22
+NET="-netdev user,id=net0,hostfwd=tcp::2222-:22 -device e1000,netdev=net0"
+
+# Boot command
+$QEMU \
+    -m $RAM \
+    -smp $CPUS \
+    -drive file="$IMG",format=qcow2 \
+    $NET &
+```
+
+Save the above script as 'start-freebsd.sh' in your VM folder and use the following command to make it executable on your host machine.
+
+```console
+% chmod +x start-freebsd.sh
+```
+
+You can now boot your FreeBSD VM lab with this simple command.
+
+```console
+% ./start-freebsd.sh
+```
+
+The simple script given above uses NAT and port forwarding to allow communication between your lab and host operating system.
+
+Later on in this guide, you will be shown how to enable SSH in the FreeBSD guest operating system, which will allow you to log in to your running VM with the following command. 
+
+```console
+% ssh -p 2222 fbsd-user-name@localhost
+```
+
+Change 'fbsd-user-name' with the account name you setup when you installed FreeBSD.
+
 ### First Boot
 
 After installation, you'll see the FreeBSD boot menu:
@@ -436,6 +557,7 @@ Followed by the login prompt:
 ![image-20250823212856938](https://freebsd.edsonbrandi.com/images/image-20250823212856938.png)
 
 Congratulations! Your FreeBSD lab machine is now alive and ready for configuration.
+
 
 ### Wrapping Up
 
@@ -952,9 +1074,10 @@ In this section, we'll explore both.
 
 ### Snapshots in Virtual Machines
 
-If you're running FreeBSD in a VM (VirtualBox, VMware, bhyve), you have a huge safety net: **snapshots**.
+If you're running FreeBSD in a VM (VirtualBox, VMware, qemu, bhyve), you have a huge safety net: **snapshots**.
 
 - In **VirtualBox** or **VMware**, snapshots are managed from the GUI, you can save, restore, and delete them with a few clicks.
+- In **QEMU**, snapshots can be managed using qemu-img snapshot and overlay utilities.
 - In **bhyve**, snapshots are managed through the **storage backend**, usually ZFS. You snapshot the dataset that holds the VM's disk image and roll it back when needed.
 
 #### Example workflow for VirtualBox
@@ -976,6 +1099,35 @@ If you're running FreeBSD in a VM (VirtualBox, VMware, bhyve), you have a huge s
 5. If the system crashes or you break networking, just restore the snapshot.
 
 ![image-20250823232420760](https://freebsd.edsonbrandi.com/images/image-20250823232420760.png)
+
+#### Example Workflow in qemu
+
+If your VM disk is stored in your home directory, for example '/home/xyz/vm/freebsd.img', and you want to make a 'baseline' snapshot prior to testing a new driver:
+
+1. Create a snapshop before experiments:
+
+```console
+# qemu-img snapshop -c baseline /home/xyz/vm/freebsd.img
+```
+
+2. Make changes, test code, or even crash the kernel.
+
+3. Roll back instantly:
+
+```console
+# qemu-img snapshot -a baseline /home/xyz/vm/freebsd.img
+```
+
+You may list all your snapshots with the -l switch:
+```console
+# qemu-img snapshot -l /home/xyz/vm/freebsd.img
+```
+
+You may delete snapshots that are no longer needed with the -d switch:
+
+```console
+# qemu-img snapshot -d snapshot-name /home/xyz/vm/freebsd.img
+```
 
 #### Example Workflow in bhyve (with ZFS)
 
